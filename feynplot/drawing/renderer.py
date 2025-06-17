@@ -1,145 +1,207 @@
 import matplotlib.pyplot as plt
-from matplotlib.patches import Circle, Rectangle, RegularPolygon  # 支持不同样式的顶点
+import numpy as np # Ensure numpy is imported
+from feynplot.drawing.plot_functions import *
+from feynplot.core.line import *
+
 
 class MatplotlibBackend:
     def __init__(self):
         self.fig, self.ax = plt.subplots()
+        plt.tight_layout()
 
     def render(self, vertices, lines):
-        self.ax.clear()
+        # 1. 清空当前轴（如果这是在同一个窗口中多次调用 render）
+        self.ax.clear() 
+        # 重置一些 Axes 属性，因为 clear() 会重置很多东西，包括设置的方面和轴关闭状态
+        self.ax.set_aspect('equal', adjustable='box')
+        self.ax.set_axis_off()
+        plt.tight_layout()
 
-        # 画线
+        # Draw lines
         for line in lines:
             self._draw_line(line)
 
-        # 画顶点
-        for v in vertices:
-            self._draw_vertex(v)
+        # Draw vertices
 
-        self.ax.set_aspect('equal')
-        self.ax.axis('off')
-        plt.draw()
-        plt.show()
+        # --- 绘制顶点 ---
+        for v in vertices:
+            if v.is_structured:
+                draw_structured_vertex(self.ax, v) # 调用绘制结构化顶点的函数
+            else:
+                draw_point_vertex(self.ax, v)     # 调用绘制点状顶点的函数
+
+
+        # Ensure the plot area fits content and maintains aspect ratio
+        self.ax.autoscale_view()
+        self.ax.set_aspect('equal', adjustable='box') # adjustable='box' will resize the plot box
+        self.ax.axis('off') # Turn off axes
 
     def _draw_line(self, line):
-        from feynplot.core.line import GluonLine
-        from feynplot.core.gluon_methods import generate_gluon_bezier
+        # Local imports for demonstration; consider moving to top if no circular dependency issues
+        from feynplot.core.gluon_methods import generate_gluon_helix, generate_gluon_bezier
+        from feynplot.core.photon_methods import generate_photon_wave # <--- 确保在这里有这个导入
 
+        # <--- 确保 line_plot_options 和 label_text_options 在这里定义
+        line_plot_options = line.get_plot_properties() # <--- 这一行必须在这里！
+        label_text_options = line.get_label_properties() # <--- 这一行也必须在这里！
+
+
+        # 在原代码中使用 draw_gluon_line 函数
         if isinstance(line, GluonLine):
-            print('GluonLine detected')
-            # 螺旋线（D轨迹）
-            helix_path = line.get_plot_path()  # Nx2 numpy array
-            x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
+            draw_gluon_line(self.ax, line, line_plot_options, label_text_options)
+                
+        elif isinstance(line, PhotonLine):  # <--- 添加对 PhotonLine 的处理
+            print('Detected PhotonLine, drawing wave path')
+            draw_photon_wave(self.ax, line, line_plot_options, label_text_options)
 
-            # 贝塞尔路径（C轨迹）
-            bezier_path = generate_gluon_bezier(line)  # Nx2 numpy array
-            x_bezier, y_bezier = bezier_path[:, 0], bezier_path[:, 1]
+        elif isinstance(line, (WPlusLine, WMinusLine, ZBosonLine)):
+            draw_WZ_zigzag_line(self.ax, line, line_plot_options, label_text_options) 
+        
+        elif isinstance(line, FermionLine): # <-- Add this block for FermionLine
+            # Call the dedicated drawing function for fermion lines
+            draw_fermion_line(self.ax, line, line_plot_options, label_text_options)
 
-            style_props = line.get_style_properties()  # 颜色、线宽等
-            color = style_props.get('color', 'blue')
-            linewidth = style_props.get('linewidth', 1.5)
 
-            # 先画贝塞尔路径，用虚线表现
-            self.ax.plot(x_bezier, y_bezier, linestyle='--', color=color, linewidth=linewidth * 0.8, label='Bezier Path')
-
-            # 再画螺旋线
-            self.ax.plot(x_helix, y_helix, color=color, linewidth=linewidth, label='Gluon Helix')
-
-            # 画箭头（螺旋线末端方向）
-            if line.arrow and len(x_helix) > 1:
-                self.ax.annotate(
-                    '',
-                    xy=(x_helix[-1], y_helix[-1]),
-                    xytext=(x_helix[-2], y_helix[-2]),
-                    arrowprops=dict(arrowstyle='->', linewidth=1.5, color=color)
-                )
-
-            # 标签放螺旋线中点附近
-            if line.label:
-                mid_idx = len(x_helix) // 2
-                self.ax.text(x_helix[mid_idx], y_helix[mid_idx], line.label, fontsize=12, color=color)
-
-        else:
-            # 不是 GluonLine，按原方法画普通线或其他样式
+        else: # Handle generic lines (straight, wavy, curly)
             (x1, y1), (x2, y2) = line.get_coords()
-            style_properties = line.get_style_properties()
 
-            if line.style == 'photon':
-                self._draw_wavy_line(x1, y1, x2, y2, **style_properties)
-            elif line.style == 'gluon':
-                self._draw_curly_line(x1, y1, x2, y2, **style_properties)
+            if line.style == LineStyle.PHOTON:
+                # Pass all line_plot_options to _draw_wavy_line
+                self._draw_wavy_line(x1, y1, x2, y2, **line_plot_options)
+            elif line.style == LineStyle.GLUON:
+                # Pass all line_plot_options to _draw_curly_line
+                self._draw_curly_line(x1, y1, x2, y2, **line_plot_options)
             else:
-                self.ax.plot([x1, x2], [y1, y2], **style_properties)
+                self.ax.plot([x1, x2], [y1, y2], **line_plot_options)
 
+            # Draw arrow for generic lines
             if line.arrow:
-                self.ax.annotate(
-                    '', xy=(x2, y2), xytext=(x1, y1),
-                    arrowprops=dict(arrowstyle='->', linewidth=1.5, color=style_properties.get('color', 'k'))
-                )
+                arrow_props = dict(arrowstyle='->',
+                                   linewidth=line_plot_options.get('linewidth', 1.5),
+                                   color=line_plot_options.get('color', 'black'))
+                # You can merge specific arrow properties from line.plotConfig if needed
+                # e.g., arrow_props.update(line.plotConfig.get('arrowprops', {}))
 
+                length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+                if length > 0:
+                    # Using ax.arrow for better control over head size relative to line length
+                    # head_length and head_width are in data coordinates
+                    head_length_abs = 0.08 # Absolute head length, adjust as needed
+                    head_width_abs = 0.08 # Absolute head width, adjust as needed
+
+                    # Adjust for very short lines to avoid giant arrows
+                    if length < head_length_abs * 2: # If line is too short, make arrow smaller
+                        head_length_abs = length / 2
+                        head_width_abs = length / 2
+
+                    # Calculate arrow tail based on desired head length
+                    arrow_dx = (x2 - x1) * (1 - head_length_abs / length)
+                    arrow_dy = (y2 - y1) * (1 - head_length_abs / length)
+
+                    self.ax.arrow(x1, y1, arrow_dx, arrow_dy,
+                                  head_width=head_width_abs, head_length=head_length_abs,
+                                  fc=arrow_props['color'], ec=arrow_props['color'],
+                                  linewidth=arrow_props['linewidth'],
+                                  length_includes_head=True) # Arrow head length included in total line length
+                # Alternatively, use annotate for more complex arrow styles
+                # self.ax.annotate('', xy=(x2, y2), xytext=(x1, y1), arrowprops=arrow_props)
+
+            # Draw label for generic lines
             if line.label:
-                xm, ym = (x1 + x2) / 2, (y1 + y2) / 2
-                self.ax.text(xm, ym, line.label, fontsize=12, color=style_properties.get('color', 'k'))
-
-
+                xm, ym = (x1 + x2) / 2 + line.label_offset[0], (y1 + y2) / 2 + line.label_offset[1]
+                self.ax.text(xm, ym, line.label, **label_text_options)
 
     def _draw_wavy_line(self, x1, y1, x2, y2, **kwargs):
-        """绘制波浪线"""
-        import numpy as np
-        num_waves = 10
+        """Draws a wavy line. Passes all remaining kwargs to ax.plot()."""
+        num_waves = kwargs.pop('num_waves', 10) # Pop custom parameters first
+        amplitude = kwargs.pop('amplitude', 0.05)
+
         x = np.linspace(x1, x2, num_waves * 10)
         y = np.linspace(y1, y2, num_waves * 10)
-        y += 0.05 * np.sin(np.linspace(0, num_waves * np.pi, num_waves * 10))
-        self.ax.plot(x, y, **kwargs)
+        y_offset_factor = np.sin(np.linspace(0, num_waves * np.pi, num_waves * 10))
+
+        # Calculate perpendicular direction for wave
+        dx = x2 - x1
+        dy = y2 - y1
+        length = np.sqrt(dx**2 + dy**2)
+        if length > 1e-9:
+            nx = -dy / length
+            ny = dx / length
+            x_wavy = x + amplitude * nx * y_offset_factor
+            y_wavy = y + amplitude * ny * y_offset_factor
+        else: # Handle zero-length line case
+            x_wavy, y_wavy = x, y
+
+        self.ax.plot(x_wavy, y_wavy, **kwargs) # Pass remaining kwargs to plot
 
     def _draw_curly_line(self, x1, y1, x2, y2, **kwargs):
-        """绘制螺旋线"""
-        import numpy as np
-        num_curls = 10
+        """Draws a curly line (for generic GLUON style). Passes all remaining kwargs to ax.plot()."""
+        num_curls = kwargs.pop('num_curls', 10) # Pop custom parameters first
+        amplitude = kwargs.pop('amplitude', 0.05)
+
         x = np.linspace(x1, x2, num_curls * 10)
         y = np.linspace(y1, y2, num_curls * 10)
-        y += 0.05 * np.sin(np.linspace(0, num_curls * 2 * np.pi, num_curls * 10))
-        self.ax.plot(x, y, **kwargs)
+        y_offset_factor = np.sin(np.linspace(0, num_curls * 2 * np.pi, num_curls * 10))
+
+        # Calculate perpendicular direction for curl
+        dx = x2 - x1
+        dy = y2 - y1
+        length = np.sqrt(dx**2 + dy**2)
+        if length > 1e-9:
+            nx = -dy / length
+            ny = dx / length
+            x_curly = x + amplitude * nx * y_offset_factor
+            y_curly = y + amplitude * ny * y_offset_factor
+        else: # Handle zero-length line case
+            x_curly, y_curly = x, y
+
+        self.ax.plot(x_curly, y_curly, **kwargs) # Pass remaining kwargs to plot
 
     def _draw_vertex(self, vertex):
-        """根据顶点的属性绘制顶点"""
+        """Draws a vertex using ax.scatter() and passes all relevant parameters."""
         x, y = vertex.x, vertex.y
-        color = vertex.color
-        style = vertex.style
-        label = vertex.label
+        
+        # Get properties for ax.scatter()
+        scatter_plot_options = vertex.get_scatter_properties()
+        # Get properties for ax.text()
+        label_text_options = vertex.get_scatter_properties()
+        # 1. 获取顶点的绘图属性 (例如：标记样式、大小、颜色)
+        vertex_plot_options = vertex.get_scatter_properties() 
+        
+        # 2. 绘制顶点标记
+        self.ax.scatter(vertex.x, vertex.y, **vertex_plot_options)
 
-        # 根据样式绘制顶点
-        if style == "circle":
-            patch = Circle((x, y), radius=0.1, color=color, zorder=2)
-        elif style == "square":
-            patch = Rectangle((x - 0.1, y - 0.1), width=0.2, height=0.2, color=color, zorder=2)
-        elif style == "triangle":
-            patch = RegularPolygon((x, y), numVertices=3, radius=0.1, color=color, zorder=2)
-        else:  # 默认样式为圆形
-            patch = Circle((x, y), radius=0.1, color=color, zorder=2)
+        # 3. 获取标签的样式属性
+        label_text_options = vertex.get_label_properties()   # 这个字典不应该包含 's'
 
-        self.ax.add_patch(patch)
+        # --- 调试打印 START ---
+        # print(f"DEBUG: 正在绘制顶点标签: '{vertex.label}'")
+        # print(f"DEBUG: 从 Vertex.get_label_properties() 获取的标签样式选项: {label_text_options}")
+        # --- 调试打印 END ---
+        # Use ax.scatter() to draw the vertex, passing all relevant options
+        self.ax.scatter(x, y, **scatter_plot_options)
 
-        # 添加顶点标签
-        if label:
-            self.ax.text(x + 0.15, y + 0.15, label, fontsize=12, color=color)
-
-    # def _draw_line(self, line):
-    #     """根据线的属性绘制线"""
-    #     (x1, y1), (x2, y2) = line.get_coords()
-    #     if line.arrow:
-    #         self.ax.annotate(
-    #             '', xy=(x2, y2), xytext=(x1, y1),
-    #             arrowprops=dict(arrowstyle='->', linewidth=1.5, color='k')
-    #         )
-    #     else:
-    #         self.ax.plot([x1, x2], [y1, y2], 'k-')
-
-    #     # 添加线标签
-    #     if line.label:
-    #         xm, ym = (x1 + x2) / 2, (y1 + y2) / 2
-    #         self.ax.text(xm, ym, line.label, fontsize=12, color='k')
+        # Add vertex label
+        if vertex.label:
+            # Label position based on vertex position and label_offset
+            label_x = x + vertex.label_offset[0]
+            label_y = y + vertex.label_offset[1]
+            
+            self.ax.text(label_x, label_y,
+                         vertex.label,
+                         **label_text_options)
 
     def savefig(self, filename, **kwargs):
-        # self.fig.savefig(filename, **kwargs)
-        pass
+        """
+        Saves the current figure to a file, accepting all Matplotlib savefig arguments.
+        """
+        self.fig.savefig(filename, **kwargs) # Pass all kwargs directly to Matplotlib's savefig
+
+
+    def show(self):
+        """
+        显示当前 Matplotlib 图表。
+        """
+        plt.show() 
+
+
