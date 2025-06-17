@@ -1,4 +1,5 @@
 from enum import Enum
+import numpy as np
 
 class VertexType(Enum):
     ELECTROMAGNETIC = "electromagnetic"
@@ -26,3 +27,10 @@ class Vertex:
 
     def position(self):
         return (self.x, self.y)
+
+    def __iter__(self):
+        yield self.x
+        yield self.y
+
+    def __array__(self, dtype=None):
+        return np.array([self.x, self.y], dtype=dtype)

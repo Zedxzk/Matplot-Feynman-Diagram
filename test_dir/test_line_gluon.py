@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import feynplot.core.bezire as bezire
+import feynplot.core.bezier as bezier
 
 def find_closest_intersection_point(central_point, radius, path):
     """
@@ -44,7 +44,7 @@ radius = 0.3  # 圆半径（用于 D 绕 C 转动，及交点判断）
 t_vals = np.linspace(0, 1, 1000)
 # path = np.array([bezire.cubic_bezier(t, A, B, 20, 160) for t in t_vals])
 # xs, ys = bezire.cubic_bezier(A, B, 45, 135)
-path = bezire.generate_bezier_path(A, B, 45, 135)
+path = bezier.generate_bezier_path(A, B, 75, 105, offset_ratio=0.5)
 # ----------------------- 截取路径段 -----------------------
 
 idx_A, vec_A = find_closest_intersection_point(A, radius, path)
@@ -61,7 +61,7 @@ initial_phase_angle = np.arctan2(vec_A_to_path_point[1], vec_A_to_path_point[0])
 final_phase_angle = np.arctan2(vec_B_to_path_point[1], vec_B_to_path_point[0])
 
 truncated_path_length = compute_path_length(truncated_path)
-total_phase_from_path_calc = 2 * np.pi * 10 + final_phase_angle - initial_phase_angle
+total_phase_from_path_calc = 2 * np.pi * round(truncated_path_length  * 2) + final_phase_angle - initial_phase_angle
 
 # ----------------------- D 点运动模拟 -----------------------
 
@@ -97,41 +97,42 @@ print(f"Angular velocity ω:    {omega:.4f} rad/time")
 
 fig, ax = plt.subplots(figsize=(10, 8))
 
-ax.plot(path[:, 0], path[:, 1], color='gray', linestyle='--', label='Full Bezier Path')
-ax.plot(truncated_path[:, 0], truncated_path[:, 1], color='red', linewidth=2, label='Truncated Path (C\'s Path)')
+# ax.plot(path[:, 0], path[:, 1], color='gray', linestyle='--', label='Full Bezier Path')
+# ax.plot(truncated_path[:, 0], truncated_path[:, 1], color='red', linewidth=2, label='Truncated Path (C\'s Path)')
 
 # 起点和终点
-ax.scatter(*A, color='blue', label='Point A')
-ax.scatter(*B, color='green', label='Point B')
+ax.scatter(*A, color='blue', label='Point A',zorder=10)
+ax.scatter(*B, color='green', label='Point B',zorder=10)
 
 # 圆圈
-circle_A = plt.Circle(A, radius, color='blue', fill=False, linestyle=':', label='Start Circle')
-circle_B = plt.Circle(B, radius, color='green', fill=False, linestyle=':', label='End Circle')
-ax.add_patch(circle_A)
-ax.add_patch(circle_B)
+# circle_A = plt.Circle(A, radius, color='blue', fill=False, linestyle=':', label='Start Circle')
+# circle_B = plt.Circle(B, radius, color='green', fill=False, linestyle=':', label='End Circle')
+# ax.add_patch(circle_A)
+# ax.add_patch(circle_B)
 
 # 交点
-intersection_A = path[idx_A]
-intersection_B = path[idx_B]
-ax.scatter(*intersection_A, color='blue', s=50, label='Start Intersection')
-ax.scatter(*intersection_B, color='green', s=50, label='End Intersection')
+# intersection_A = path[idx_A]
+# intersection_B = path[idx_B]
+# ax.scatter(*intersection_A, color='blue', s=50, label='Start Intersection')
+# ax.scatter(*intersection_B, color='green', s=50, label='End Intersection')
 
 # C 点起止
-ax.scatter(truncated_path[0, 0], truncated_path[0, 1], color='purple', marker='o', s=80, zorder=5, label='C Start')
-ax.scatter(truncated_path[-1, 0], truncated_path[-1, 1], color='brown', marker='o', s=80, zorder=5, label='C End')
+# ax.scatter(truncated_path[0, 0], truncated_path[0, 1], color='purple', marker='o', s=80, zorder=5, label='C Start')
+# ax.scatter(truncated_path[-1, 0], truncated_path[-1, 1], color='brown', marker='o', s=80, zorder=5, label='C End')
 
 # D 点轨迹
 ax.plot(D_trajectory[:, 0], D_trajectory[:, 1], color='darkorange', linewidth=1.5, label='D\'s Trajectory')
-ax.scatter(D_trajectory[0, 0], D_trajectory[0, 1], color='darkorange', marker='s', s=80, zorder=5, label='D Start')
-ax.scatter(D_trajectory[-1, 0], D_trajectory[-1, 1], color='darkorange', marker='X', s=80, zorder=5, label='D End')
+# ax.scatter(D_trajectory[0, 0], D_trajectory[0, 1], color='darkorange', marker='s', s=80, zorder=5, label='D Start')
+# ax.scatter(D_trajectory[-1, 0], D_trajectory[-1, 1], color='darkorange', marker='X', s=80, zorder=5, label='D End')
 
 # 向量箭头
-ax.arrow(A[0], A[1], vec_A_to_path_point[0], vec_A_to_path_point[1], head_width=0.1, head_length=0.1, fc='blue', ec='blue', alpha=0.5)
-ax.arrow(B[0], B[1], vec_B_to_path_point[0], vec_B_to_path_point[1], head_width=0.1, head_length=0.1, fc='green', ec='green', alpha=0.5)
+# ax.arrow(A[0], A[1], vec_A_to_path_point[0], vec_A_to_path_point[1], head_width=0.1, head_length=0.1, fc='blue', ec='blue', alpha=0.5)
+# ax.arrow(B[0], B[1], vec_B_to_path_point[0], vec_B_to_path_point[1], head_width=0.1, head_length=0.1, fc='green', ec='green', alpha=0.5)
 
 ax.set_aspect('equal')
-ax.set_title("Bezier Path & Rotating Point D Trajectory")
+# ax.set_title("Bezier Path & Rotating Point D Trajectory")
 ax.grid(True)
-ax.legend()
+# ax.legend()
 plt.tight_layout()
+plt.savefig('line_gluon.png')
 plt.show()

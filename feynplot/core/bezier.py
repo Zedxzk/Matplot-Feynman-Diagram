@@ -36,5 +36,5 @@ def generate_bezier_path(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=
     """
     封装函数，返回贝塞尔路径的二维坐标点组成的 (N, 2) 数组。
     """
-    xs, ys = cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio, points)
+    xs, ys = cubic_bezier((A.x, A.y), (B.x, B.y), angleA_deg, angleB_deg, offset_ratio, points)
     return np.column_stack((xs, ys))
