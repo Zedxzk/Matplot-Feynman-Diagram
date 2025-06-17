@@ -6,7 +6,6 @@ __pycache__/
 *.so
 *.ipynb_checkpoints
 *.sh
-.gitignore
 
 
 # Virtual env
