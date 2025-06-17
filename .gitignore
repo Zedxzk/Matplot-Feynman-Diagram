@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.pkl
+*.so
+*.ipynb_checkpoints
+*.sh
+
+# Virtual env
+env/
+venv/
+.dpl/
+
+# VSCode / Jupyter / OS files
+.vscode/
+*.swp
+.DS_Store
