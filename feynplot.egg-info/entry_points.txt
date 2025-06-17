@@ -1,2 +1,0 @@
-[console_scripts]
-feyncli = feynplot.cli.feyncli:main
