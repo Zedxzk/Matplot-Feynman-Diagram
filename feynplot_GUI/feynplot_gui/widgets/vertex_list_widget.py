@@ -1,7 +1,7 @@
 # feynplot_gui/widgets/vertex_list_widget.py
 
-from PySide6.QtWidgets import QListWidget, QListWidgetItem
-from PySide6.QtCore import Signal, Qt # 导入 Qt 用于 ItemDataRole
+from PySide6.QtWidgets import QListWidget, QListWidgetItem, QMenu, QMessageBox # 导入 QMenu 和 QMessageBox
+from PySide6.QtCore import Signal, Qt
 
 class VertexListWidget(QListWidget):
     """
@@ -12,15 +12,26 @@ class VertexListWidget(QListWidget):
     vertex_selected = Signal(object)
     # 信号：当一个顶点被双击时发出，传递双击的 Vertex 对象
     vertex_double_clicked = Signal(object)
-
+    
+    # --- 确保这里定义了新增的信号 ---
+    # 新增信号：当用户从右键菜单选择编辑顶点时发出，传递选中的 Vertex 对象
+    edit_vertex_requested = Signal(object)
+    # 新增信号：当用户从右键菜单选择删除顶点时发出，传递选中的 Vertex 对象
+    delete_vertex_requested = Signal(object)
+    # 新增信号：当用户从右键菜单选择关键字检索时发出，传递选中的 Vertex 对象
+    search_vertex_requested = Signal(object) # <-- 确保这一行存在！
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("顶点列表")
-        self.setFixedWidth(200) # 可以设置一个默认宽度
+        self.setWindowTitle("顶点列表") # 直接使用中文
+        self.setFixedWidth(200)
 
+        # 启用自定义上下文菜单策略
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         # 连接内置信号到自定义槽函数
         self.itemSelectionChanged.connect(self._on_selection_changed)
         self.itemDoubleClicked.connect(self._on_item_double_clicked)
+        # 连接自定义上下文菜单请求信号到槽函数
+        self.customContextMenuRequested.connect(self._on_context_menu_requested)
 
     def _on_selection_changed(self):
         """处理列表项选择变化的槽函数。"""
@@ -38,13 +49,54 @@ class VertexListWidget(QListWidget):
         if vertex:
             self.vertex_double_clicked.emit(vertex)
 
+    def _on_context_menu_requested(self, position):
+        """
+        处理上下文菜单请求的槽函数。
+        :param position: 右键点击的位置 (QPoint)
+        """
+        # 获取在点击位置下的列表项
+        item = self.itemAt(position)
+        if item:
+            # 获取实际的 Vertex 对象
+            vertex = item.data(Qt.ItemDataRole.UserRole)
+            if vertex:
+                menu = QMenu(self)
+
+                # 添加“编辑顶点”动作
+                edit_action = menu.addAction("编辑顶点")
+                edit_action.triggered.connect(lambda: self.edit_vertex_requested.emit(vertex))
+
+                # 添加“删除顶点”动作
+                delete_action = menu.addAction("删除顶点")
+                delete_action.triggered.connect(lambda: self.delete_vertex_requested.emit(vertex))
+                
+                # 添加“关键字检索”动作
+                # 注意：这里我们假设“关键字检索”是针对当前选中的顶点进行某种检索操作。
+                # 如果是全局检索，可能需要不同的设计。
+                search_action = menu.addAction("关键字检索")
+                search_action.triggered.connect(lambda: self.search_vertex_requested.emit(vertex))
+
+
+                # 在鼠标点击的位置显示菜单
+                menu.exec(self.mapToGlobal(position))
+        # else:
+            # 如果点击的位置没有列表项，你也可以选择显示一个通用菜单
+            # 或者不显示任何菜单
+            # pass
+
+        # else:
+            # 如果点击的位置没有列表项，你也可以选择显示一个通用菜单
+            # 或者不显示任何菜单
+            # pass
+
     def add_vertex_item(self, vertex_data):
         """
         向列表中添加一个顶点项。
         Args:
             vertex_data: 实际的 Vertex 对象。
         """
-        item_text = f"[{vertex_data.id}] Vtx: {vertex_data.label} ({vertex_data.x:.2f}, {vertex_data.y:.2f})"
+        # 直接使用中文 "顶点"
+        item_text = f"[{vertex_data.id}] 顶点: {vertex_data.label} ({vertex_data.x:.2f}, {vertex_data.y:.2f})"
         item = QListWidgetItem(item_text)
         item.setData(Qt.ItemDataRole.UserRole, vertex_data) # 将 Vertex 对象存储在用户数据中
         self.addItem(item)
@@ -59,44 +111,3 @@ class VertexListWidget(QListWidget):
         if selected_items:
             return selected_items[0].data(Qt.ItemDataRole.UserRole)
         return None
-
-# 如果需要测试，可以添加以下代码
-if __name__ == '__main__':
-    from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout
-    from feynplot.core.vertex import Vertex, VertexType # 假设你的 Vertex 类路径是这个
-
-    class MockVertex(Vertex):
-        # 模拟 Vertex 类，因为 feynplot.core.vertex 外部不可用
-        def __init__(self, x, y, label="V", id_val=None, vertex_type=VertexType.GENERIC):
-            self.x = x
-            self.y = y
-            self.label = label
-            self.id = id_val if id_val else f"vtx_{id(self)}"
-            self.vertex_type = vertex_type
-
-    class TestWindow(QMainWindow):
-        def __init__(self):
-            super().__init__()
-            self.setWindowTitle("VertexListWidget Test")
-            self.setGeometry(100, 100, 400, 300)
-
-            central_widget = QWidget()
-            self.setCentralWidget(central_widget)
-            layout = QVBoxLayout(central_widget)
-
-            self.vertex_list = VertexListWidget()
-            layout.addWidget(self.vertex_list)
-
-            # 添加一些模拟数据
-            v1 = MockVertex(10, 20, "Electron", "v1")
-            v2 = MockVertex(50, 60, "Photon", "v2", VertexType.PHOTON)
-            self.vertex_list.add_vertex_item(v1)
-            self.vertex_list.add_vertex_item(v2)
-
-            self.vertex_list.vertex_selected.connect(lambda v: print(f"Selected: {v.id if v else 'None'}"))
-            self.vertex_list.vertex_double_clicked.connect(lambda v: print(f"Double Clicked: {v.id}"))
-
-    app = QApplication([])
-    window = TestWindow()
-    window.show()
-    app.exec()

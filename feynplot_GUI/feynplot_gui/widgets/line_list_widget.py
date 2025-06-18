@@ -1,7 +1,8 @@
-# feynplot_gui/widgets/line_list_widget.py
-
-from PySide6.QtWidgets import QListWidget, QListWidgetItem
-from PySide6.QtCore import Signal, Qt # 导入 Qt 用于 ItemDataRole
+from PySide6.QtWidgets import (
+    QListWidget, QListWidgetItem,
+    QMenu, QWidget # 导入 QMenu 和 QWidget
+)
+from PySide6.QtCore import Signal, Qt
 
 class LineListWidget(QListWidget):
     """
@@ -12,6 +13,11 @@ class LineListWidget(QListWidget):
     line_selected = Signal(object)
     # 信号：当一条线条被双击时发出，传递双击的 Line 对象
     line_double_clicked = Signal(object)
+    
+    # 新增信号：请求编辑线条，传递选中的 Line 对象
+    request_edit_line = Signal(object)
+    # 新增信号：请求删除线条，传递选中的 Line 对象
+    request_delete_line = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -21,6 +27,10 @@ class LineListWidget(QListWidget):
         # 连接内置信号到自定义槽函数
         self.itemSelectionChanged.connect(self._on_selection_changed)
         self.itemDoubleClicked.connect(self._on_item_double_clicked)
+        
+        # 启用自定义上下文菜单策略
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._on_context_menu_requested)
 
     def _on_selection_changed(self):
         """处理列表项选择变化的槽函数。"""
@@ -38,6 +48,35 @@ class LineListWidget(QListWidget):
         if line:
             self.line_double_clicked.emit(line)
 
+    def _on_context_menu_requested(self, pos):
+        """
+        处理右键上下文菜单请求。
+        根据鼠标位置检查是否有选中项，并显示相应菜单。
+        """
+        # 获取在鼠标位置的列表项
+        item = self.itemAt(pos)
+        
+        # 如果右键点击处有项，并且该项是当前选中的项之一
+        if item and item in self.selectedItems():
+            line = item.data(Qt.ItemDataRole.UserRole)
+            if line:
+                menu = QMenu(self)
+                
+                edit_action = menu.addAction("编辑线条...")
+                delete_action = menu.addAction("删除线条")
+                
+                # 连接菜单项的 triggered 信号到相应的请求信号
+                edit_action.triggered.connect(lambda: self.request_edit_line.emit(line))
+                delete_action.triggered.connect(lambda: self.request_delete_line.emit(line))
+                
+                # 在鼠标位置显示菜单
+                menu.exec(self.mapToGlobal(pos))
+        else:
+            # 如果没有选中项或者右键点击在空白处，可以显示一个不同的菜单
+            # 或者什么都不做，这取决于你的设计需求
+            pass
+
+
     def add_line_item(self, line_data):
         """
         向列表中添加一个线条项。
@@ -51,6 +90,11 @@ class LineListWidget(QListWidget):
         item = QListWidgetItem(item_text)
         item.setData(Qt.ItemDataRole.UserRole, line_data) # 将 Line 对象存储在用户数据中
         self.addItem(item)
+        
+        # 优化：在添加项后，自动选中它，并滚动到可见区域（可选）
+        self.setCurrentItem(item)
+        self.scrollToItem(item)
+
 
     def clear_list(self):
         """清空列表中的所有项。"""
@@ -62,56 +106,21 @@ class LineListWidget(QListWidget):
         if selected_items:
             return selected_items[0].data(Qt.ItemDataRole.UserRole)
         return None
+        
+    def set_selected_item_in_list(self, item_to_select):
+        """
+        根据传入的 Line 对象在列表中进行选中。
+        如果传入 None，则取消所有选中。
+        """
+        self.clearSelection() # 首先清除所有选中
+        if item_to_select is None:
+            return
 
-# 如果需要测试，可以添加以下代码
-if __name__ == '__main__':
-    from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout
-    from feynplot.core.line import Line, LineStyle, FermionLine # 假设你的 Line 类路径是这个
-    from feynplot.core.vertex import Vertex, VertexType # 还需要 Vertex 来模拟 Line 的端点
-
-    # 模拟 Vertex 和 Line 类
-    class MockVertex:
-        def __init__(self, x, y, label="V", id_val=None):
-            self.x = x
-            self.y = y
-            self.label = label
-            self.id = id_val if id_val else f"vtx_{id(self)}"
-
-    class MockLine:
-        def __init__(self, v_start, v_end, label="Line", id_val=None, line_type=LineStyle.SOLID):
-            self.v_start = v_start
-            self.v_end = v_end
-            self.label = label
-            self.id = id_val if id_val else f"line_{id(self)}"
-            self.line_type = line_type
-
-    class TestWindow(QMainWindow):
-        def __init__(self):
-            super().__init__()
-            self.setWindowTitle("LineListWidget Test")
-            self.setGeometry(100, 100, 400, 300)
-
-            central_widget = QWidget()
-            self.setCentralWidget(central_widget)
-            layout = QVBoxLayout(central_widget)
-
-            self.line_list = LineListWidget()
-            layout.addWidget(self.line_list)
-
-            # 添加一些模拟数据
-            v1 = MockVertex(10, 20, "V1", "v1")
-            v2 = MockVertex(50, 60, "V2", "v2")
-            v3 = MockVertex(80, 90, "V3", "v3")
-
-            l1 = MockLine(v1, v2, "Electron Line", "l1", LineStyle.FERMION)
-            l2 = MockLine(v2, v3, "Photon Line", "l2", LineStyle.PHOTON)
-            self.line_list.add_line_item(l1)
-            self.line_list.add_line_item(l2)
-
-            self.line_list.line_selected.connect(lambda l: print(f"Selected: {l.id if l else 'None'}"))
-            self.line_list.line_double_clicked.connect(lambda l: print(f"Double Clicked: {l.id}"))
-
-    app = QApplication([])
-    window = TestWindow()
-    window.show()
-    app.exec()
+        for i in range(self.count()):
+            item_widget = self.item(i)
+            line_data = item_widget.data(Qt.ItemDataRole.UserRole)
+            if line_data and line_data.id == item_to_select.id:
+                item_widget.setSelected(True)
+                self.setCurrentItem(item_widget) # 设置为当前项，以便滚动到视图中
+                self.scrollToItem(item_widget) # 确保该项可见
+                break

@@ -5,7 +5,7 @@ import math
 from feynplot.core.bezier import cubic_bezier, bezier_tangent
 
 def generate_WZ_zigzag(line, start_up=True):
-    from feynplot.core.line import Line # 只在这里导入，避免在函数外层导入 Line，以防循环依赖
+    from feynplot.core.line import Line  # 只在这里导入，避免在函数外层导入 Line，以防循环依赖
 
     if not isinstance(line, Line):
         raise TypeError("传入的 'line' 必须是 Line (或其子类，如 WPlusLine, ZBosonLine) 的实例。")
@@ -29,19 +29,18 @@ def generate_WZ_zigzag(line, start_up=True):
     A = np.array(start_point_coords)
     B = np.array(end_point_coords)
 
-    # **一次性生成贝塞尔曲线路径 (使用定义的 num_bezier_points)**
+    # 一次性生成贝塞尔曲线路径 (使用定义的 num_bezier_points)
     xs_bezier, ys_bezier = cubic_bezier(A, B, angle_out, angle_in, offset_ratio=bezier_offset, points=num_bezier_points)
     
-    # 高分辨率贝塞尔路径就是这个结果
+    # 高分辨率贝塞尔路径
     high_res_bezier_path = np.column_stack((xs_bezier, ys_bezier))
     
-    # 用于对齐的贝塞尔路径也是这个结果（因为点数相同）
+    # 对齐参考路径
     bezier_base_path_for_zigzag = high_res_bezier_path 
 
-    # 计算切线向量和法线向量 (基于这次计算出的贝塞尔路径)
+    # 计算切线向量和法线向量
     t_vals = np.linspace(0, 1, num_bezier_points)
-    # 再次强调：如果 bezier_tangent 需要 offset_ratio，这里也应该传入
-    dxdt, dydt = bezier_tangent(A, B, angle_out, angle_in, t_vals,  offset_ratio=bezier_offset,) 
+    dxdt, dydt = bezier_tangent(A, B, angle_out, angle_in, t_vals, offset_ratio=bezier_offset) 
     
     tangent_len = np.sqrt(dxdt**2 + dydt**2)
     tangent_len[tangent_len == 0] = 1e-10 
@@ -49,7 +48,7 @@ def generate_WZ_zigzag(line, start_up=True):
     nx = dydt / tangent_len
     ny = -dxdt / tangent_len
     
-    # 计算沿曲线的近似弧长 (基于这次计算出的贝塞尔路径)
+    # 计算弧长
     dx_segments = np.diff(xs_bezier) 
     dy_segments = np.diff(ys_bezier) 
     seg_len = np.sqrt(dx_segments**2 + dy_segments**2)
@@ -57,21 +56,25 @@ def generate_WZ_zigzag(line, start_up=True):
     
     total_arc_length = arc_len[-1]
 
-    # 计算锯齿位移
-    zigzag_displacement = np.zeros(num_bezier_points) # 锯齿位移数组大小与贝塞尔点数一致
-    
-    actual_zigzag_wavelength = 1.0 / zigzag_frequency if zigzag_frequency > 0 else total_arc_length
+    # ---- 自动微调频率以匹配自然闭合 ----
+    raw_n = zigzag_frequency * total_arc_length
+    adjusted_n = round(raw_n * 2) / 2  # 最近的半整数（如 1.0, 1.5, 2.0, ...）
+    adjusted_frequency = adjusted_n / total_arc_length if total_arc_length > 0 else 0.0
+    actual_zigzag_wavelength = 1.0 / adjusted_frequency if adjusted_frequency > 0 else total_arc_length
+    # ------------------------------------
 
-    for i in range(num_bezier_points): # 循环次数与贝塞尔点数一致
+    # 计算锯齿位移
+    zigzag_displacement = np.zeros(num_bezier_points)
+    for i in range(num_bezier_points):
         zigzag_displacement[i] = find_zigzag_y(zigzag_amplitude, actual_zigzag_wavelength, arc_len[i], start_up)
 
-    # 锯齿线坐标 = 曲线坐标 + 法线方向 * 锯齿位移
+    # 生成锯齿线
     xs_zigzag_path = xs_bezier + nx * zigzag_displacement
     ys_zigzag_path = ys_bezier + ny * zigzag_displacement
     zigzag_path = np.column_stack((xs_zigzag_path, ys_zigzag_path))
     
-    # 返回锯齿路径、用于对齐的贝塞尔路径（现在和高分辨率路径是同一个对象）和高分辨率贝塞尔路径
     return zigzag_path, bezier_base_path_for_zigzag, high_res_bezier_path
+
 
 # find_zigzag_y 函数保持不变
 def find_zigzag_y(amplitude: float, wavelength: float, x: float, start_up: bool = True) -> float:

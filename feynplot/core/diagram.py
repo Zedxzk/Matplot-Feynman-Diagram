@@ -174,6 +174,25 @@ class FeynmanDiagram:
             return True
         return False
 
+    def remove_line(self, line_id: str) -> bool:
+        """
+        根据唯一标识符删除图中的一条线。
+        如果找到了线条并成功删除，则返回 True；否则返回 False。
+        
+        Args:
+            line_id (str): 要删除的线的唯一标识符。
+        Returns:
+            bool: 如果成功删除则为 True，否则为 False。
+        """
+        original_lines_count = len(self.lines)
+        self.lines = [line for line in self.lines if line.id != line_id]
+
+        if len(self.lines) < original_lines_count:
+            self._line_ids.discard(line_id)
+            return True
+        return False
+
+
     def get_associated_line_ids(self, vertex_id: str) -> list[str]:
         """
         获取与指定顶点关联的所有线条的ID，但不执行删除。

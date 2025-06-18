@@ -180,29 +180,31 @@ class MainController(QObject):
 
     def select_item(self, item: [Vertex, Line, None]):
         """
-        设置当前选中项并通知所有订阅者。
-        参数 item 可以是 Vertex 实例，Line 实例，或 None (表示清空选择)。
+        统一管理应用程序中的选中状态。
+        :param item: 被选中的 Vertex 或 Line 对象，或 None 表示取消选中。
         """
-        if self._current_selected_item is item: # 如果选中项没有变化，则不触发更新
-            return
-
-        # 清除旧选中项的 is_selected 状态 (假定 Vertex/Line 对象有 is_selected 属性)
-        if self._current_selected_item:
-            self._current_selected_item.is_selected = False
-
         self._current_selected_item = item
-
-        # 设置新选中项的 is_selected 状态
+        
+        # --- 关键修改：在访问 .id 之前进行空值检查 ---
         if self._current_selected_item:
-            self._current_selected_item.is_selected = True
-            self.selection_changed.emit(self._current_selected_item)
-            self.status_message.emit(f"选中: {self._current_selected_item.id} ({'顶点' if isinstance(self._current_selected_item, Vertex) else '线条'})")
+            # 如果 item 是 Vertex，显示“顶点”；如果是 Line，显示“线条”
+            item_type_str = ''
+            if isinstance(self._current_selected_item, Vertex):
+                item_type_str = '顶点'
+            elif isinstance(self._current_selected_item, Line):
+                item_type_str = '线条'
+            
+            self.status_message.emit(f"选中: {self._current_selected_item.id} ({item_type_str})")
         else:
-            self.selection_changed.emit(None) # 广播清空选择
-            self.status_message.emit("选中项: 无")
+            # 如果没有选中任何项，显示不同的消息
+            self.status_message.emit("当前没有选中任何项。")
 
-        # 强制 CanvasWidget 重绘以更新高亮状态 (由 canvas_controller.set_selected_object 间接触发)
-        # self.canvas_controller.update_canvas() # 这一行可以省略，因为 set_selected_object 会导致 canvas 重新绘制
+        # # 通知画布刷新，确保选中状态在UI上正确显示
+        # if self.canvas_widget:
+        #     self.canvas_widget.repaint()
+
+        # 通知属性面板更新（如果存在）
+        # self.property_panel_controller.update_properties(item) # 示例
 
     def clear_selection(self):
         """清空当前选中状态。"""
@@ -211,7 +213,28 @@ class MainController(QObject):
     def get_selected_item(self) -> [Vertex, Line, None]:
         """获取当前选中项。"""
         return self._current_selected_item
+    
+    # def update_diagram_elements(self):
+    #     """
+    #     更新所有受图模型变化影响的UI元素。
+    #     这包括重新绘制画布、刷新顶点列表和线条列表等。
+    #     """
+    #     # 1. 通知 CanvasController 重新绘制画布
+    #     self.update_all_views() # 删除后刷新视图
+    #     if False:
+    #         pass
+    #     else:
+    #         self.status_message.emit("错误: CanvasController 未初始化。")
 
+    #     # 2. 通知顶点列表刷新
+    #     if self.vertex_controller:
+    #         self.vertex_controller.update_vertex_list()
+
+    #     # 3. 通知线条列表刷新 (如果你有 LineController)
+    #     if self.line_controller:
+    #         self.line_controller.update_line_list() # 假设 LineController 也有类似的方法
+
+        self.status_message.emit("图元素已刷新。")
     # --- CanvasWidget 报告的交互事件处理 ---
     def _handle_canvas_click(self, pos: QPointF):
         """处理画布点击事件，根据当前模式添加对象或进行选择。"""

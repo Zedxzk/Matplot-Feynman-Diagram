@@ -3,8 +3,8 @@
 import sys
 import traceback
 from PySide6.QtWidgets import QApplication, QMessageBox
-from .widgets.main_window import MainWindow
-from .controllers.main_controller import MainController
+from feynplot_gui.widgets.main_window import MainWindow
+from feynplot_gui.controllers.main_controller import MainController
 from debug_utils import cout3  # 如果没用可以删除
 
 def show_error_dialog(title, message, parent=None):

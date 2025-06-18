@@ -45,32 +45,6 @@ class Line:
         # 获取 kwargs 中可能存在的 style 字符串
         kwargs_style_str = kwargs.pop('style', None) 
         
-        # # 确定最终要使用的 style 值（枚举成员或字符串）
-        # final_style_val = None
-        # if kwargs_style_str is not None:
-        #     # 如果 kwargs 提供了 style 字符串，则尝试将其转换为枚举成员
-        #     try:
-        #         final_style_val = getattr(LineStyle, kwargs_style_str.upper())
-        #     except AttributeError:
-        #         print(f"警告: 无法识别的线条样式 '{kwargs_style_str}'。将使用默认或显式设置。")
-        #         final_style_val = style # 如果转换失败，则回退到显式 style 参数
-        # else:
-        #     final_style_val = style # 如果 kwargs 中没有 style，就直接使用显式 style 参数
-
-        # # 最后赋值给 self.style，确保它是一个 LineStyle 枚举成员
-        # # 如果 final_style_val 已经是 LineStyle 枚举成员，就直接赋值
-        # # 如果是字符串，就尝试转换（这种情况应该通过上面 kwargs_style_str 的处理来避免）
-        # if isinstance(final_style_val, LineStyle):
-        #     self.style = final_style_val
-        # elif isinstance(final_style_val, str):
-        #     # 这通常不应该发生，但作为双重保障
-        #     try:
-        #         self.style = getattr(LineStyle, final_style_val.upper())
-        #     except AttributeError:
-        #         print(f"警告: 最终 style 值 '{final_style_val}' 无法转换为 LineStyle 枚举。请检查。")
-        #         self.style = LineStyle.STRAIGHT # 回退到安全默认值
-        # else:
-        #     self.style = LineStyle.STRAIGHT # 任何其他异常情况
 
         self.label = label
         self.label_offset = np.array(label_offset)
@@ -136,6 +110,16 @@ class Line:
             self._angleOut = self._calc_angle(v_start, v_end)
         if self._angleIn is None:
             self._angleIn = self._calc_angle(v_end, v_start)
+
+    def set_angles(self, v_start = None , v_end = None, angleOut=None, angleIn=None):
+        if v_start is not None and v_end is not None:
+            self.v_start = v_start
+            self.v_end = v_end
+            self._angleOut = self._calc_angle(v_start, v_end)
+            self._angleIn = self._calc_angle(v_end, v_start)
+        if angleOut is not None and angleIn is not None:
+            self._angleOut = angleOut
+            self._angleIn = angleIn
 
     @staticmethod
     def _calc_angle(p1, p2):
@@ -385,16 +369,32 @@ class GluonLine(BosonLine):
 class WPlusLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'W^{+}')
+        
+        # 从 kwargs 中安全地弹出 zigzag_amplitude 和 zigzag_frequency
+        # 如果不存在，则使用默认值
+        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
+        self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
+        
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
 
 class WMinusLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'W^{-}')
+        
+        # 从 kwargs 中安全地弹出 zigzag_amplitude 和 zigzag_frequency
+        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
+        self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
+        
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
 
 class ZBosonLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'Z^{0}')
+        
+        # 从 kwargs 中安全地弹出 zigzag_amplitude 和 zigzag_frequency
+        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
+        self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
+        
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
 
 class HiggsLine(BosonLine):
