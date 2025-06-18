@@ -14,6 +14,7 @@ def cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
     返回:
         xs, ys: 曲线的 x 和 y 坐标数组。
     """
+    
     A = np.array(A, dtype=float)
     B = np.array(B, dtype=float)
 

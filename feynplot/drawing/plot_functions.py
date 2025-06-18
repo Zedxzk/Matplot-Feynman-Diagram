@@ -1,44 +1,45 @@
-# plot_functions.py (或 feynplot/drawing/vertex_drawers.py)
-
-
 import numpy as np
-from feynplot.core.gluon_methods import generate_gluon_helix, generate_gluon_bezier
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+from debug_utils import cout
+
+# 导入你的核心模型类（如果这些函数直接依赖于 Line 和 Vertex 对象）
+# 这些导入最好放在文件的顶部，以便清晰可见。
+from feynplot.core.line import Line, FermionLine, AntiFermionLine, PhotonLine, GluonLine, WPlusLine, WMinusLine, ZBosonLine
+from feynplot.core.vertex import Vertex
+
+# 导入生成路径的方法
+from feynplot.core.gluon_methods import generate_gluon_helix # 假设你正在使用这个来获取胶子路径
 from feynplot.core.photon_methods import generate_photon_wave
 from feynplot.core.WZ_methods import generate_WZ_zigzag
 from feynplot.core.fermion_methods import generate_fermion_line
-from feynplot.core.vertex import Vertex 
 
-def draw_photon_wave(ax, line, line_plot_options, label_text_options):
-    # from feynplot.core.photon_methods import generate_photon_wave  # 确保在这里有这个导入
-    # 直接调用 generate_photon_wave 函数来获取路径点
+
+def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict):
+    # 复制字典以避免修改原始对象内部的配置
+    current_line_plot_options = line_plot_options.copy()
+    current_label_text_options = label_text_options.copy()
+
+    original_linewidth = current_line_plot_options.get('linewidth', 1.5)
+    original_color = current_line_plot_options.get('color', 'black')
+    original_zorder = current_line_plot_options.get('zorder', 1) # 线的默认 zorder 为 1
+
+    # 如果线被选中，调整绘图属性
+    if line.is_selected:
+        current_line_plot_options['color'] = 'gold' # 高亮颜色
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5 # 增加线宽
+        current_line_plot_options['zorder'] = original_zorder + 10 # 提高 Z-order
+
+        # 标签也可能需要调整，例如颜色或 Z-order
+        current_label_text_options['color'] = 'gold'
+        current_label_text_options['zorder'] = original_zorder + 11
+
+    # 获取光子波的路径点
     wave_path = generate_photon_wave(line)
     x_wave, y_wave = wave_path[:, 0], wave_path[:, 1]
 
-    # 绘制光子波的路径
-    ax.plot(x_wave, y_wave, **line_plot_options)
-
-    # 绘制光子线的箭头 (如果需要)
-    # if line.arrow and len(x_wave) > 1:
-    #     arrow_props = dict(arrowstyle='->',
-    #                        linewidth=line_plot_options.get('linewidth', 1.5),
-    #                        color=line_plot_options.get('color', 'black'))
-    #     # 箭头绘制逻辑可以复用普通线的 ax.arrow 方式
-    #     p_start = (x_wave[0], y_wave[0])
-    #     p_end = (x_wave[-1], y_wave[-1])
-    #     length = np.sqrt((p_end[0] - p_start[0])**2 + (p_end[1] - p_start[1])**2)
-    #     if length > 0:
-    #         head_length_abs = 0.08
-    #         head_width_abs = 0.08
-    #         if length < head_length_abs * 2:
-    #             head_length_abs = length / 2
-    #             head_width_abs = length / 2
-    #         arrow_dx = (p_end[0] - p_start[0]) * (1 - head_length_abs / length)
-    #         arrow_dy = (p_end[1] - p_start[1]) * (1 - head_length_abs / length)
-    #         ax.arrow(p_start[0], p_start[1], arrow_dx, arrow_dy,
-    #                  head_width=head_width_abs, head_length=head_length_abs,
-    #                  fc=arrow_props['color'], ec=arrow_props['color'],
-    #                  linewidth=arrow_props['linewidth'],
-    #                  length_includes_head=True)
+    # 绘制光子波的路径，使用调整后的属性
+    ax.plot(x_wave, y_wave, **current_line_plot_options)
 
     # 绘制光子线的标签
     if line.label:
@@ -46,135 +47,155 @@ def draw_photon_wave(ax, line, line_plot_options, label_text_options):
         ax.text(x_wave[mid_idx] + line.label_offset[0],
                 y_wave[mid_idx] + line.label_offset[1],
                 line.label,
-                **label_text_options)
+                **current_label_text_options)
 
-def draw_gluon_line(ax, line, line_plot_options, label_text_options):
-    print('Detected GluonLine')
-    # Helix path (D-track)
-    # Ensure line.get_plot_path() correctly calls generate_gluon_helix internally
+
+def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict):
+    print('Detected GluonLine') # 可以保留用于调试
+    current_line_plot_options = line_plot_options.copy()
+    current_label_text_options = label_text_options.copy()
+
+    original_linewidth = current_line_plot_options.get('linewidth', 1.5)
+    original_color = current_line_plot_options.get('color', 'black')
+    original_zorder = current_line_plot_options.get('zorder', 1)
+
+    # 如果线被选中，调整绘图属性
+    if line.is_selected:
+        current_line_plot_options['color'] = 'gold'
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5
+        current_line_plot_options['zorder'] = original_zorder + 10
+
+        current_label_text_options['color'] = 'gold'
+        current_label_text_options['zorder'] = original_zorder + 11
+
+    # 获取胶子线的路径点
+    # 假设 line.get_plot_path() 会返回正确的路径
     helix_path = line.get_plot_path()
     x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
 
-    # Draw the helix path using all plot options
-    ax.plot(x_helix, y_helix, **line_plot_options)
+    # 绘制胶子线的路径
+    ax.plot(x_helix, y_helix, **current_line_plot_options)
 
-    # Draw arrow (at the end of the helix)
-    # if line.arrow and len(x_helix) > 1:
-    #     # Arrow properties inherit from line, but can be overridden
-    #     arrow_props = dict(arrowstyle='->',
-    #                        linewidth=line_plot_options.get('linewidth', 1.5),
-    #                        color=line_plot_options.get('color', 'black'))
-    #     # You can merge specific arrow properties from line.plotConfig if needed
-    #     # e.g., arrow_props.update(line.plotConfig.get('arrowprops', {}))
-    #     # Calculate arrow position and direction
-    #     p_end = (x_helix[-1], y_helix[-1])
-    #     p_base = (x_helix[-2], y_helix[-2])  # Arrow base, using the second to last point
-    #     ax.annotate(
-    #         '',
-    #         xy=p_end,
-    #         xytext=p_base,
-    #         arrowprops=arrow_props
-    #     )
-
-    # Draw label near the midpoint of the helix
+    # 绘制胶子线的标签
     if line.label:
         mid_idx = len(x_helix) // 2
         ax.text(x_helix[mid_idx] + line.label_offset[0],
                 y_helix[mid_idx] + line.label_offset[1],
                 line.label,
-                **label_text_options)
-        
+                **current_label_text_options)
 
 
-def draw_WZ_zigzag_line(ax, line, line_plot_options, label_text_options):
-    """
-    在 Matplotlib 轴上绘制 W/Z 玻色子的锯齿线，以及其下方的两条贝塞尔基准线（一条用于对齐，一条高分辨率）。
-    同时处理箭头的绘制和标签的放置。
+def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict):
+    current_line_plot_options = line_plot_options.copy()
+    current_label_text_options = label_text_options.copy()
 
-    参数:
-        ax: Matplotlib 的 Axes 对象。
-        line: 一个 WZLine 实例，包含绘制所需的所有信息。
-        line_plot_options: 一个字典，包含传递给 ax.plot() 的样式选项，用于锯齿线。
-        label_text_options: 一个字典，包含传递给 ax.text() 的样式选项，用于标签。
-    """
-    # 调用 generate_WZ_zigzag，并正确解包其返回的三个路径
-    # zigzag_path: 实际的锯齿路径
-    # bezier_base_path_for_zigzag: 与锯齿路径点数相同的贝塞尔曲线，用于对齐和标签
-    # high_res_bezier_path: 2000点的高分辨率贝塞尔曲线，用于背景显示
+    original_linewidth = current_line_plot_options.get('linewidth', 1.5)
+    original_color = current_line_plot_options.get('color', 'black')
+    original_zorder = current_line_plot_options.get('zorder', 1)
+
+    # 调用 generate_WZ_zigzag 获取所有路径
     zigzag_path, bezier_base_path_for_zigzag, high_res_bezier_path = generate_WZ_zigzag(line, start_up=True)
-    
-    # --- 绘制高分辨率贝塞尔曲线 (最底层，最平滑的背景线) ---
-    high_res_bezier_plot_options = line_plot_options.copy()
-    high_res_bezier_plot_options['linestyle'] = ':'  # 例如，点线
-    high_res_bezier_plot_options['linewidth'] = line_plot_options.get('linewidth', 1.5) * 0.25 # 更细
-    high_res_bezier_plot_options['color'] = 'lightgray' # 浅灰色，更不显眼
-    high_res_bezier_plot_options['zorder'] = 0 # 确保在所有线的最底层
+
+    # --- 绘制高分辨率贝塞尔曲线 (背景线) ---
+    high_res_bezier_plot_options = current_line_plot_options.copy() # 基于当前线条属性复制
+    high_res_bezier_plot_options['linestyle'] = ':'
+    high_res_bezier_plot_options['linewidth'] = original_linewidth * 0.25 # 总是使用原始线宽的比例
+    high_res_bezier_plot_options['color'] = 'lightgray' # 总是浅灰色
+    high_res_bezier_plot_options['zorder'] = original_zorder # 确保在所有线的最底层
 
     ax.plot(high_res_bezier_path[:, 0], high_res_bezier_path[:, 1], **high_res_bezier_plot_options)
 
+    # 如果线被选中，调整主要锯齿线的绘图属性
+    if line.is_selected:
+        current_line_plot_options['color'] = 'gold'
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5
+        current_line_plot_options['zorder'] = original_zorder + 10 # 锯齿线的高亮 Z-order
+
+        current_label_text_options['color'] = 'gold'
+        current_label_text_options['zorder'] = original_zorder + 11 # 标签的高亮 Z-order
+
     # --- 绘制锯齿路径 (主要线条) ---
     x_zig, y_zig = zigzag_path[:, 0], zigzag_path[:, 1]
-    ax.plot(x_zig, y_zig, **line_plot_options) # 使用原始的 line_plot_options 绘制锯齿线
-
-    # ax.plot(bezier_base_path_for_zigzag[:, 0], bezier_base_path_for_zigzag[:, 1])
+    ax.plot(x_zig, y_zig, **current_line_plot_options)
 
     # --- 绘制标签（居中位置）---
-    # 标签现在始终放置在与锯齿线点数相同的贝塞尔基准路径上，以保证位置的稳定性和可见性
     if line.label:
-        mid_idx = len(bezier_base_path_for_zigzag) // 2 
-        
+        mid_idx = len(bezier_base_path_for_zigzag) // 2
         label_x = bezier_base_path_for_zigzag[mid_idx, 0] + line.label_offset[0]
         label_y = bezier_base_path_for_zigzag[mid_idx, 1] + line.label_offset[1]
-        
+
         ax.text(label_x,
                 label_y,
                 line.label,
-                **label_text_options)
+                **current_label_text_options)
 
 
-def draw_fermion_line(ax, line, line_plot_options, label_text_options):
-    """
-    在 Matplotlib 轴上绘制费米子线，包括在中间绘制箭头和标签。
-    支持控制箭头的大小、是否实心、线宽、位置和方向。
-    """
+def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict):
+    current_line_plot_options = line_plot_options.copy()
+    current_label_text_options = label_text_options.copy()
+    print(line)
+    # from pprint import pprint
+
+    cout(f"current_line_plot_options: {current_line_plot_options}")
+    cout(f"current_label_text_options: {current_label_text_options}")
+    # input()
+    original_linewidth = current_line_plot_options.get('linewidth', 1.5)
+    original_color = current_line_plot_options.get('color', 'black')
+    original_zorder = current_line_plot_options.get('zorder', 1)
+
+    # 如果线被选中，调整绘图属性
+    if line.is_selected:
+        current_line_plot_options['color'] = 'gold'
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5
+        current_line_plot_options['zorder'] = original_zorder + 10
+
+        current_label_text_options['color'] = 'gold'
+        current_label_text_options['zorder'] = original_zorder + 11
+
+    # 获取费米子线路径
     fermion_path = generate_fermion_line(line)
     x, y = fermion_path[:, 0], fermion_path[:, 1]
-    
+
     # 绘制费米子线本身
-    ax.plot(x, y, **line_plot_options)
+    ax.plot(x, y, **current_line_plot_options)
 
     # --- 绘制箭头 ---
     if line.arrow and len(x) > 1:
-        arrow_filled = getattr(line, 'arrow_filled', False) # 默认改为 False
+        arrow_filled = getattr(line, 'arrow_filled', False)
         arrow_position = getattr(line, 'arrow_position', 0.5)
-        arrow_size = getattr(line, 'arrow_size', 1.0) # 保持为缩放因子
-        arrow_line_width = getattr(line, 'arrow_line_width', None) # 新增获取箭头线宽
+        arrow_size = getattr(line, 'arrow_size', 1.0)
+        arrow_line_width = getattr(line, 'arrow_line_width', None)
         arrow_reversed = getattr(line, 'arrow_reversed', False)
 
         if len(x) < 2:
-            return 
+            return
 
         # 核心修正：根据 arrow_reversed 调整 arrow_position 的计算基准
-        effective_arrow_position = arrow_position
-        if arrow_reversed:
-            arrow_position = 0.53
-            effective_arrow_position = 1.0 - arrow_position # 如果反转，位置从终点开始算
+        # 这里 arrow_position 通常是 0.0 到 1.0，表示从起点到终点的位置
+        # 如果是 reversed，我们想让箭头朝向起点，但位置仍按从起点算
+        # 比如 arrow_position = 0.53, arrow_reversed = True 意味着从终点往回 0.53 的位置指向起点
+        # 但我们这里的 target_idx 是从 x 数组中取，x 是从起点到终点的顺序
+        # 所以我们需要调整的是 `xy` 和 `xytext` 的顺序，而不是 `arrow_position` 本身
 
         # 计算箭头的目标索引（尖端应该指向的位置）
-        # 使用调整后的 effective_arrow_position
-        target_idx = int(round(effective_arrow_position * (len(x) - 1)))
-        
-        # 确保 target_idx 在有效范围内，且能找到前后点来确定方向
-        # 我们需要 target_idx 和 target_idx-1 两个点
-        if target_idx == 0 and len(x) > 1:
-            target_idx = 1 # 至少从第二个点开始取样，以便计算方向
-        elif target_idx >= len(x) - 1 and len(x) > 1:
-            target_idx = len(x) - 2 # 确保其前一个点 (target_idx-1) 存在
+        # 使用 line.arrow_position 来确定点
+        idx_tip = int(round(arrow_position * (len(x) - 1)))
 
-        # 确定箭头的尖端 (p_tip) 和基部 (p_base)
-        # p_tip 始终是 arrow_position 对应的点，p_base 是其前一个点
-        p_tip = (x[target_idx], y[target_idx])
-        p_base = (x[target_idx - 1], y[target_idx - 1])
+        # 确保 idx_tip 和 idx_base 在有效范围内
+        # idx_base 应该是构成箭头的 "尾巴" 部分
+        # 如果箭头正向，p_base 在前，p_tip 在后
+        # 如果箭头反向，p_tip 在前，p_base 在后
+        if idx_tip == 0:
+            idx_base = 1 # 确保能找到前一个点来确定方向
+        elif idx_tip >= len(x) - 1:
+            idx_base = len(x) - 2 # 确保能找到后一个点
+        else:
+            # 默认情况下，p_base 是 p_tip 的前一个点，用于确定方向
+            idx_base = idx_tip - 1
+
+
+        p_tip = (x[idx_tip], y[idx_tip])
+        p_base = (x[idx_base], y[idx_base])
 
         # 根据 arrow_reversed 调整 annotate 的 xy 和 xytext
         # annotate 的箭头从 xytext 指向 xy
@@ -191,16 +212,17 @@ def draw_fermion_line(ax, line, line_plot_options, label_text_options):
         if arrow_filled:
             arrowstyle_str = f'-|>,head_width={0.06*arrow_size},head_length={0.1*arrow_size}' # 实心箭头
         else:
-            arrowstyle_str = f'->,head_width={0.04*arrow_size},head_length={0.08*arrow_size}' 
+            arrowstyle_str = f'->,head_width={0.04*arrow_size},head_length={0.08*arrow_size}'
 
-        # 设置箭头的线宽
+        # 设置箭头的线宽，如果未指定则使用线条的线宽
         arrow_lw = arrow_line_width if arrow_line_width is not None else \
-                   line_plot_options.get('linewidth', 1.5)
+                   current_line_plot_options.get('linewidth', 1.5)
 
         arrow_props = dict(
             arrowstyle=arrowstyle_str,
-            linewidth=arrow_lw, # 应用箭头线宽
-            color=line_plot_options.get('color', 'black') # 箭头颜色与线颜色一致
+            linewidth=arrow_lw,
+            color=current_line_plot_options.get('color', 'black'), # 箭头颜色与线颜色一致
+            zorder=current_line_plot_options.get('zorder', 1) + 1 # 箭头比线高一层
         )
 
         ax.annotate(
@@ -209,69 +231,111 @@ def draw_fermion_line(ax, line, line_plot_options, label_text_options):
 
     # --- 绘制标签 ---
     if line.label:
-        mid_idx = len(fermion_path) // 2 
+        mid_idx = len(fermion_path) // 2
         label_x = fermion_path[mid_idx, 0] + line.label_offset[0]
         label_y = fermion_path[mid_idx, 1] + line.label_offset[1]
-        ax.text(label_x, label_y, line.label, **label_text_options)
+        ax.text(label_x, label_y, line.label, **current_label_text_options)
 
 
+def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
+    # 复制字典以避免修改原始对象内部的配置
+    current_scatter_props = vertex.get_scatter_properties().copy()
+    current_label_props = vertex.get_label_properties().copy()
 
-import matplotlib.pyplot as plt
-from matplotlib.patches import Circle
+    # 移除冲突的参数
+    if 'c' in current_scatter_props and 'color' in current_scatter_props:
+        current_scatter_props.pop('c')  # 或者 pop('color')
+    # 如果有 size 参数，替换成 s
+    if 'size' in current_scatter_props:
+        current_scatter_props['s'] = current_scatter_props.pop('size')
+
+    ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
 
-def draw_point_vertex(ax: plt.Axes, vertex):
-    """
-    绘制一个普通的点状顶点。
-    """
-    scatter_props = vertex.get_scatter_properties()
-    ax.scatter(vertex.x, vertex.y, **scatter_props)
-    
+    original_size = current_scatter_props.get('s', 100)
+    original_color = current_scatter_props.get('c', 'blue')
+    original_edgecolor = current_scatter_props.get('edgecolor', original_color)
+    original_linewidth = current_scatter_props.get('linewidth', 1.0)
+    original_zorder = current_scatter_props.get('zorder', 2) # 顶点的默认 zorder 为 2
+
+    # 如果顶点被选中，调整绘图属性
+    if vertex.is_selected:
+        current_scatter_props['s'] = original_size * 1.5 # 放大
+        current_scatter_props['c'] = 'yellow' # 变色
+        current_scatter_props['edgecolor'] = 'yellow'
+        current_scatter_props['linewidth'] = original_linewidth + 1.0
+        current_scatter_props['zorder'] = original_zorder + 10 # 提高 Z-order
+
+        # 标签也可能需要调整
+        current_label_props['color'] = 'gold'
+        current_label_props['zorder'] = original_zorder + 11
+
+    # 绘制点状顶点
+    ax.scatter(vertex.x, vertex.y, **current_scatter_props)
+
+    # 绘制标签
     if vertex.label:
-        label_props = vertex.get_label_properties()
         ax.text(
-            vertex.x + vertex.label_offset[0], 
-            vertex.y + vertex.label_offset[1], 
-            vertex.label, 
-            zorder=vertex.zorder + 1, 
-            **label_props
+            vertex.x + vertex.label_offset[0],
+            vertex.y + vertex.label_offset[1],
+            vertex.label,
+            **current_label_props # 使用调整后的标签属性
         )
 
-def draw_structured_vertex(ax: plt.Axes, vertex):
-    """
-    绘制一个带填充、边框和阴影的结构化圆形顶点。
-    根据 Vertex.use_custom_hatch 决定使用内置hatch还是自定义阴影线。
-    """
+
+def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
+    # 复制字典以避免修改原始对象内部的配置
+    current_circle_props = vertex.get_circle_properties().copy()
+    current_custom_hatch_props = vertex.get_custom_hatch_properties().copy()
+    current_label_props = vertex.get_label_properties().copy()
+
+    original_linewidth = current_circle_props.get('linewidth', 1.5)
+    original_edgecolor = current_circle_props.get('edgecolor', 'black')
+    original_zorder = current_circle_props.get('zorder', 2)
+
+    # 如果顶点被选中，调整绘图属性
+    if vertex.is_selected:
+        current_circle_props['edgecolor'] = 'yellow' # 边框变色
+        current_circle_props['linewidth'] = original_linewidth + 1.5 # 增加线宽
+        current_circle_props['zorder'] = original_zorder + 10 # 提高 Z-order
+
+        # 如果有自定义阴影线，也可能需要调整其颜色或线宽
+        current_custom_hatch_props['hatch_line_color'] = 'gold' # 阴影线颜色
+        # current_custom_hatch_props['hatch_line_width'] = current_custom_hatch_props.get('hatch_line_width', 0.5) + 0.5
+
+        current_label_props['color'] = 'gold'
+        current_label_props['zorder'] = original_zorder + 11
+
+
     # 1. 绘制圆圈主体
-    circle_props = vertex.get_circle_properties()
     circle = Circle(
         (vertex.x, vertex.y),
-        **circle_props 
+        **current_circle_props
     )
     ax.add_patch(circle)
 
     # 2. 绘制阴影线 (如果使用自定义模式)
     if vertex.use_custom_hatch:
-        custom_hatch_props = vertex.get_custom_hatch_properties()
-        
-        hatch_line_color = custom_hatch_props['hatch_line_color']
-        hatch_line_width = custom_hatch_props['hatch_line_width']
-        hatch_line_angle_deg = custom_hatch_props['hatch_line_angle_deg']
-        hatch_spacing_ratio = custom_hatch_props['hatch_spacing_ratio']
-        
+        # 使用调整后的 custom_hatch_props
+        hatch_line_color = current_custom_hatch_props['hatch_line_color']
+        hatch_line_width = current_custom_hatch_props['hatch_line_width']
+        hatch_line_angle_deg = current_custom_hatch_props['hatch_line_angle_deg']
+        hatch_spacing_ratio = current_custom_hatch_props['hatch_spacing_ratio']
+
         radius = vertex.structured_radius
         center_x = vertex.x
         center_y = vertex.y
-        zorder = vertex.zorder_structured
+        # 使用调整后的 zorder
+        zorder_hatch = current_circle_props['zorder'] + 0.5 # 阴影线在圆圈之上，但仍低于标签
 
         angle_rad = np.deg2rad(hatch_line_angle_deg)
         spacing = radius * hatch_spacing_ratio
-        max_dist = np.sqrt(2 * radius**2) * 1.5 
-        
+        max_dist = np.sqrt(2 * radius**2) * 1.5
+
         for i in np.arange(-max_dist, max_dist, spacing):
             p1 = np.array([-max_dist, i])
             p2 = np.array([max_dist, i])
-            
+
             cos_theta = np.cos(angle_rad)
             sin_theta = np.sin(angle_rad)
 
@@ -286,18 +350,15 @@ def draw_structured_vertex(ax: plt.Axes, vertex):
                 [rotated_p1_y, rotated_p2_y],
                 color=hatch_line_color,
                 linewidth=hatch_line_width,
-                zorder=zorder + 0.5 
+                zorder=zorder_hatch # 使用调整后的阴影线 zorder
             )
-            # 关键：将线条裁剪到圆形内部
-            line_artist.set_clip_path(circle) 
+            line_artist.set_clip_path(circle)
 
     # 3. 绘制标签
     if vertex.label:
-        label_props = vertex.get_label_properties()
         ax.text(
-            vertex.x + vertex.label_offset[0], 
-            vertex.y + vertex.label_offset[1], 
-            vertex.label, 
-            zorder=vertex.zorder_structured + 1, # 标签在圆和阴影之上
-            **label_props
+            vertex.x + vertex.label_offset[0],
+            vertex.y + vertex.label_offset[1],
+            vertex.label,
+            **current_label_props # 使用调整后的标签属性
         )
