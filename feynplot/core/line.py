@@ -385,19 +385,19 @@ class GluonLine(BosonLine):
 class WPlusLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'W^{+}')
-        super().__init__(label=label, style=LineStyle.WZ, **kwargs)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
 
 class WMinusLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'W^{-}')
-        super().__init__(label=label, style=LineStyle.WZ, **kwargs)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
 
 class ZBosonLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'Z^{0}')
-        super().__init__(label=label, style=LineStyle.WZ, **kwargs)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
 
 class HiggsLine(BosonLine):
     def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'H')
-        super().__init__(label=label, style=LineStyle.WZ, **kwargs)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)

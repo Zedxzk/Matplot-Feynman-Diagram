@@ -8,7 +8,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt, Signal # 用于对齐和信号
 
-class ToolboxWidget(QWidget):
+class ToolboxWidget(QFrame): # <-- 改为继承 QFrame
+    """
+    负责创建并管理 Feynman Diagram 绘图工具箱的按钮和工具选择。
+    """
+    # ... (其他代码保持不变)
     """
     负责创建并管理 Feynman Diagram 绘图工具箱的按钮和工具选择。
     这个工具箱将包含绘图模式选择按钮以及图操作按钮（保存、撤销、重做、清空等）。
@@ -23,6 +27,8 @@ class ToolboxWidget(QWidget):
     add_line_requested = Signal()
     delete_selected_item_requested = Signal()
     clear_diagram_requested = Signal()
+    delete_vertex_requested = Signal() # 新增信号
+    delete_line_requested = Signal()   # 新增信号
 
     def __init__(self, controller_instance, parent=None):
         super().__init__(parent)
@@ -42,41 +48,41 @@ class ToolboxWidget(QWidget):
         self.layout.setContentsMargins(10, 10, 10, 10) # 设置边距
         self.layout.setSpacing(8) # 按钮和控件之间的间距
 
-        self._create_tool_selection_buttons()
+        # self._create_tool_selection_buttons()
         self.layout.addWidget(self._create_separator()) # 分隔线
         self._create_action_buttons()
         self._connect_buttons_and_signals()
 
         self.layout.addStretch() # 添加一个伸展器，将按钮推向顶部
 
-    def _create_tool_selection_buttons(self):
-        """
-        创建用于选择绘图模式（选择、画线、画顶点）的单选按钮。
-        """
-        self.layout.addWidget(QLabel("<b>绘图模式:</b>")) # 加粗标题
+    # def _create_tool_selection_buttons(self):
+    #     """
+    #     创建用于选择绘图模式（选择、画线、画顶点）的单选按钮。
+    #     """
+    #     self.layout.addWidget(QLabel("<b>绘图模式:</b>")) # 加粗标题
 
-        self.tool_button_group = QButtonGroup(self)
-        self.tool_button_group.setExclusive(True) # 确保每次只能选择一个工具
+    #     self.tool_button_group = QButtonGroup(self)
+    #     self.tool_button_group.setExclusive(True) # 确保每次只能选择一个工具
 
-        # 选择工具 (默认)
-        self.select_tool_radio = QRadioButton("选择/编辑")
-        self.select_tool_radio.setChecked(True)
-        self.tool_button_group.addButton(self.select_tool_radio, 0)
-        # 连接到内部槽函数，再由其发出信号
-        self.select_tool_radio.toggled.connect(lambda checked: self._emit_tool_signal('select_tool') if checked else None)
-        self.layout.addWidget(self.select_tool_radio)
+    #     # 选择工具 (默认)
+    #     self.select_tool_radio = QRadioButton("选择/编辑")
+    #     self.select_tool_radio.setChecked(True)
+    #     self.tool_button_group.addButton(self.select_tool_radio, 0)
+    #     # 连接到内部槽函数，再由其发出信号
+    #     self.select_tool_radio.toggled.connect(lambda checked: self._emit_tool_signal('select_tool') if checked else None)
+    #     self.layout.addWidget(self.select_tool_radio)
 
-        # 画线工具
-        self.line_tool_radio = QRadioButton("画线工具")
-        self.tool_button_group.addButton(self.line_tool_radio, 1)
-        self.line_tool_radio.toggled.connect(lambda checked: self._emit_tool_signal('line_tool') if checked else None)
-        self.layout.addWidget(self.line_tool_radio)
+    #     # 画线工具
+    #     self.line_tool_radio = QRadioButton("画线工具")
+    #     self.tool_button_group.addButton(self.line_tool_radio, 1)
+    #     self.line_tool_radio.toggled.connect(lambda checked: self._emit_tool_signal('line_tool') if checked else None)
+    #     self.layout.addWidget(self.line_tool_radio)
 
-        # 画顶点工具
-        self.vertex_tool_radio = QRadioButton("画顶点工具")
-        self.tool_button_group.addButton(self.vertex_tool_radio, 2)
-        self.vertex_tool_radio.toggled.connect(lambda checked: self._emit_tool_signal('vertex_tool') if checked else None)
-        self.layout.addWidget(self.vertex_tool_radio)
+    #     # 画顶点工具
+    #     self.vertex_tool_radio = QRadioButton("画顶点工具")
+    #     self.tool_button_group.addButton(self.vertex_tool_radio, 2)
+    #     self.vertex_tool_radio.toggled.connect(lambda checked: self._emit_tool_signal('vertex_tool') if checked else None)
+    #     self.layout.addWidget(self.vertex_tool_radio)
 
     def _create_action_buttons(self):
         """
@@ -100,16 +106,20 @@ class ToolboxWidget(QWidget):
         self.layout.addWidget(self._create_separator()) # 分隔线
 
         # 直接添加顶点按钮 (如果不需要在画布上点击)
-        self.add_vertex_button = QPushButton("直接添加顶点")
+        self.add_vertex_button = QPushButton("添加顶点")
         self.layout.addWidget(self.add_vertex_button)
 
         # 直接添加线条按钮 (如果不需要在画布上点击，但通常不是这样)
-        self.add_line_button = QPushButton("直接添加线条")
+        self.add_line_button = QPushButton("添加线条")
         self.layout.addWidget(self.add_line_button)
 
-        # 删除选中项
-        self.delete_item_button = QPushButton("删除选中项")
-        self.layout.addWidget(self.delete_item_button)
+        # 删除顶点按钮
+        self.delete_vertex_button = QPushButton("删除顶点")
+        self.layout.addWidget(self.delete_vertex_button)
+
+        # 删除线条按钮
+        self.delete_line_button = QPushButton("删除线条")
+        self.layout.addWidget(self.delete_line_button)
 
         # 清空图
         self.clear_diagram_button = QPushButton("清空图")
@@ -127,7 +137,8 @@ class ToolboxWidget(QWidget):
         self.redo_button.clicked.connect(self.redo_action_requested.emit)
         self.add_vertex_button.clicked.connect(self.add_vertex_requested.emit)
         self.add_line_button.clicked.connect(self.add_line_requested.emit)
-        self.delete_item_button.clicked.connect(self.delete_selected_item_requested.emit)
+        self.delete_vertex_button.clicked.connect(self.delete_vertex_requested.emit)
+        self.delete_line_button.clicked.connect(self.delete_line_requested.emit)
         # 清空图按钮需要确认，所以连接到本地槽函数
         self.clear_diagram_button.clicked.connect(self._on_clear_diagram_button_clicked)
 

@@ -9,3 +9,4 @@ def cout2(*args):
 def cout3(*args):
     # pass
     print(*args)
+

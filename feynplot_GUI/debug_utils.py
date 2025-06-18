@@ -7,5 +7,5 @@ def cout2(*args):
     # print(*args)
 
 def cout3(*args):
-    # pass
+    pass
     print(*args)
