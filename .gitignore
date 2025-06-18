@@ -11,7 +11,7 @@ __pycache__/
 # 忽略由打包工具（如PyInstaller）生成的编译和分发文件夹
 build/
 dist/
-*.spec # 忽略 PyInstaller 生成的 .spec 文件，如果你希望每次都重新生成或手动管理，可以保留
+*/*.spec # 忽略 PyInstaller 生成的 .spec 文件，如果你希望每次都重新生成或手动管理，可以保留
 
 # Virtual env
 env/
