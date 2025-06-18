@@ -5,8 +5,8 @@ from feynplot.core.diagram import FeynmanDiagram
 # 导入所有可能用到的核心模型类
 from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line, FermionLine, PhotonLine
-from .mouse_event_handler import MouseEventHandler
-from .item_manager import ItemManager # 假设 ItemManager 存在且管理添加/删除/编辑逻辑
+from ..mouse_event_handler import MouseEventHandler
+from ..item_manager import ItemManager # 假设 ItemManager 存在且管理添加/删除/编辑逻辑
 from PySide6.QtWidgets import QListWidget # 导入 QListWidget
 
 class Controller(QObject):

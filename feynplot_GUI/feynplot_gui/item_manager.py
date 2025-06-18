@@ -1,7 +1,9 @@
 # feynplot_GUI/feynplot_gui/item_manager.py (无需修改)
 
+from debug_utils import cout2
 from PySide6.QtWidgets import QListWidgetItem, QInputDialog, QMessageBox, QDialog # 使用 PySide6
-from PySide6.QtCore import Qt, QPointF # 使用 PySide6
+from PySide6.QtCore import Qt, QPointF
+from cycler import V # 使用 PySide6
 
 # 导入你的模型类 (这里直接导入是为了类型提示和实例创建)
 from feynplot.core.vertex import Vertex, VertexType
@@ -13,7 +15,6 @@ from feynplot.core.line import (
 # 导入自定义对话框 (确保这些文件存在于 feynplot_GUI/feynplot_gui/widgets/ 目录下)
 from .widgets.add_vertex_dialog import AddVertexDialog # 这个文件被修改了
 from .widgets.add_line_dialog import AddLineDialog
-from .widgets.edit_vertex_dialog import EditVertexDialog
 from .widgets.edit_line_dialog import EditLineDialog
 
 class ItemManager:
@@ -86,132 +87,28 @@ class ItemManager:
         """
         开始添加线条的过程，提示用户选择第一个顶点。
         """
-        QMessageBox.information(self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas, 
-                                 "添加线条", "请点击图表中的第一个顶点作为线条的起点。")
-        self._add_line_first_vertex = None # 重置选择
-        # 连接一个临时信号槽来捕获下一次的顶点点击
-        self.ctrl.vertex_list_widget.itemClicked.connect(self._on_first_vertex_selected_for_line)
-        self.ctrl.canvas.canvas.mpl_connect('button_press_event', self._on_canvas_click_for_line_start)
-
-
-    def _on_first_vertex_selected_for_line(self, item):
-        """
-        处理用户在列表或画布上选择第一个顶点作为线条起点的事件。
-        """
-        # 注意：QListWidgetItem(userData=clicked_item) 在 PySide6 中是 QListWidgetItem().setData(Qt.ItemDataRole.UserRole, clicked_item)
-        # item.data(Qt.ItemDataRole.UserRole) 才能获取到数据
-        vertex = item.data(Qt.ItemDataRole.UserRole) if isinstance(item, QListWidgetItem) else item # 适配两种传入方式
-        
-        if isinstance(vertex, Vertex):
-            self._add_line_first_vertex = vertex
-            QMessageBox.information(self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas, 
-                                     "添加线条", f"已选择起点: {vertex.id}。现在请点击图表中的第二个顶点作为线条的终点。")
-            # 断开第一个顶点的连接，连接第二个顶点的捕获
-            self.ctrl.vertex_list_widget.itemClicked.disconnect(self._on_first_vertex_selected_for_line)
-            self.ctrl.canvas.canvas.mpl_disconnect('button_press_event', self._on_canvas_click_for_line_start)
-            
-            # 连接捕获第二个顶点的事件
-            self.ctrl.vertex_list_widget.itemClicked.connect(self._on_second_vertex_selected_for_line)
-            self.ctrl.canvas.canvas.mpl_connect('button_press_event', self._on_canvas_click_for_line_end)
-        else:
-            QMessageBox.warning(self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas, 
-                                 "错误", "请选择一个有效的顶点作为线条起点。")
-            self.cancel_add_line_process() # 用户未选择有效顶点，取消流程
-
-    def _on_canvas_click_for_line_start(self, event):
-        """处理画布点击以选择第一个顶点。"""
-        if event.inaxes == self.ctrl.canvas.axes and event.button == 1:
-            clicked_item = self.ctrl.mouse_handler._get_item_at_coords(event.xdata, event.ydata)
-            if isinstance(clicked_item, Vertex):
-                # 模拟 QListWidgetItem，但直接传递 Vertex 对象
-                # _on_first_vertex_selected_for_line 需要能够处理直接的 Vertex 对象
-                self._on_first_vertex_selected_for_line(clicked_item) 
-            else:
-                QMessageBox.warning(self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas, 
-                                     "错误", "请点击一个顶点作为线条起点。")
-                self.cancel_add_line_process() # 用户未选择有效顶点，取消流程
-
-
-    def _on_second_vertex_selected_for_line(self, item):
-        """
-        处理用户在列表或画布上选择第二个顶点作为线条终点的事件。
-        """
-        # 同样，适配两种传入方式
-        end_vertex = item.data(Qt.ItemDataRole.UserRole) if isinstance(item, QListWidgetItem) else item
-
-        if isinstance(end_vertex, Vertex) and self._add_line_first_vertex and self._add_line_first_vertex is not end_vertex:
-            self.open_add_line_dialog(self._add_line_first_vertex, end_vertex)
-            self.cancel_add_line_process() # 流程结束，清理状态
-        else:
-            QMessageBox.warning(self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas, 
-                                 "错误", "请选择一个有效的不同于起点的顶点作为线条终点。")
-            self.cancel_add_line_process() # 用户未选择有效顶点，取消流程
-
-    def _on_canvas_click_for_line_end(self, event):
-        """处理画布点击以选择第二个顶点。"""
-        if event.inaxes == self.ctrl.canvas.axes and event.button == 1:
-            clicked_item = self.ctrl.mouse_handler._get_item_at_coords(event.xdata, event.ydata)
-            if isinstance(clicked_item, Vertex):
-                # 模拟 QListWidgetItem，但直接传递 Vertex 对象
-                self._on_second_vertex_selected_for_line(clicked_item) 
-            else:
-                QMessageBox.warning(self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas, 
-                                     "错误", "请点击一个顶点作为线条终点。")
-                self.cancel_add_line_process() # 用户未选择有效顶点，取消流程
-
-    def cancel_add_line_process(self):
-        """取消添加线条的流程，清理所有临时连接。"""
-        self._add_line_first_vertex = None
-        try:
-            self.ctrl.vertex_list_widget.itemClicked.disconnect(self._on_first_vertex_selected_for_line)
-        except TypeError: # 如果未连接，则会抛出TypeError
-            pass
-        try:
-            self.ctrl.vertex_list_widget.itemClicked.disconnect(self._on_second_vertex_selected_for_line)
-        except TypeError:
-            pass
-        try:
-            self.ctrl.canvas.canvas.mpl_disconnect('button_press_event', self._on_canvas_click_for_line_start)
-        except TypeError:
-            pass
-        try:
-            self.ctrl.canvas.canvas.mpl_disconnect('button_press_event', self._on_canvas_click_for_line_end)
-        except TypeError:
-            pass
-        print("添加线条流程已取消/完成。")
-
-
-    def open_add_line_dialog(self, v_start: Vertex, v_end: Vertex):
-        """打开添加线条的对话框。"""
-        parent_widget = self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas
-        dialog = AddLineDialog(v_start, v_end, parent=parent_widget)
+        parent_widget = self.ctrl.main_window if self.ctrl.main_window else self.ctrl.canvas 
+        dialog = AddLineDialog(self.ctrl.diagram_model.vertices, parent=parent_widget)
         if dialog.exec() == QDialog.Accepted:
-            new_id = dialog.line_id
-            label = dialog.line_label
-            line_type = dialog.line_type # 获取线条类型
-            
-            # 根据 line_type 创建不同的线条实例
-            if line_type == "FermionLine":
-                new_line = FermionLine(v_start, v_end, label=label, id=new_id)
-            elif line_type == "AntiFermionLine":
-                new_line = AntiFermionLine(v_start, v_end, label=label, id=new_id)
-            elif line_type == "PhotonLine":
-                new_line = PhotonLine(v_start, v_end, label=label, id=new_id)
-            elif line_type == "GluonLine":
-                new_line = GluonLine(v_start, v_end, label=label, id=new_id)
-            elif line_type == "WPlusLine":
-                new_line = WPlusLine(v_start, v_end, label=label, id=new_id)
-            elif line_type == "WMinusLine":
-                new_line = WMinusLine(v_start, v_end, label=label, id=new_id)
-            elif line_type == "ZBosonLine":
-                new_line = ZBosonLine(v_start, v_end, label=label, id=new_id)
-            else:
-                new_line = Line(v_start, v_end, label=label, id=new_id) # 默认通用Line
+            line_info = dialog.get_line_data()
+            if line_info:
+                v_start = line_info['v_start']
+                v_end = line_info['v_end']
+                line_type = line_info['line_type']
+                # if v_start == v_end:
+                #     QMessageBox.information(parent_widget, "添加失败", "线条的起点和终点不能相同。")
+                #     exit(1)
+                cout2(f"LineType: {line_type}")
+                cout2(f"添加线条: {line_info}")
+                try:
+                    self.ctrl.diagram_model.add_line(v_start=v_start, v_end=v_end, line_type=line_type)
+                except Exception as e:
+                    QMessageBox.critical(parent_widget, "添加失败", f"添加线条时发生错误：\n{str(e)}")
+                else:
+                    QMessageBox.information(parent_widget, "添加成功", "线条已添加。")
+                    self.ctrl.update_view()
 
-            self.ctrl.diagram_model.add_line(new_line)
-            QMessageBox.information(parent_widget, "添加成功", f"线条 {new_id} 已添加。")
-            self.ctrl.update_view() # 更新视图
-
+                
 
     def edit_vertex_properties(self, vertex_to_edit: Vertex):
         """打开对话框编辑顶点属性。"""

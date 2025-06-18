@@ -1,8 +1,10 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QComboBox,
-    QDialogButtonBox, QLabel, QCheckBox, QLineEdit
+    QDialogButtonBox, QLabel, QCheckBox, QLineEdit, QMessageBox
 )
 from PySide6.QtCore import Qt
+from feynplot.core.line import *
+
 
 class AddLineDialog(QDialog):
     def __init__(self, vertices_data, parent=None):
@@ -43,13 +45,13 @@ class AddLineDialog(QDialog):
         self.particle_type_combo = QComboBox()
         # 这里列出所有支持的粒子类型
         self.particle_types = {
-            "费米子线 (Fermion)": "FermionLine",
-            "反费米子线 (Anti-Fermion)": "AntiFermionLine",
-            "光子线 (Photon)": "PhotonLine",
-            "胶子线 (Gluon)": "GluonLine",
-            "W+ 玻色子线 (W+)": "WPlusLine",
-            "W- 玻色子线 (W-)": "WMinusLine",
-            "Z 玻色子线 (Z)": "ZBosonLine",
+            "费米子线 (Fermion)": FermionLine,
+            "反费米子线 (Anti-Fermion)": AntiFermionLine,
+            "光子线 (Photon)": PhotonLine,
+            "胶子线 (Gluon)": GluonLine,
+            "W+ 玻色子线 (W+)": WPlusLine,
+            "W- 玻色子线 (W-)": WMinusLine,
+            "Z 玻色子线 (Z)": ZBosonLine,
             # 如果你还有其他线类型，可以在这里添加
         }
         for display_name in self.particle_types.keys():

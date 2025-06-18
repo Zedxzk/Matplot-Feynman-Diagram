@@ -293,63 +293,63 @@ class BosonLine(Line):
 # -------------------------
 
 class ElectronLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'e⁻')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class PositronLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'e⁺')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class MuonLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'μ⁻')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class TauLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'τ⁻')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class NeutrinoLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'ν')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 # -------------------------
 # 夸克示例 (与费米子示例类似，都在具体子类中处理 label)
 # -------------------------
 
 class UpQuarkLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'u')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class DownQuarkLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'd')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class CharmQuarkLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'c')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class StrangeQuarkLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 's')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class TopQuarkLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 't')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 class BottomQuarkLine(FermionLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'b')
-        super().__init__(label=label, **kwargs)
+        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
 
 # -------------------------
 # 玻色子示例 - 修正 GluonLine 和其他具体玻色子
@@ -366,9 +366,9 @@ class PhotonLine(BosonLine):
         self.final_phase = final_phase
 
 class GluonLine(BosonLine):
-    def __init__(self, amplitude=0.1, wavelength=0.2, n_cycles=16, bezier_offset=0.3, **kwargs):
+    def __init__(self,  v_start, v_end,amplitude=0.1, wavelength=0.2, n_cycles=16, bezier_offset=0.3, **kwargs):
         label = kwargs.pop('label', 'g')
-        super().__init__(label=label, style=LineStyle.GLUON, **kwargs)
+        super().__init__(label=label,v_start=v_start, v_end=v_end, style=LineStyle.GLUON, **kwargs)
         self.amplitude = amplitude
         self.wavelength = wavelength
         self.n_cycles = n_cycles
@@ -383,21 +383,21 @@ class GluonLine(BosonLine):
 
 
 class WPlusLine(BosonLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'W^{+}')
         super().__init__(label=label, style=LineStyle.WZ, **kwargs)
 
 class WMinusLine(BosonLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'W^{-}')
         super().__init__(label=label, style=LineStyle.WZ, **kwargs)
 
 class ZBosonLine(BosonLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', r'Z^{0}')
         super().__init__(label=label, style=LineStyle.WZ, **kwargs)
 
 class HiggsLine(BosonLine):
-    def __init__(self, **kwargs):
+    def __init__(self, v_start, v_end, **kwargs):
         label = kwargs.pop('label', 'H')
         super().__init__(label=label, style=LineStyle.WZ, **kwargs)
