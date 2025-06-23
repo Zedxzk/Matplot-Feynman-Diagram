@@ -1,8 +1,11 @@
+# feynplot_gui/widgets/line_list_widget.py
+
 from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem,
-    QMenu, QWidget # 导入 QMenu 和 QWidget
+    QMenu, QWidget 
 )
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt 
+from PySide6.QtGui import QMouseEvent 
 
 class LineListWidget(QListWidget):
     """
@@ -19,28 +22,31 @@ class LineListWidget(QListWidget):
     # 新增信号：请求删除线条，传递选中的 Line 对象
     request_delete_line = Signal(object)
 
+    # --- 新增信号：当列表空白处被点击时发出 ---
+    list_blank_clicked = Signal() 
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("线条列表")
-        self.setFixedWidth(200) # 可以设置一个默认宽度
+        self.setFixedWidth(200)
 
-        # 连接内置信号到自定义槽函数
-        self.itemSelectionChanged.connect(self._on_selection_changed)
+        # ！！重要修改！！
+        # 移除或注释掉这条连接，因为我们将在 mousePressEvent 中直接处理用户选择逻辑并发出信号
+        # self.itemSelectionChanged.connect(self._on_selection_changed) 
         self.itemDoubleClicked.connect(self._on_item_double_clicked)
         
-        # 启用自定义上下文菜单策略
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self._on_context_menu_requested)
 
-    def _on_selection_changed(self):
-        """处理列表项选择变化的槽函数。"""
-        selected_items = self.selectedItems()
-        if selected_items:
-            # 获取存储在 ItemDataRole.UserRole 中的实际 Line 对象
-            line = selected_items[0].data(Qt.ItemDataRole.UserRole)
-            self.line_selected.emit(line)
-        else:
-            self.line_selected.emit(None) # 没有选中项时发出 None
+    # ！！重要修改！！
+    # 移除 _on_selection_changed 方法，因为它不再被连接，并且逻辑已移至 mousePressEvent
+    # def _on_selection_changed(self):
+    #     selected_items = self.selectedItems()
+    #     if selected_items:
+    #         line = selected_items[0].data(Qt.ItemDataRole.UserRole)
+    #         self.line_selected.emit(line)
+    #     else:
+    #         self.line_selected.emit(None)
 
     def _on_item_double_clicked(self, item: QListWidgetItem):
         """处理列表项双击的槽函数。"""
@@ -53,11 +59,9 @@ class LineListWidget(QListWidget):
         处理右键上下文菜单请求。
         根据鼠标位置检查是否有选中项，并显示相应菜单。
         """
-        # 获取在鼠标位置的列表项
         item = self.itemAt(pos)
         
-        # 如果右键点击处有项，并且该项是当前选中的项之一
-        if item and item in self.selectedItems():
+        if item:
             line = item.data(Qt.ItemDataRole.UserRole)
             if line:
                 menu = QMenu(self)
@@ -65,16 +69,39 @@ class LineListWidget(QListWidget):
                 edit_action = menu.addAction("编辑线条...")
                 delete_action = menu.addAction("删除线条")
                 
-                # 连接菜单项的 triggered 信号到相应的请求信号
                 edit_action.triggered.connect(lambda: self.request_edit_line.emit(line))
                 delete_action.triggered.connect(lambda: self.request_delete_line.emit(line))
                 
-                # 在鼠标位置显示菜单
                 menu.exec(self.mapToGlobal(pos))
-        else:
-            # 如果没有选中项或者右键点击在空白处，可以显示一个不同的菜单
-            # 或者什么都不做，这取决于你的设计需求
-            pass
+
+    def mousePressEvent(self, event: QMouseEvent):
+        """
+        重写鼠标按下事件，检测是否点击了列表的空白处或列表项。
+        """
+        # ！！重要修改！！
+        # 在处理鼠标事件期间，暂时阻塞信号，防止 itemSelectionChanged 意外触发循环
+        # self.blockSignals(True) 
+        
+        # 先调用父类的 mousePressEvent，让 QListWidget 处理正常的UI选中逻辑
+        super().mousePressEvent(event) 
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            item = self.itemAt(event.pos())
+            
+            if item is None:
+                # 如果点击的位置没有列表项，表示点击了空白处
+                print("LineListWidget: 点击了空白区域。")
+                self.list_blank_clicked.emit() # 发出空白点击信号
+            else:
+                # 如果点击了某个列表项，发出该项的选中信号
+                line = item.data(Qt.ItemDataRole.UserRole)
+                if line:
+                    print(f"LineListWidget: 点击了线条 {line.id}")
+                    self.line_selected.emit(line) # 发出选中的 Line 对象
+        
+        # ！！重要修改！！
+        # 处理完毕后解除信号阻塞
+        # self.blockSignals(False)
 
 
     def add_line_item(self, line_data):
@@ -83,17 +110,17 @@ class LineListWidget(QListWidget):
         Args:
             line_data: 实际的 Line 对象。
         """
-        # 假设 line_data 有 v_start 和 v_end 属性，它们也是 Vertex 对象
         start_label = line_data.v_start.label if line_data.v_start else "None"
         end_label = line_data.v_end.label if line_data.v_end else "None"
         item_text = f"[{line_data.id}] Line: {line_data.label} ({start_label} -> {end_label})"
         item = QListWidgetItem(item_text)
-        item.setData(Qt.ItemDataRole.UserRole, line_data) # 将 Line 对象存储在用户数据中
+        item.setData(Qt.ItemDataRole.UserRole, line_data) 
         self.addItem(item)
         
         # 优化：在添加项后，自动选中它，并滚动到可见区域（可选）
-        self.setCurrentItem(item)
-        self.scrollToItem(item)
+        # 这里不自动选中，因为 MainController 会统一处理选中状态
+        # self.setCurrentItem(item)
+        # self.scrollToItem(item)
 
 
     def clear_list(self):
@@ -111,16 +138,24 @@ class LineListWidget(QListWidget):
         """
         根据传入的 Line 对象在列表中进行选中。
         如果传入 None，则取消所有选中。
+        这个方法仅用于UI层面同步选中状态，不应触发新的选择信号。
         """
+        # ！！重要！！
+        # 确保这里继续阻塞信号，防止 itemSelectionChanged 信号被触发，导致循环
+        self.blockSignals(True) 
+        
         self.clearSelection() # 首先清除所有选中
-        if item_to_select is None:
-            return
 
-        for i in range(self.count()):
-            item_widget = self.item(i)
-            line_data = item_widget.data(Qt.ItemDataRole.UserRole)
-            if line_data and line_data.id == item_to_select.id:
-                item_widget.setSelected(True)
-                self.setCurrentItem(item_widget) # 设置为当前项，以便滚动到视图中
-                self.scrollToItem(item_widget) # 确保该项可见
-                break
+        if item_to_select is not None: 
+            for i in range(self.count()):
+                item_widget = self.item(i)
+                line_data = item_widget.data(Qt.ItemDataRole.UserRole)
+                if line_data and hasattr(item_to_select, 'id') and line_data.id == item_to_select.id:
+                    item_widget.setSelected(True)
+                    self.setCurrentItem(item_widget) 
+                    self.scrollToItem(item_widget) 
+                    break 
+        
+        # ！！重要！！
+        # 解除信号阻塞
+        self.blockSignals(False)

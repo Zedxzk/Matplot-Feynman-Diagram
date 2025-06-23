@@ -79,6 +79,7 @@ class Line:
         self.linestyle = kwargs.pop('linestyle', linestyle) 
         self.alpha = kwargs.pop('alpha', alpha)
         self.zorder = kwargs.pop('zorder', zorder)
+        self.highlighted = kwargs.pop('highlighted', False)
 
         # Support aliases for line properties
         if 'lw' in kwargs: self.linewidth = kwargs.pop('lw')

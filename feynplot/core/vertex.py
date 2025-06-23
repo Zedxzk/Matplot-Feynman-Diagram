@@ -49,6 +49,7 @@ class Vertex:
         self.metadata = {}
         self.hidden_vertex = False
         self.hidden_label  = False
+        self.highlighted_vertex = False
 
         self.id = kwargs.pop('id', f"vertex_{Vertex._vertex_counter_global}")
         if self.id.startswith("vertex_"):

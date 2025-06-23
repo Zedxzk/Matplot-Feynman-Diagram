@@ -30,7 +30,7 @@ class AddLineDialog(QDialog):
             self.end_vertex_combo.setEnabled(False)
         else:
             for i, vertex in enumerate(self.vertices_data):
-                display_text = f"V{i}: {vertex.label} ({vertex.x},{vertex.y})"
+                display_text = f"|{vertex.id}| {vertex.label} ({vertex.x},{vertex.y})"
                 self.start_vertex_combo.addItem(display_text, vertex) # 存储顶点对象
                 self.end_vertex_combo.addItem(display_text, vertex) # 存储顶点对象
             # 默认选择第一个顶点作为起始，第二个作为结束（如果存在）

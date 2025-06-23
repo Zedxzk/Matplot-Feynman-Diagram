@@ -74,7 +74,8 @@ class CanvasController(QObject):
         """
         vertices_data = self.diagram_model.vertices
         lines_data = self.diagram_model.lines
-        selected_item = self.main_controller.get_selected_item() # 获取当前选中的项以便高亮
+        # selected_item = self.main_controller.get_selected_item() # 获取当前选中的项以便高亮
+        # print(f"Selecting item: {selected_item}")
         # self.get_ax().clear() # 清除旧绘图
         # self.get_fig().clear() # 清除旧绘图
         # **关键改动：直接调用 MatplotlibBackend 的 render 方法**

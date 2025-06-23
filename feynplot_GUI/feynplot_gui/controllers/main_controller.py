@@ -1,5 +1,8 @@
 # feynplot_GUI/feynplot_gui/controllers/main_controller.py
-from typing import Optional # Import Optional for type hinting
+from operator import is_
+from typing import Optional
+
+from torch import seed # Import Optional for type hinting
 from debug_utils import cout, cout3
 from PySide6.QtCore import QObject, Signal, QPointF
 from PySide6.QtWidgets import QMessageBox, QDialog, QFileDialog
@@ -87,33 +90,17 @@ class MainController(QObject):
     def _link_controllers_signals(self):
         """连接所有UI组件发出的信号到对应的控制器槽函数。"""
 
-        # --- CanvasWidget 信号连接 ---
-        # CanvasWidget 应该报告用户点击或选择事件的原始 Matplotlib 坐标和对象ID
-        # 这些信号现在直接连接到 MainController 的处理方法
-        # self.main_window.canvas_widget_instance.canvas_clicked.connect(self._handle_canvas_click)
-        # self.main_window.canvas_widget_instance.object_selected.connect(self._handle_object_selected_on_canvas)
-        # self.main_window.canvas_widget_instance.object_double_clicked.connect(self._handle_object_double_clicked_on_canvas)
-        # self.main_window.canvas_widget_instance.object_moved.connect(self._handle_object_moved_on_canvas)
-        # self.main_window.canvas_widget_instance.selection_cleared.connect(self.clear_selection)
-        # # CanvasController 需要在添加线条模式下通知 MainController 完成线条添加
-        # self.canvas_controller.line_creation_completed.connect(self.add_line_between_vertices)
+        # --- CanvasController 信号连接 ---
+        # CanvasController 的 object_selected 信号可以传递选中对象或 None
+        # self.canvas_controller.object_selected.connect(self.select_item)
+        self.canvas_controller.line_creation_completed.connect(self.add_line_between_vertices)
 
-
-        # # --- ToolboxWidget 信号连接 ---
-        # # ToolboxController 现在负责管理模式切换，并发出 mode_changed 信号给 MainController
-        # self.toolbox_controller.mode_changed.connect(self._on_tool_mode_changed) # 内部更新 MainController 的模式
-        # self.toolbox_controller.mode_changed.connect(self.canvas_controller.set_mode) # 更新 CanvasController 的模式
-                
-        # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_from_toolbox)
-        # self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_from_navigation_bar)
-
-        # 将 ToolboxWidget 的操作信号直接连接到 MainController 的方法
-        # 假设 ToolboxWidget 已经有这些信号
+        # ... (ToolboxWidget 和 NavigationBarWidget 的连接保持不变) ...
         self.main_window.toolbox_widget_instance.add_vertex_requested.connect(self.start_add_vertex_process)
         self.main_window.toolbox_widget_instance.add_line_requested.connect(self.start_add_line_process)
         self.main_window.toolbox_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
         self.main_window.toolbox_widget_instance.delete_line_requested.connect(self.delete_selected_line)
-        # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_to_file)
+        self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_to_file)
         # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self)
         # self.main_window.toolbox_widget_instance.load_diagram_requested.connect(self.load_diagram_from_file)
         self.main_window.toolbox_widget_instance.undo_action_requested.connect(self.undo)
@@ -123,30 +110,26 @@ class MainController(QObject):
         # --- NavigationBarWidget 信号连接 ---
         self.main_window.navigation_bar_widget_instance.add_vertex_button_clicked.connect(self.start_add_vertex_process)
         self.main_window.navigation_bar_widget_instance.add_line_button_clicked.connect(self.start_add_line_process)
-        # self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_to_file)
-        # self.main_window.navigation_bar_widget_instance.load_project_action_triggered.connect(self.load_diagram_from_file)
-        # self.main_window.navigation_bar_widget_instance.clear_diagram_action_triggered.connect(self.clear_diagram)
-        
-        # 对象菜单的通用编辑和删除信号 (由 NavigationBarWidget 发出)
-        # self.main_window.navigation_bar_widget_instance.edit_selected_object_triggered.connect(self.edit_selected_object_properties)
-        # self.main_window.navigation_bar_widget_instance.delete_selected_object_triggered.connect(self.delete_selected_object)
-
-
         # --- VertexListWidget 信号连接 ---
-        self.main_window.vertex_list_widget_instance.vertex_selected.connect(self._handle_list_vertex_selection)
+        # 用户的列表项点击事件 (现在只在 mousePressEvent 中发出)
+        self.main_window.vertex_list_widget_instance.vertex_selected.connect(self.select_item)
+        # 用户点击列表空白处事件 (现在只在 mousePressEvent 中发出)
+        self.main_window.vertex_list_widget_instance.list_blank_clicked.connect(lambda: self.select_item(None))
+        # 双击列表项事件
         self.main_window.vertex_list_widget_instance.vertex_double_clicked.connect(self._handle_list_vertex_double_clicked)
+        # 右键菜单操作
+        # self.main_window.vertex_list_widget_instance.edit_vertex_requested.connect(self.edit_selected_vertex_properties)
+        self.main_window.vertex_list_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
+        # self.main_window.vertex_list_widget_instance.search_vertex_requested.connect(self.search_vertex_by_keyword)
+
 
         # --- LineListWidget 信号连接 ---
-        self.main_window.line_list_widget_instance.line_selected.connect(self._handle_list_line_selection)
+        # 用户的列表项点击事件 (现在只在 mousePressEvent 中发出)
+        self.main_window.line_list_widget_instance.line_selected.connect(self.select_item)
+        # 用户点击列表空白处事件 (现在只在 mousePressEvent 中发出)
+        self.main_window.line_list_widget_instance.list_blank_clicked.connect(lambda: self.select_item(None))
+        # 双击列表项事件
         self.main_window.line_list_widget_instance.line_double_clicked.connect(self._handle_list_line_double_clicked)
-
-        # --- MainController 自身信号的连接 ---
-        # 当选中项改变时，通知其他需要更新的UI组件和控制器
-        # self.selection_changed.connect(self.canvas_controller.set_selected_object) # CanvasWidget 根据 ID 和 Type 更新高亮
-        self.selection_changed.connect(self.vertex_controller.set_selected_item_in_list) # 列表选中状态
-        self.selection_changed.connect(self.line_controller.set_selected_item_in_list)  # 列表选中状态
-        # self.selection_changed.connect(self.navigation_bar_controller.update_object_menu_status) # 更新对象菜单的启用状态
-        # self.selection_changed.connect(self.toolbox_controller.update_delete_buttons_status) # 如果 toolbox_controller 有这个方法
 
 
     # --- MainController 内部槽函数和公共方法 ---
@@ -234,27 +217,73 @@ class MainController(QObject):
         # 更新其他可能需要刷新的 UI 元素，例如属性面板等
         self.status_message.emit("视图已更新。")
 
+    def _handle_list_blank_clicked(self):
+        """
+        处理列表空白处被点击的信号，统一调用 select_item(None) 来清除所有选中。
+        """
+        print("列表空白处被点击，清除所有选中。")
+        self.select_item(None) # 统一调用 select_item 方法，传入 None 表示取消所有选中
+
 
     def select_item(self, item: [Vertex, Line, None]):
         """
         统一管理应用程序中的选中状态。
-        :param item: 被选中的 Vertex 或 Line 对象，或 None 表示取消选中。
+        由各个子控制器（如 VertexController, CanvasController）直接调用。
+        :param item: 要选中的 Vertex 或 Line 对象，或 None 表示清除选中。
         """
-        self._current_selected_item = item
-        
-        # --- 关键修改：在访问 .id 之前进行空值检查 ---
-        if self._current_selected_item:
-            # 如果 item 是 Vertex，显示“顶点”；如果是 Line，显示“线条”
-            item_type_str = ''
-            if isinstance(self._current_selected_item, Vertex):
-                item_type_str = '顶点'
-            elif isinstance(self._current_selected_item, Line):
-                item_type_str = '线条'
-            
-            self.status_message.emit(f"选中: {self._current_selected_item.id} ({item_type_str})")
-        else:
-            # 如果没有选中任何项，显示不同的消息
-            self.status_message.emit("当前没有选中任何项。")
+        print(f"\nMainController.select_item: 接收到项: {item}, 类型: {type(item)}") # 调试打印
+
+        try:
+            # 1. 首先清除之前选中项的 is_selected 状态
+            if self._current_selected_item is not None:
+                print(f"MainController: 清除旧选中项 {self._current_selected_item.id}.is_selected = False")
+                self._current_selected_item.is_selected = False
+
+            # 2. 更新 MainController 内部的当前选中项引用
+            self._current_selected_item = item
+
+            # 3. 如果有新选中项，设置其 is_selected 状态为 True
+            if self._current_selected_item is not None:
+                print(f"MainController: 设置新选中项 {self._current_selected_item.id}.is_selected = True")
+                self._current_selected_item.is_selected = True
+
+                item_type_str = ''
+                if isinstance(self._current_selected_item, Vertex):
+                    item_type_str = '顶点'
+                elif isinstance(self._current_selected_item, Line):
+                    item_type_str = '线条'
+
+                self.status_message.emit(f"选中: {self._current_selected_item.id} ({item_type_str})")
+                print(f"选中: {self._current_selected_item.id} ({item_type_str})")
+                print(f"Current selected item (model ID): {self._current_selected_item.id}, is_selected: {self._current_selected_item.is_selected}")
+
+            else:
+                print("MainController: 取消选中所有项。")
+                self.status_message.emit("当前没有选中任何项。")
+
+            # 4. 无论选中状态如何，统一通知所有相关视图控制器更新它们的UI显示
+            # 这些更新会读取模型的 is_selected 状态来刷新 UI
+            self.canvas_controller.update_canvas() # 更新画布
+            # 调用子控制器的方法来更新列表视图的选中状态
+            self.vertex_controller.set_selected_item_in_list(self._current_selected_item)
+            self.line_controller.set_selected_item_in_list(self._current_selected_item) # 假设也有 line_controller
+
+            self.print_all_selected_items() # 调试用
+
+            return self._current_selected_item
+
+        except Exception as e:
+            print(f"MainController: 选择项时发生错误: {e}")
+            # 错误时尝试清除选中状态
+            if self._current_selected_item is not None:
+                self._current_selected_item.is_selected = False
+                self._current_selected_item = None
+            self.status_message.emit(f"错误：选择项失败 - {e}")
+            self.canvas_controller.update_canvas()
+            self.vertex_controller.set_selected_item_in_list(None)
+            self.line_controller.set_selected_item_in_list(None)
+            return None
+
 
         # # 通知画布刷新，确保选中状态在UI上正确显示
         # if self.canvas_widget:
@@ -262,6 +291,16 @@ class MainController(QObject):
 
         # 通知属性面板更新（如果存在）
         # self.property_panel_controller.update_properties(item) # 示例
+
+    def print_all_selected_items(self):
+        """打印所有选中项。"""
+        for v in self.diagram_model.vertices:
+            if v.is_selected:
+                print(f"顶点: {v.id} is selected.")
+
+        for l in self.diagram_model.lines:
+            if l.is_selected:
+                print(f"线条: {l.id} is selected.")
 
     def clear_selection(self):
         """清空当前选中状态。"""
@@ -376,7 +415,7 @@ class MainController(QObject):
         # self.status_message.emit("请在画布上点击以添加顶点。")
 
     def add_vertex_at_coords(self):
-        dialog = AddVertexDialog(parent=self.main_window)
+        dialog = AddVertexDialog(diagram = self.diagram_model, parent=self.main_window)
         # dialog.set_position(x, y) # 预设点击的位置
         if dialog.exec() == QDialog.Accepted:
             x, y, label = dialog.get_coordinates()
@@ -585,80 +624,17 @@ class MainController(QObject):
 
     def delete_selected_object(self):
         """从导航栏通用删除按钮触发，删除当前选中的对象（顶点或线条）。"""
-        # item = self.get_selected_item()
-        # if isinstance(item, Vertex):
-        #     self.delete_selected_vertex() # 调用专门删除顶点的方法
-        # elif isinstance(item, Line):
-        #     self.delete_selected_line() # 调用专门删除线条的方法
-        # else:
-        #     self.status_message.emit("没有选中的对象可以删除。")
-        #     QMessageBox.information(self.main_window, "提示", "没有选中的对象可以删除。")
         pass
 
-    # def edit_item_properties(self, item: [Vertex, Line]):
-    #     """
-    #     打开属性编辑器来编辑选中项的属性。
-    #     由双击事件或导航栏“编辑”菜单触发。
-    #     """
-    #     if item is None:
-    #         self.status_message.emit("没有选中的对象可以编辑。")
-    #         QMessageBox.information(self.main_window, "提示", "没有选中的对象可以编辑。")
-    #         return
-        
-    #     if isinstance(item, Vertex):
-    #         dialog = EditVertexDialog(item, parent=self.main_window)
-    #         if dialog.exec() == QDialog.Accepted:
-    #             updated_data = dialog.get_vertex_data()
-    #             try:
-    #                 self.diagram_model.update_vertex_properties(
-    #                     item, 
-    #                     x=updated_data['x'], y=updated_data['y'], 
-    #                     label=updated_data['label'], 
-    #                     vertex_type=updated_data['vertex_type']
-    #                 )
-    #                 self.status_message.emit(f"已更新顶点 {item.id} 的属性。")
-    #                 self.update_all_views() # 更新后强制刷新视图
-    #             except Exception as e:
-    #                 self.status_message.emit(f"更新顶点属性失败: {e}")
-    #                 QMessageBox.critical(self.main_window, "更新错误", f"更新顶点属性失败: {e}")
-    #         else:
-    #             self.status_message.emit(f"顶点 {item.id} 属性编辑已取消。")
-    #     elif isinstance(item, Line):
-    #         dialog = EditLineDialog(item, parent=self.main_window)
-    #         if dialog.exec() == QDialog.Accepted:
-    #             updated_data = dialog.get_line_data()
-    #             try:
-    #                 # 确保传递的是 Vertex 实例给 model
-    #                 start_v = self.diagram_model.get_vertex_by_id(updated_data['v_start'].id)
-    #                 end_v = self.diagram_model.get_vertex_by_id(updated_data['v_end'].id)
-    #                 self.diagram_model.update_line_properties(
-    #                     item, 
-    #                     v_start=start_v, v_end=end_v, 
-    #                     label=updated_data['label'], 
-    #                     line_type=updated_data['line_type']
-    #                 )
-    #                 self.status_message.emit(f"已更新线条 {item.id} 的属性。")
-    #                 self.update_all_views() # 更新后强制刷新视图
-    #             except Exception as e:
-    #                 self.status_message.emit(f"更新线条属性失败: {e}")
-    #                 QMessageBox.critical(self.main_window, "更新错误", f"更新线条属性失败: {e}")
-    #         else:
-    #             self.status_message.emit(f"线条 {item.id} 属性编辑已取消。")
-
-
-    # def edit_selected_object_properties(self):
-    #     """从导航栏菜单触发，编辑当前选中对象的属性。"""
-    #     item = self.get_selected_item()
-    #     self.edit_item_properties(item)
 
     # --- 文件操作 ---
     def save_diagram_to_file(self):
-        """保存当前图到文件。支持 .json, .pdf, .png 格式。"""
+        """保存当前图到文件。支持 .pdf, .png, .jpg 格式。"""
         file_path, selected_filter = QFileDialog.getSaveFileName(
-            self.main_window,
-            "保存费曼图",
-            "",
-            "JSON Files (*.json);;PDF Files (*.pdf);;PNG Images (*.png);;All Files (*)"
+            self.main_window, # Parent widget for the dialog
+            "保存费曼图图像",  # Dialog title
+            "",               # Default directory (empty means current)
+            "PDF Files (*.pdf);;PNG Images (*.png);;JPEG Images (*.jpg);;All Files (*)" # <-- 移除了 JSON 选项
         )
 
         if not file_path:
@@ -668,41 +644,42 @@ class MainController(QObject):
         try:
             # 根据选择的过滤器确定扩展名
             extension_mapping = {
-                "JSON Files (*.json)": ".json",
                 "PDF Files (*.pdf)": ".pdf",
-                "PNG Images (*.png)": ".png"
+                "PNG Images (*.png)": ".png",
+                "JPEG Images (*.jpg)": ".jpg"
             }
-            extension = extension_mapping.get(selected_filter, "")
-            
-            # 规范化文件路径
-            if extension and not file_path.lower().endswith(extension.lower()):
-                file_path = f"{os.path.splitext(file_path)[0]}{extension}"
+            # 默认为 .png，以防用户选择 "All Files (*)" 且未输入扩展名
+            extension = extension_mapping.get(selected_filter, ".png") 
 
+            # 规范化文件路径：如果文件路径没有以选定格式的扩展名结尾，则添加它
+            if not file_path.lower().endswith(extension.lower()):
+                # 如果用户输入了其他图像扩展名（如.jpeg），则使用用户输入的
+                # 否则，使用默认或选择的扩展名
+                input_ext = os.path.splitext(file_path)[1].lower()
+                if input_ext in ['.pdf', '.png', '.jpg']:
+                    # 用户输入了有效图像扩展名，就用它的
+                    pass 
+                else:
+                    # 否则，补充我们推荐的扩展名
+                    file_path = f"{file_path}{extension}"
+            
             # 确保目录存在
             os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
 
-            # 根据扩展名保存文件
-            if file_path.lower().endswith(".json"):
-                # self.diagram_model.save_to_json(file_path)
-                QMessageBox.warning(self.main_window, "错误", "当前功能未实现!")
-                self.status_message.emit(f"图表数据已成功保存到: {file_path}")
-            elif file_path.lower().endswith((".pdf", ".png")):
-                backend = self.canvas_controller.get_backend()
-                if backend is None:
-                    raise ValueError("画布后端未初始化")
-                backend.savefig(file_path, bbox_inches='tight', dpi=300)
-                self.status_message.emit(f"图像已成功保存到: {file_path}")
-            else:
-                # 默认尝试保存为PNG
-                file_path = f"{os.path.splitext(file_path)[0]}.png"
-                self.canvas_controller.get_backend().savefig(file_path)
-                self.status_message.emit(f"图像已默认保存为PNG: {file_path}")
+            # 获取画布后端并保存图像
+            backend = self.canvas_controller.get_backend()
+            if backend is None:
+                raise ValueError("画布后端未初始化，无法保存图像。")
+            
+            # Matplotlib 的 savefig 方法会根据文件扩展名自动处理图像格式
+            backend.savefig(file_path, bbox_inches='tight', dpi=300)
+            self.status_message.emit(f"图像已成功保存到: {file_path}")
 
         except Exception as e:
             QMessageBox.critical(
-                self.main_window, 
-                "保存失败", 
-                f"保存图表时发生错误：\n{str(e)}\n\n请检查文件路径和权限。"
+                self.main_window,
+                "保存失败",
+                f"保存图像时发生错误：\n{str(e)}\n\n请检查文件路径和权限。"
             )
             self.status_message.emit(f"保存失败: {str(e)}")
 

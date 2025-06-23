@@ -38,11 +38,14 @@ class LineController(QObject):
         """
         Refreshes the line list view based on data in diagram_model.
         Lines are sorted by their unique identifier (ID) in ascending order.
+        This method only rebuilds the list content and sets item selection based on model state.
         """
-        self.line_list_widget.clear() # 清空所有现有项目
+        # --- Critical change: Block signals during the update ---
+        self.line_list_widget.blockSignals(True) 
 
-        # 关键改动：在这里对线条列表进行排序
-        # 假设 line.id 是一个唯一的、可比较的标识符（例如，整数或字符串）
+        self.line_list_widget.clear() # Clear all existing items
+
+        # Sort lines by their unique identifier (ID)
         sorted_lines = sorted(self.diagram_model.lines, key=lambda line: line.id)
         
         for line in sorted_lines:
@@ -52,13 +55,22 @@ class LineController(QObject):
             item = QListWidgetItem(item_text)
             item.setData(Qt.ItemDataRole.UserRole, line) 
             self.line_list_widget.addItem(item)
-        
-        # 重新应用选中状态
-        current_selected = self.main_controller.get_selected_item()
-        if isinstance(current_selected, Line):
-            self.set_selected_item_in_list(current_selected)
+
+            # --- Critical change: Set QListWidgetItem selection directly based on model's is_selected ---
+            if hasattr(line, 'is_selected') and line.is_selected:
+                item.setSelected(True)
+                self.line_list_widget.scrollToItem(item) # Scroll to the selected item if it exists
+
+        # --- Unblock signals after the update is complete ---
+        self.line_list_widget.blockSignals(False) 
+
+        # --- Remove the following lines, as selection should be managed by MainController ---
+        # current_selected = self.main_controller.get_selected_item()
+        # if isinstance(current_selected, Line):
+        #     self.set_selected_item_in_list(current_selected) # This call should come from MainController.select_item
 
         self.main_controller.status_message.emit("线条列表已更新并按ID排序。")
+
 
     def set_selected_item_in_list(self, item: [Line, None]):
         """
