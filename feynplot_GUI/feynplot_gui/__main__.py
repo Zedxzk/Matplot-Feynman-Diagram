@@ -41,30 +41,34 @@ if __name__ == "__main__":
         controller = MainController(window)
 
         # ✅ 设置全局异常钩子，在窗口创建之后绑定
-        def excepthook(exc_type, exc_value, exc_tb):
-            tb_info = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
-            error_message = f"An unexpected runtime error occurred:\n\n{tb_info}\n\n" \
-                            "The application might not function correctly or may close."
-            show_error_dialog("Runtime Error", error_message, parent=window)
-            sys.__excepthook__(exc_type, exc_value, exc_tb)
+        # def excepthook(exc_type, exc_value, exc_tb):
+        #     tb_info = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        #     error_message = f"An unexpected runtime error occurred:\n\n{tb_info}\n\n" \
+        #                     "The application might not function correctly or may close."
+        #     show_error_dialog("Runtime Error", error_message, parent=window)
+        #     sys.__excepthook__(exc_type, exc_value, exc_tb)
 
-        sys.excepthook = excepthook
+        # sys.excepthook = excepthook
 
         window.show()
         sys.exit(app.exec())
 
     except Exception as e:
+        # --- 将以下部分取消注释 ---
+        print(f"FATAL ERROR: {e}")
         # 应用初始化异常
+        tb_info = "".join(traceback.format_exc()) # 使用 traceback.format_exc() 获取完整的堆栈信息
         error_message = f"An unexpected startup error occurred: {e}\n\n" \
+                        f"Details:\n{tb_info}\n\n" \
                         "The application might not function correctly or may close."
 
-        if app:
-            # Here, 'window' might not be fully initialized if the error occurs very early.
-            # It's safer to just pass 'None' as parent or ensure 'window' is created before calling.
-            # In the startup error, 'window' could still be 'None'.
-            # We'll pass None as parent for the startup error case to avoid issues if window isn't ready.
-            show_error_dialog("Application Startup Error", error_message, parent=None) 
-        else:
-            print(f"FATAL ERROR (QApplication not initialized): {error_message}", file=sys.stderr)
+        # if app:
+            # 在启动错误中，'window' 可能仍然是 'None'。
+            # 我们将 'None' 作为父级传递，以避免在窗口未准备好时出现问题。
+        show_error_dialog("Application Startup Error", error_message, parent=None) 
+        print(f"FATAL ERROR (QApplication not initialized): {error_message}", file=sys.stderr)
 
-        sys.exit(1)
+        # else:
+        #     print(f"FATAL ERROR (QApplication not initialized): {error_message}", file=sys.stderr)
+
+        # sys.exit(1)

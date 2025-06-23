@@ -2,88 +2,101 @@
 
 from PySide6.QtWidgets import (
     QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QCheckBox, QGroupBox, QRadioButton, QButtonGroup
+    QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QGroupBox,
+    QScrollArea, QWidget, QFormLayout
 )
 from PySide6.QtGui import QColor, QPalette
-from PySide6.QtCore import Qt
-from typing import Optional, Dict, Any
+from PySide6.QtCore import Qt, Signal
+from typing import Optional, Dict, Any, Type
 
 # 引入所有具体的线条类型
 from feynplot.core.line import (
-    Line,
+    Line, LineStyle,
     FermionLine, AntiFermionLine, PhotonLine, GluonLine,
-    WPlusLine, WMinusLine, ZBosonLine # 确保 WPlusLine, WMinusLine, ZBosonLine 已导入
+    WPlusLine, WMinusLine, ZBosonLine
 )
-from feynplot.core.diagram import FeynmanDiagram 
-
+from feynplot.core.diagram import FeynmanDiagram
+from feynplot.core.vertex import Vertex
 import numpy as np
+
+# 导入新的模块化编辑器
+from feynplot_gui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.controllers.line_dialogs.specific_line_editors.fermion_line_editor import FermionLineEditor
+from feynplot_gui.controllers.line_dialogs.specific_line_editors.photon_line_editor import PhotonLineEditor
+from feynplot_gui.controllers.line_dialogs.specific_line_editors.gluon_line_editor import GluonLineEditor
+from feynplot_gui.controllers.line_dialogs.specific_line_editors.wz_boson_line_editor import WZBosonLineEditor
+
 
 def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widget=None) -> bool:
     """
-    打开一个对话框以编辑给定 Line 对象的属性。
-
-    Args:
-        line (Line): 要编辑的 Line 对象。
-        diagram_model (FeynmanDiagram): 整个图的 FeynmanDiagram 模型实例。
-        parent_widget (QWidget, optional): 对话框的父控件。
-
-    Returns:
-        bool: 如果用户点击了“确定”并成功更新了线条属性，则返回 True；否则返回 False。
+    Opens a dialog to edit the properties of a given Line object.
+    This function is now exclusively for editing existing lines.
     """
+    # 确保 line 参数是一个 Line 实例，因为现在只处理编辑模式
     if not isinstance(line, Line):
-        QMessageBox.critical(parent_widget, "错误", "提供的对象不是一个有效的线条。")
+        QMessageBox.critical(parent_widget, "错误", "提供的对象不是一个有效的线条，无法编辑。")
         return False
 
-    class _InternalEditLineDialog(QDialog):
+    class _InternalEditLineDialog(QDialog, LineEditBase):
+        line_updated = Signal(Line, Optional[Line])
+
         def __init__(self, line_obj: Line, diagram_model: FeynmanDiagram, parent_dialog=None):
             super().__init__(parent_dialog)
-            self.setWindowTitle(f"编辑线条: {line_obj.label} (ID: {line_obj.id})")
-            self.setGeometry(200, 200, 480, 750) # 适当调整对话框大小以容纳更多控件
+            LineEditBase.__init__(self)
 
+            # 现在 line_obj 永远不会是 None，因为我们只处理编辑模式
             self.line = line_obj
-            self.diagram_model = diagram_model 
-            
+            self.diagram_model = diagram_model
+
+            # 存储原始线条的顶点和ID，以便在类型改变时重新创建线条
             self._original_v_start = line_obj.v_start
             self._original_v_end = line_obj.v_end
+            self._original_line_id = line_obj.id
 
-            self.layout = QVBoxLayout(self)
+            # 对话框标题现在只显示编辑模式下的标题
+            dialog_title = f"编辑线条: {self.line.label} (ID: {self.line.id})"
+            self.setWindowTitle(dialog_title)
+            self.setGeometry(200, 200, 480, 750)
+            self.setMinimumHeight(300)
+            self.setMaximumHeight(800)
 
-            # --- 基本属性 ---
-            basic_group = QGroupBox("基本属性")
-            basic_layout = QVBoxLayout(basic_group)
-            self.layout.addWidget(basic_group)
+            # --- 主对话框布局 ---
+            self.main_dialog_layout = QVBoxLayout(self)
 
-            # 标签 (Label)
-            label_layout = QHBoxLayout()
-            label_layout.addWidget(QLabel("标签:"))
-            self.label_input = QLineEdit(self.line.label)
-            label_layout.addWidget(self.label_input)
-            basic_layout.addLayout(label_layout)
+            # --- 滚动区域，用于承载所有属性控件 ---
+            self.scroll_area = QScrollArea(self)
+            self.scroll_area.setWidgetResizable(True)
+            self.scroll_content_widget = QWidget()
+            self.main_form_layout = QFormLayout(self.scroll_content_widget)
+            self.scroll_area.setWidget(self.scroll_content_widget)
+            self.main_dialog_layout.addWidget(self.scroll_area)
 
-            # --- 标签字体大小 ---
-            # 使用 getattr 安全地获取 label_size，如果不存在则默认为 12.0
-            initial_label_size = getattr(self.line, 'label_size', 12.0) 
-            self.label_fontsize_layout, self.label_fontsize_input = self._create_spinbox_row(
-                "标签字体大小:", initial_label_size, min_val=1.0, max_val=72.0, step=0.5
-            )
-            basic_layout.addLayout(self.label_fontsize_layout)
+            # --- 1. ID (永远只读，使用 QLabel 显示) ---
+            # 移除 QLineEdit 和 setReadOnly(True)
+            self._current_line_id_str = self.line.id 
 
+            # QLabel 只用于显示，用纯字符串来构建显示文本
+            self.id_label = QLabel(self)
+            self.id_label.setTextFormat(Qt.RichText)
+            self.id_label.setText(f"<b>{self._current_line_id_str}</b>") # 使用 _current_line_id_str 来设置显示文本
+            self.main_form_layout.addRow("ID:", self.id_label)
 
-            # 显示起点和终点（只读信息）
-            start_label = self.line.v_start.label if self.line.v_start else '无'
-            start_id = self.line.v_start.id if self.line.v_start else 'N/A'
-            end_label = self.line.v_end.label if self.line.v_end else '无'
-            end_id = self.line.v_end.id if self.line.v_end else 'N/A'
+            # --- 2. 标签 (Label) ---
+            self.label_input = QLineEdit(self)
+            self.label_input.setText(self.line.label)
+            self.main_form_layout.addRow("标签:", self.label_input)
 
-            basic_layout.addWidget(QLabel(f"<b>起点:</b> {start_label} (ID: {start_id})"))
-            basic_layout.addWidget(QLabel(f"<b>终点:</b> {end_label} (ID: {end_id})"))
+            # --- 3. 起点和终点 (只读信息) ---
+            start_label = self._original_v_start.label if self._original_v_start else '无'
+            start_id = self._original_v_start.id if self._original_v_start else 'N/A'
+            end_label = self._original_v_end.label if self._original_v_end else '无'
+            end_id = self._original_v_end.id if self._original_v_end else 'N/A'
+            self.main_form_layout.addRow(QLabel("<b>起点:</b>"), QLabel(f"{start_label} (ID: {start_id})"))
+            self.main_form_layout.addRow(QLabel("<b>终点:</b>"), QLabel(f"{end_label} (ID: {end_id})"))
 
-            # --- 线条类型选择 (Line Type Selection) ---
-            particle_type_layout = QHBoxLayout()
-            particle_type_layout.addWidget(QLabel("线条粒子类型:"))
-            self.particle_type_combo = QComboBox()
-
-            self.particle_types = {
+            # --- 4. 线条粒子类型选择 (Line Type Selection) ---
+            self.particle_type_combo = QComboBox(self)
+            self.particle_types: Dict[str, Type[Line]] = {
                 "费米子线 (Fermion)": FermionLine,
                 "反费米子线 (Anti-Fermion)": AntiFermionLine,
                 "光子线 (Photon)": PhotonLine,
@@ -99,149 +112,155 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
                 self.particle_type_combo.addItem(display_name, particle_class)
                 if particle_class == current_particle_type_class:
                     current_index = i
-            
+
             if current_index != -1:
                 self.particle_type_combo.setCurrentIndex(current_index)
-            else:
+            else:  # 如果编辑的线条类型不在列表中
                 self.particle_type_combo.addItem("未知类型", None)
                 self.particle_type_combo.setCurrentIndex(self.particle_type_combo.count() - 1)
                 QMessageBox.warning(self, "警告", f"当前线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
 
-            particle_type_layout.addWidget(self.particle_type_combo)
-            basic_layout.addLayout(particle_type_layout)
+            self.main_form_layout.addRow("线条粒子类型:", self.particle_type_combo)
 
-            # --- 通用绘图属性 ---
-            self.line_color_btn = QPushButton("线条颜色")
-            self._line_color_picked_color = self.line.linePlotConfig.get('color', '#000000') 
-            self.line_color_btn.clicked.connect(lambda: self._pick_color(self.line_color_btn, '_line_color_picked_color'))
-            basic_layout.addWidget(self.line_color_btn)
-            self._set_button_color(self.line_color_btn, self._line_color_picked_color)
+            # --- 5. 线条样式 (LineStyle 枚举) ---
+            self.line_style_combo = QComboBox(self)
+            for style_enum in LineStyle:
+                self.line_style_combo.addItem(style_enum.name.replace('_', ' ').title(), style_enum)
 
-            self.line_width_layout, self.line_width_input = self._create_spinbox_row(
-                "线宽:", float(self.line.linePlotConfig.get('linewidth', 1.0)), min_val=0.1, max_val=10.0, step=0.1
+            # 遍历 QComboBox 的所有项目，找到数据匹配的项并设置当前索引
+            target_style = self.line.style
+            found_index = -1
+            for i in range(self.line_style_combo.count()):
+                item_data = self.line_style_combo.itemData(i)
+                if item_data == target_style:
+                    found_index = i
+                    break
+            if found_index != -1:
+                self.line_style_combo.setCurrentIndex(found_index)
+            else:
+                print(f"Warning: LineStyle '{target_style}' not found in QComboBox items. Defaulting to first item.")
+                self.line_style_combo.setCurrentIndex(0)  # 默认选中第一个
+
+            self.main_form_layout.addRow("线条样式:", self.line_style_combo)
+
+            # --- 6. 颜色 (color) ---
+            self.color_button = QPushButton("选择颜色", self)
+            self._line_color_picked_color = self.line.color
+            self._set_button_color(self.color_button, self._line_color_picked_color)
+            self.color_button.clicked.connect(lambda: self._pick_color(self.color_button, '_line_color_picked_color'))
+            self.main_form_layout.addRow("线条颜色:", self.color_button)
+
+            # --- 7. 线宽 (linewidth) ---
+            initial_linewidth = self.line.linewidth
+            self.linewidth_layout, self.linewidth_input = self._create_spinbox_row(
+                "线宽:", initial_linewidth, min_val=0.1, max_val=10.0, step=0.1
             )
-            basic_layout.addLayout(self.line_width_layout)
+            self.main_form_layout.addRow(self.linewidth_layout)
 
-            self.line_alpha_layout, self.line_alpha_input = self._create_spinbox_row(
-                "透明度:", float(self.line.linePlotConfig.get('alpha', 1.0)), min_val=0.0, max_val=1.0, step=0.01
+            # --- 8. 透明度 (alpha) ---
+            initial_alpha = self.line.alpha
+            self.alpha_layout, self.alpha_input = self._create_spinbox_row(
+                "透明度:", initial_alpha, min_val=0.0, max_val=1.0, step=0.01
             )
-            basic_layout.addLayout(self.line_alpha_layout)
+            self.main_form_layout.addRow(self.alpha_layout)
 
-            label_offset_x = float(self.line.label_offset[0]) if (isinstance(self.line.label_offset, (list, tuple, np.ndarray)) and len(self.line.label_offset) > 0 and self.line.label_offset[0] is not None) else 0.0
-            label_offset_y = float(self.line.label_offset[1]) if (isinstance(self.line.label_offset, (list, tuple, np.ndarray)) and len(self.line.label_offset) > 1 and self.line.label_offset[1] is not None) else 0.0
+            # --- 9. Matplotlib 线型 (linestyle) ---
+            self.mpl_linestyle_combo = QComboBox(self)
+            mpl_line_styles = ['-', '--', '-.', ':', 'None', ' ', '']  # Matplotlib 常见的线条样式
+            for style_str in mpl_line_styles:
+                self.mpl_linestyle_combo.addItem(style_str if style_str != '' else '(空)')
+
+            current_mpl_ls = self.line.linestyle if self.line.linestyle is not None else '-'
+            self.mpl_linestyle_combo.setCurrentText(current_mpl_ls if current_mpl_ls != '' else '(空)')
+            self.main_form_layout.addRow("Matplotlib 线型:", self.mpl_linestyle_combo)
+
+            # --- 10. Z-order ---
+            initial_zorder = self.line.zorder
+            self.zorder_layout, self.zorder_input = self._create_spinbox_row(
+                "Z轴顺序:", initial_zorder, min_val=-100, max_val=100, step=1, is_int=True
+            )
+            self.main_form_layout.addRow(self.zorder_layout)
+
+            # --- 11. 标签字体大小 (label_fontsize) ---
+            initial_label_fontsize = self.line.label_fontsize
+            self.label_fontsize_layout, self.label_fontsize_input = self._create_spinbox_row(
+                "标签字体大小:", initial_label_fontsize, min_val=1.0, max_val=72.0, step=0.5, is_int=True
+            )
+            self.main_form_layout.addRow(self.label_fontsize_layout)
+
+            # --- 12. 标签颜色 (label_color) ---
+            self.label_color_button = QPushButton("选择颜色", self)
+            self._label_color_picked_color = self.line.label_color
+            self._set_button_color(self.label_color_button, self._label_color_picked_color)
+            self.label_color_button.clicked.connect(lambda: self._pick_color(self.label_color_button, '_label_color_picked_color'))
+            self.main_form_layout.addRow("标签颜色:", self.label_color_button)
+
+            # --- 13. 标签水平对齐 (label_ha) ---
+            self.label_ha_combo = QComboBox(self)
+            self.label_ha_combo.addItems(['left', 'right', 'center'])
+            self.label_ha_combo.setCurrentText(self.line.label_ha)
+            self.main_form_layout.addRow("标签水平对齐:", self.label_ha_combo)
+
+            # --- 14. 标签垂直对齐 (label_va) ---
+            self.label_va_combo = QComboBox(self)
+            self.label_va_combo.addItems(['top', 'bottom', 'center', 'baseline'])
+            self.label_va_combo.setCurrentText(self.line.label_va)
+            self.main_form_layout.addRow("标签垂直对齐:", self.label_va_combo)
+
+            # --- 15. 标签偏移 X, Y (label_offset) ---
+            label_offset_x = self.line.label_offset[0]
+            label_offset_y = self.line.label_offset[1]
+
             self.label_offset_x_layout, self.label_offset_x_input = self._create_spinbox_row("标签偏移 X:", label_offset_x, min_val=-10.0, max_val=10.0, step=0.1)
             self.label_offset_y_layout, self.label_offset_y_input = self._create_spinbox_row("标签偏移 Y:", label_offset_y, min_val=-10.0, max_val=10.0, step=0.1)
-            basic_layout.addLayout(self.label_offset_x_layout)
-            basic_layout.addLayout(self.label_offset_y_layout)
+            self.main_form_layout.addRow(self.label_offset_x_layout)
+            self.main_form_layout.addRow(self.label_offset_y_layout)
 
-            # --- 新增 bezier_offset 编辑 (通用属性) ---
-            self.bezier_offset_layout, self.bezier_offset_input = self._create_spinbox_row(
-                "贝塞尔偏移:", 0.3, min_val=0.0, max_val=1.0, step=0.01
-            )
-            basic_layout.addLayout(self.bezier_offset_layout)
-
-            # --- 新增 angle_in 和 angle_out 编辑 ---
+            # --- 16. 入角 (angleIn) ---
+            initial_angle_in = self.line._angleIn if self.line._angleIn is not None else 0.0
             self.angle_in_layout, self.angle_in_input = self._create_spinbox_row(
-                "入角 (Angle In):", 0.0, min_val=-180.0, max_val=180.0, step=1.0
+                "入角 (Angle In):", initial_angle_in, min_val=-180.0, max_val=180.0, step=1.0
             )
-            basic_layout.addLayout(self.angle_in_layout)
+            self.main_form_layout.addRow(self.angle_in_layout)
 
+            # --- 17. 出角 (angleOut) ---
+            initial_angle_out = self.line._angleOut if self.line._angleOut is not None else 0.0
             self.angle_out_layout, self.angle_out_input = self._create_spinbox_row(
-                "出角 (Angle Out):", 0.0, min_val=-180.0, max_val=180.0, step=1.0
+                "出角 (Angle Out):", initial_angle_out, min_val=-180.0, max_val=180.0, step=1.0
             )
-            basic_layout.addLayout(self.angle_out_layout)
-            
-            # --- 特定线条类型的属性组 ---
-            self.specific_props_group = QGroupBox("特定线条属性")
-            self.specific_props_layout = QVBoxLayout(self.specific_props_group)
-            self.layout.addWidget(self.specific_props_group)
+            self.main_form_layout.addRow(self.angle_out_layout)
 
-            # --- FermionLine / AntiFermionLine 特有属性 ---
-            self.fermion_arrow_checkbox = QCheckBox("显示箭头")
-            self.fermion_arrow_filled_checkbox = QCheckBox("箭头填充")
-            self.fermion_arrow_position_layout, self.fermion_arrow_position_input = \
-                self._create_spinbox_row("箭头位置 (0-1):", 0.5, min_val=0.0, max_val=1.0, step=0.01)
-            self.fermion_arrow_size_layout, self.fermion_arrow_size_input = \
-                self._create_spinbox_row("箭头大小:", 10.0, min_val=1.0, max_val=50.0, step=1.0, is_int=True)
-            self.fermion_arrow_line_width_layout, self.fermion_arrow_line_width_input = \
-                self._create_spinbox_row("箭头线宽:", 1.0, min_val=0.1, max_val=10.0, step=0.1)
-            self.fermion_arrow_reversed_checkbox = QCheckBox("箭头反向")
+            # --- 18. 贝塞尔偏移 (bezier_offset) ---
+            initial_bezier_offset = self.line.bezier_offset
+            self.bezier_offset_layout, self.bezier_offset_input = self._create_spinbox_row(
+                "贝塞尔偏移:", initial_bezier_offset, min_val=0.0, max_val=1.0, step=0.01
+            )
+            self.main_form_layout.addRow(self.bezier_offset_layout)
 
-            self.specific_props_layout.addWidget(self.fermion_arrow_checkbox)
-            self.specific_props_layout.addWidget(self.fermion_arrow_filled_checkbox)
-            self.specific_props_layout.addLayout(self.fermion_arrow_position_layout)
-            self.specific_props_layout.addLayout(self.fermion_arrow_size_layout)
-            self.specific_props_layout.addLayout(self.fermion_arrow_line_width_layout)
-            self.specific_props_layout.addWidget(self.fermion_arrow_reversed_checkbox)
+            # --- 特定线条类型的属性组 (由各自的编辑器管理) ---
+            self.fermion_editor = FermionLineEditor(self.main_form_layout, self.line)
+            self.photon_editor = PhotonLineEditor(self.main_form_layout, self.line)
+            self.gluon_editor = GluonLineEditor(self.main_form_layout, self.line)
+            self.wz_boson_editor = WZBosonLineEditor(self.main_form_layout, self.line)
 
-            # --- PhotonLine 特有属性 ---
-            self.photon_amplitude_layout, self.photon_amplitude_input = \
-                self._create_spinbox_row("振幅:", 0.1, min_val=0.01, max_val=1.0, step=0.01)
-            self.photon_wavelength_layout, self.photon_wavelength_input = \
-                self._create_spinbox_row("波长:", 0.5, min_val=0.1, max_val=2.0, step=0.05)
-            
-            # 初末相位选择 (0 或 180)
-            self.photon_initial_phase_group = QButtonGroup(self)
-            self.photon_initial_phase_0 = QRadioButton("0°")
-            self.photon_initial_phase_180 = QRadioButton("180°")
-            self.photon_initial_phase_group.addButton(self.photon_initial_phase_0, 0)
-            self.photon_initial_phase_group.addButton(self.photon_initial_phase_180, 180)
-            self.initial_phase_h_layout = QHBoxLayout() # 为初相位创建独立布局
-            self.initial_phase_h_layout.addWidget(QLabel("初相位:"))
-            self.initial_phase_h_layout.addWidget(self.photon_initial_phase_0)
-            self.initial_phase_h_layout.addWidget(self.photon_initial_phase_180)
-            self.specific_props_layout.addLayout(self.initial_phase_h_layout)
+            # 存储所有特定编辑器实例，以便动态显示/隐藏
+            self.specific_editors = {
+                FermionLine: self.fermion_editor,
+                AntiFermionLine: self.fermion_editor,
+                PhotonLine: self.photon_editor,
+                GluonLine: self.gluon_editor,
+                WPlusLine: self.wz_boson_editor,
+                WMinusLine: self.wz_boson_editor,
+                ZBosonLine: self.wz_boson_editor,
+            }
 
-            self.photon_final_phase_group = QButtonGroup(self)
-            self.photon_final_phase_0 = QRadioButton("0°")
-            self.photon_final_phase_180 = QRadioButton("180°")
-            self.photon_final_phase_group.addButton(self.photon_final_phase_0, 0)
-            self.photon_final_phase_group.addButton(self.photon_final_phase_180, 180)
-            self.final_phase_h_layout = QHBoxLayout() # 为末相位创建独立布局
-            self.final_phase_h_layout.addWidget(QLabel("末相位:"))
-            self.final_phase_h_layout.addWidget(self.photon_final_phase_0)
-            self.final_phase_h_layout.addWidget(self.photon_final_phase_180)
-            self.specific_props_layout.addLayout(self.final_phase_h_layout)
-
-            self.specific_props_layout.addLayout(self.photon_amplitude_layout)
-            self.specific_props_layout.addLayout(self.photon_wavelength_layout)
-
-
-            # --- GluonLine 特有属性 ---
-            self.gluon_amplitude_layout, self.gluon_amplitude_input = \
-                self._create_spinbox_row("振幅:", 0.1, min_val=0.01, max_val=1.0, step=0.01)
-            self.gluon_wavelength_layout, self.gluon_wavelength_input = \
-                self._create_spinbox_row("波长:", 0.2, min_val=0.05, max_val=1.0, step=0.01)
-            self.gluon_n_cycles_layout, self.gluon_n_cycles_input = \
-                self._create_spinbox_row("周期数:", 16, min_val=1, max_val=100, step=1, is_int=True)
-            # GluonLine 的 bezier_offset 如果与通用 Line 的 bezier_offset 概念不同，则保持独立
-            # 如果是同一个概念，则 GluonLine 不应再有此属性，而应使用 Line 基类的属性
-            # 在这里我们假设它是 GluonLine 特有的，如果实际是通用，请移除此行并使用通用控件
-            self.gluon_bezier_offset_layout, self.gluon_bezier_offset_input = \
-                self._create_spinbox_row("胶子贝塞尔偏移:", 0.3, min_val=0.0, max_val=1.0, step=0.01) 
-
-            self.specific_props_layout.addLayout(self.gluon_amplitude_layout)
-            self.specific_props_layout.addLayout(self.gluon_wavelength_layout)
-            self.specific_props_layout.addLayout(self.gluon_n_cycles_layout)
-            self.specific_props_layout.addLayout(self.gluon_bezier_offset_layout) # 保持 Gluon 特有贝塞尔偏移
-
-            # --- W/Z 玻色子线特有属性 (新增) ---
-            self.zigzag_amplitude_layout, self.zigzag_amplitude_input = \
-                self._create_spinbox_row("折线振幅:", 0.2, min_val=0.0, max_val=1.0, step=0.01)
-            self.zigzag_frequency_layout, self.zigzag_frequency_input = \
-                self._create_spinbox_row("折线频率:", 2.0, min_val=0.1, max_val=10.0, step=0.1)
-            
-            self.specific_props_layout.addLayout(self.zigzag_amplitude_layout)
-            self.specific_props_layout.addLayout(self.zigzag_frequency_layout)
-
-            # 连接下拉框变化信号到更新函数
+            # 连接线条类型选择框的信号到更新函数
             self.particle_type_combo.currentIndexChanged.connect(self._update_specific_properties_ui)
-            
-            # 初始化 UI 显示：先加载当前线条属性值，再根据当前类型更新 UI 控件可见性
-            self._load_current_line_properties()
-            # self._update_specific_properties_ui 在 _load_current_line_properties 内部最后调用，确保初始状态正确
 
-            # 确定/取消按钮 (OK/Cancel buttons)
+            # 初始 UI 显示：根据当前线条类型显示对应的特定属性
+            self._update_specific_properties_ui(self.particle_type_combo.currentIndex())
+
+            # --- 确定/取消按钮 ---
             button_layout = QHBoxLayout()
             ok_button = QPushButton("确定")
             ok_button.clicked.connect(self.accept)
@@ -250,284 +269,163 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             button_layout.addStretch(1)
             button_layout.addWidget(ok_button)
             button_layout.addWidget(cancel_button)
-            self.layout.addLayout(button_layout)
+            self.main_dialog_layout.addLayout(button_layout)
 
-        def _create_spinbox_row(self, label_text, initial_value, min_val=-999.0, max_val=999.0, step=1.0, is_int=False):
-            """辅助函数：创建带标签的 SpinBox."""
-            h_layout = QHBoxLayout()
-            h_layout.addWidget(QLabel(label_text))
-            if is_int:
-                spinbox = QSpinBox()
-                spinbox.setRange(int(min_val), int(max_val))
-                spinbox.setSingleStep(int(step))
-                # 确保初始值是整数
-                spinbox.setValue(int(initial_value))
-            else:
-                spinbox = QDoubleSpinBox()
-                spinbox.setRange(min_val, max_val)
-                spinbox.setSingleStep(step)
-                # 确保初始值是浮点数
-                spinbox.setValue(float(initial_value))
-                spinbox.setDecimals(2)
-            h_layout.addWidget(spinbox)
-            return h_layout, spinbox
+        # --- 辅助方法 (从 LineEditBase 继承，或直接实现) ---
+        def _update_color_label(self):
+            """更新线条颜色按钮的背景色"""
+            self.color_button.setStyleSheet(f"background-color: {self._line_color_picked_color}; border: 1px solid black;")
 
-        def _pick_color(self, button, color_attr_name):
-            """打开颜色对话框并设置按钮颜色，存储选定颜色."""
-            initial_color_str = getattr(self, color_attr_name)
-            initial_qcolor = QColor(initial_color_str)
+        def _select_color(self):
+            """打开颜色选择器，更新线条颜色"""
+            initial_qcolor = QColor(self._line_color_picked_color)
             color = QColorDialog.getColor(initial_qcolor, self)
             if color.isValid():
-                hex_color = color.name()
-                self._set_button_color(button, hex_color)
-                setattr(self, color_attr_name, hex_color)
+                self._line_color_picked_color = color.name()
+                self._update_color_label()
 
-        def _set_button_color(self, button, color_str):
-            """辅助函数：设置按钮背景颜色."""
-            palette = button.palette()
-            palette.setColor(QPalette.Button, QColor(color_str))
-            button.setPalette(palette)
-            button.setAutoFillBackground(True)
-            button.setText(f"{button.text().split('(')[0].strip()} ({color_str})")
+        def _update_label_color_label(self):
+            """更新标签颜色按钮的背景色"""
+            self.label_color_button.setStyleSheet(f"background-color: {self._label_color_picked_color}; border: 1px solid black;")
 
-        def _load_current_line_properties(self):
-            """根据当前的 self.line 对象，初始化所有属性的 UI 控件值。"""
-            
-            # 辅助函数：安全地获取属性值并转换为指定类型
-            def _get_value_or_default(obj, attr_name, default_val, target_type=float):
-                val = getattr(obj, attr_name, default_val)
-                if val is None: # 如果属性存在但值为 None，使用默认值
-                    return target_type(default_val)
-                try: # 尝试转换为目标类型
-                    return target_type(val)
-                except (ValueError, TypeError): # 转换失败，使用默认值
-                    return target_type(default_val)
+        def _select_label_color(self):
+            """打开颜色选择器，更新标签颜色"""
+            initial_qcolor = QColor(self._label_color_picked_color)
+            color = QColorDialog.getColor(initial_qcolor, self)
+            if color.isValid():
+                self._label_color_picked_color = color.name()
+                self._update_label_color_label()
 
-            # 通用属性 (包括 bezier_offset)
-            self.bezier_offset_input.setValue(_get_value_or_default(self.line, 'bezier_offset', 0.3, float))
-            self.angle_in_input.setValue(_get_value_or_default(self.line, '_angleIn', 0.0, float))
-            self.angle_out_input.setValue(_get_value_or_default(self.line, '_angleOut', 0.0, float))
-
-            # FermionLine 属性
-            if isinstance(self.line, (FermionLine, AntiFermionLine)):
-                self.fermion_arrow_checkbox.setChecked(getattr(self.line, 'arrow', True))
-                self.fermion_arrow_filled_checkbox.setChecked(getattr(self.line, 'arrow_filled', False))
-                self.fermion_arrow_position_input.setValue(_get_value_or_default(self.line, 'arrow_position', 0.5, float))
-                self.fermion_arrow_size_input.setValue(_get_value_or_default(self.line, 'arrow_size', 10.0, float))
-                self.fermion_arrow_line_width_input.setValue(_get_value_or_default(self.line, 'arrow_line_width', 1.0, float))
-                self.fermion_arrow_reversed_checkbox.setChecked(getattr(self.line, 'arrow_reversed', False))
-            
-            # PhotonLine 属性
-            elif isinstance(self.line, PhotonLine):
-                self.photon_amplitude_input.setValue(_get_value_or_default(self.line, 'amplitude', 0.1, float))
-                self.photon_wavelength_input.setValue(_get_value_or_default(self.line, 'wavelength', 0.5, float))
-                initial_phase = _get_value_or_default(self.line, 'initial_phase', 0, int)
-                if initial_phase == 0:
-                    self.photon_initial_phase_0.setChecked(True)
-                else:
-                    self.photon_initial_phase_180.setChecked(True)
-                final_phase = _get_value_or_default(self.line, 'final_phase', 0, int)
-                if final_phase == 0:
-                    self.photon_final_phase_0.setChecked(True)
-                else:
-                    self.photon_final_phase_180.setChecked(True)
-
-            # GluonLine 属性
-            elif isinstance(self.line, GluonLine):
-                self.gluon_amplitude_input.setValue(_get_value_or_default(self.line, 'amplitude', 0.1, float))
-                self.gluon_wavelength_input.setValue(_get_value_or_default(self.line, 'wavelength', 0.2, float))
-                self.gluon_n_cycles_input.setValue(_get_value_or_default(self.line, 'n_cycles', 16, int))
-                # GluonLine 的 bezier_offset
-                self.gluon_bezier_offset_input.setValue(_get_value_or_default(self.line, 'bezier_offset', 0.3, float))
-            
-            # W/Z BosonLine 属性 (新增)
-            elif isinstance(self.line, (WPlusLine, WMinusLine, ZBosonLine)):
-                self.zigzag_amplitude_input.setValue(_get_value_or_default(self.line, 'zigzag_amplitude', 0.2, float))
-                self.zigzag_frequency_input.setValue(_get_value_or_default(self.line, 'zigzag_frequency', 2.0, float))
-
-
-            # 加载完成后，根据当前线条类型更新 UI 控件可见性
-            self._update_specific_properties_ui(self.particle_type_combo.currentIndex())
-
-
-        def _set_widgets_visible(self, widgets, visible):
-            """辅助函数：设置一组控件及其子控件的可见性."""
-            for widget in widgets:
-                if isinstance(widget, QHBoxLayout) or isinstance(widget, QVBoxLayout): # 检查是布局
-                    for i in range(widget.count()):
-                        item = widget.itemAt(i)
-                        if item.widget(): # 如果是控件
-                            item.widget().setVisible(visible)
-                        elif item.layout(): # 如果是嵌套布局
-                            self._set_widgets_visible([item.layout()], visible) # 递归调用
-                elif widget: # 如果是单个控件 (非布局)
-                    widget.setVisible(visible)
-
-        def _update_specific_properties_ui(self, index):
-            """根据当前选择的线条类型，显示/隐藏特定的属性控件。"""
+        def _update_specific_properties_ui(self, index: int):
+            """隐藏所有特定属性编辑器，并只显示相关的那个。"""
             selected_class = self.particle_type_combo.itemData(index)
 
-            # 隐藏所有特定属性控件
-            self._set_widgets_visible([
-                self.fermion_arrow_checkbox, self.fermion_arrow_filled_checkbox,
-                self.fermion_arrow_position_layout, self.fermion_arrow_size_layout,
-                self.fermion_arrow_line_width_layout, self.fermion_arrow_reversed_checkbox,
-                self.photon_amplitude_layout, self.photon_wavelength_layout,
-                self.initial_phase_h_layout, 
-                self.final_phase_h_layout,   
-                self.gluon_amplitude_layout, self.gluon_wavelength_layout,
-                self.gluon_n_cycles_layout, self.gluon_bezier_offset_layout, # GluonLine 特有的 bezier_offset
-                self.zigzag_amplitude_layout, self.zigzag_frequency_layout, 
-            ], False)
+            # 首先隐藏所有编辑器
+            for editor in set(self.specific_editors.values()):  # 使用 set 处理共享编辑器
+                editor.set_visible(False)
 
-            # 根据选定类型显示相关控件
-            if selected_class in (FermionLine, AntiFermionLine):
-                self._set_widgets_visible([
-                    self.fermion_arrow_checkbox, self.fermion_arrow_filled_checkbox,
-                    self.fermion_arrow_position_layout, self.fermion_arrow_size_layout,
-                    self.fermion_arrow_line_width_layout, self.fermion_arrow_reversed_checkbox,
-                ], True)
-            elif selected_class == PhotonLine:
-                self._set_widgets_visible([
-                    self.photon_amplitude_layout, self.photon_wavelength_layout,
-                    self.initial_phase_h_layout, 
-                    self.final_phase_h_layout,   
-                ], True)
-            elif selected_class == GluonLine:
-                self._set_widgets_visible([
-                    self.gluon_amplitude_layout, self.gluon_wavelength_layout,
-                    self.gluon_n_cycles_layout, self.gluon_bezier_offset_layout,
-                ], True)
-            elif selected_class in (WPlusLine, WMinusLine, ZBosonLine): # 新增 W/Z 玻色子条件
-                self._set_widgets_visible([
-                    self.zigzag_amplitude_layout, self.zigzag_frequency_layout,
-                ], True)
-
+            # 显示选定类型对应的编辑器
+            if selected_class in self.specific_editors:
+                editor_to_show = self.specific_editors[selected_class]
+                # 在显示之前，确保编辑器持有的 line 对象是当前对话框的 line 对象
+                editor_to_show.line = self.line
+                editor_to_show.set_visible(True)
+                editor_to_show._load_properties()
 
         def accept(self):
-            """当点击 OK 按钮时调用。更新传入的 Line 对象的属性。
-            如果线条类型发生变化，将替换原始线条。"""
+            """当点击 OK 按钮时调用。更新 Line 对象的属性。
+            如果线条类型发生变化，将替换原始线条。
+            """
+            new_line_id = self._current_line_id_str
+            # ID现在是只读，所以new_line_id总是等于self._original_line_id
+            # 移除ID冲突检查，因为ID不能被修改
             
             selected_particle_class = self.particle_type_combo.currentData()
+            selected_line_style_enum = self.line_style_combo.currentData()  # 获取 LineStyle 枚举成员
 
-            new_label = self.label_input.text()
-            new_label_offset = np.array([self.label_offset_x_input.value(), self.label_offset_y_input.value()])
-            new_color = self._line_color_picked_color
-            new_linewidth = self.line_width_input.value()
-            new_alpha = self.line_alpha_input.value()
-            
-            # 获取通用属性：bezier_offset, angle_in, angle_out 的值
-            new_bezier_offset = float(self.bezier_offset_input.value()) # 获取通用 bezier_offset 值
-            new_angle_in = float(self.angle_in_input.value())
-            new_angle_out = float(self.angle_out_input.value())
-
-            # 通用 kwargs (现在包含 bezier_offset)
+            # 从 UI 获取所有通用属性
             common_kwargs = {
-                'label': new_label,
-                'label_offset': new_label_offset,
-                'bezier_offset': new_bezier_offset, # 将通用 bezier_offset 包含在通用 kwargs 中
-                'line_plot_config': {
-                    'color': new_color,
-                    'linewidth': new_linewidth,
-                    'alpha': new_alpha,
-                    **self.line.linePlotConfig # 复制旧的所有配置，然后覆盖新的
-                }
+                'label': self.label_input.text(),
+                'label_offset': np.array([self.label_offset_x_input.value(), self.label_offset_y_input.value()]),
+                'bezier_offset': float(self.bezier_offset_input.value()),
+                'linewidth': float(self.linewidth_input.value()),
+                'color': self._line_color_picked_color,
+                'linestyle': self.mpl_linestyle_combo.currentText() if self.mpl_linestyle_combo.currentText() != '(空)' else None,
+                'alpha': float(self.alpha_input.value()),
+                'zorder': int(self.zorder_input.value()),
+                'label_fontsize': int(self.label_fontsize_input.value()),
+                'label_color': self._label_color_picked_color,
+                'label_ha': self.label_ha_combo.currentText(),
+                'label_va': self.label_va_combo.currentText(),
+                'style': selected_line_style_enum,
             }
 
-            # 收集特定线条类型的参数
-            specific_kwargs = {}
-            if selected_particle_class in (FermionLine, AntiFermionLine):
-                specific_kwargs = {
-                    'arrow': self.fermion_arrow_checkbox.isChecked(),
-                    'arrow_filled': self.fermion_arrow_filled_checkbox.isChecked(),
-                    'arrow_position': float(self.fermion_arrow_position_input.value()),
-                    'arrow_size': float(self.fermion_arrow_size_input.value()),
-                    'arrow_line_width': float(self.fermion_arrow_line_width_input.value()),
-                    'arrow_reversed': self.fermion_arrow_reversed_checkbox.isChecked(),
-                }
-            elif selected_particle_class == PhotonLine:
-                specific_kwargs = {
-                    'amplitude': float(self.photon_amplitude_input.value()),
-                    'wavelength': float(self.photon_wavelength_input.value()),
-                    'initial_phase': int(self.photon_initial_phase_group.checkedId()),
-                    'final_phase': int(self.photon_final_phase_group.checkedId()),
-                }
-            elif selected_particle_class == GluonLine:
-                specific_kwargs = {
-                    'amplitude': float(self.gluon_amplitude_input.value()),
-                    'wavelength': float(self.gluon_wavelength_input.value()),
-                    'n_cycles': int(self.gluon_n_cycles_input.value()),
-                    'bezier_offset': float(self.gluon_bezier_offset_input.value()), # 收集 GluonLine 特有的 bezier_offset
-                }
-            elif selected_particle_class in (WPlusLine, WMinusLine, ZBosonLine): # W/Z 玻色子参数收集
-                specific_kwargs = {
-                    'zigzag_amplitude': float(self.zigzag_amplitude_input.value()),
-                    'zigzag_frequency': float(self.zigzag_frequency_input.value()),
-                }
-
-            # 如果线条类型发生变化
-            if selected_particle_class and type(self.line) != selected_particle_class:
-                self.diagram_model.remove_line(self.line.id)
-                
-                all_kwargs = {
-                    'v_start': self._original_v_start, 
-                    'v_end': self._original_v_end,
-                    'line_type': selected_particle_class,
-                    'id': self.line.id, # 保持ID
-                    **common_kwargs, # 这里包含了通用 bezier_offset
-                    **specific_kwargs
-                }
-                
-                # 调用 diagram_model.add_line，它应该负责创建新线条实例
-                self.line = self.diagram_model.add_line(**all_kwargs)
-                
-                # 新创建的线条，立即用 set_angles 设置用户指定的角度
-                if hasattr(self.line, 'set_angles'):
-                    self.line.set_angles(v_start=None, v_end=None, angleIn=new_angle_in, angleOut=new_angle_out)
-
+            # 处理 angleIn 和 angleOut 的“自动”选项 (None)
+            if self.angle_in_input.text() == self.angle_in_input.specialValueText():
+                common_kwargs['angleIn'] = None
             else:
-                # 如果线条类型没有变化，更新现有线条的属性和绘图配置字典
-                self.line.label = new_label
-                self.line.label_offset = new_label_offset
-                self.line.bezier_offset = new_bezier_offset # 更新 Line 基类的 bezier_offset 属性
-                self.line.linePlotConfig['color'] = new_color
-                self.line.linePlotConfig['linewidth'] = new_linewidth
-                self.line.linePlotConfig['alpha'] = new_alpha
+                common_kwargs['angleIn'] = float(self.angle_in_input.value())
 
-                # 使用新的 set_angles 方法来更新角度，确保优先使用用户设置的值
-                if hasattr(self.line, 'set_angles'):
-                    self.line.set_angles(v_start=None, v_end=None, angleIn=new_angle_in, angleOut=new_angle_out)
+            if self.angle_out_input.text() == self.angle_out_input.specialValueText():
+                common_kwargs['angleOut'] = None
+            else:
+                common_kwargs['angleOut'] = float(self.angle_out_input.value())
 
-                # 更新特定线条的属性
-                if isinstance(self.line, (FermionLine, AntiFermionLine)):
-                    if hasattr(self.line, 'arrow'): self.line.arrow = self.fermion_arrow_checkbox.isChecked()
-                    if hasattr(self.line, 'arrow_filled'): self.line.arrow_filled = self.fermion_arrow_filled_checkbox.isChecked()
-                    if hasattr(self.line, 'arrow_position'): self.line.arrow_position = float(self.fermion_arrow_position_input.value())
-                    if hasattr(self.line, 'arrow_size'): self.line.arrow_size = float(self.fermion_arrow_size_input.value())
-                    if hasattr(self.line, 'arrow_line_width'): self.line.arrow_line_width = float(self.fermion_arrow_line_width_input.value())
-                    if hasattr(self.line, 'arrow_reversed'): self.line.arrow_reversed = self.fermion_arrow_reversed_checkbox.isChecked()
-                elif isinstance(self.line, PhotonLine):
-                    if hasattr(self.line, 'amplitude'): self.line.amplitude = float(self.photon_amplitude_input.value())
-                    if hasattr(self.line, 'wavelength'): self.line.wavelength = float(self.photon_wavelength_input.value())
-                    if hasattr(self.line, 'initial_phase'): self.line.initial_phase = int(self.photon_initial_phase_group.checkedId())
-                    if hasattr(self.line, 'final_phase'): self.line.final_phase = int(self.photon_final_phase_group.checkedId())
-                elif isinstance(self.line, GluonLine):
-                    if hasattr(self.line, 'amplitude'): self.line.amplitude = float(self.gluon_amplitude_input.value())
-                    if hasattr(self.line, 'wavelength'): self.line.wavelength = float(self.gluon_wavelength_input.value())
-                    if hasattr(self.line, 'n_cycles'): self.line.n_cycles = int(self.gluon_n_cycles_input.value())
-                    if hasattr(self.line, 'bezier_offset'): self.line.bezier_offset = float(self.gluon_bezier_offset_input.value()) # 更新 GluonLine 特有的 bezier_offset
-                elif isinstance(self.line, (WPlusLine, WMinusLine, ZBosonLine)): # W/Z 玻色子参数更新
-                    if hasattr(self.line, 'zigzag_amplitude'): self.line.zigzag_amplitude = float(self.zigzag_amplitude_input.value())
-                    if hasattr(self.line, 'zigzag_frequency'): self.line.zigzag_frequency = float(self.zigzag_frequency_input.value())
+            # 获取特定线条类型的参数
+            specific_kwargs = {}
+            if selected_particle_class in self.specific_editors:
+                current_editor = self.specific_editors[selected_particle_class]
+                specific_kwargs = current_editor.get_specific_kwargs()
 
-            super().accept()
+            # 合并所有 kwargs
+            all_kwargs = {**common_kwargs, **specific_kwargs}
+
+            # --- 线条类型发生变化时的处理逻辑 ---
+            if type(self.line) != selected_particle_class:
+                # 移除旧线条
+                self.diagram_model.remove_line(self._original_line_id)
+
+                # 创建新的线条实例
+                new_line_instance = selected_particle_class(
+                    v_start=self._original_v_start,
+                    v_end=self._original_v_end,
+                    id=new_line_id,
+                    **all_kwargs
+                )
+
+                try:
+                    # 使用 diagram_model 的 add_line 方法 (它应该能处理 line 实例)
+                    # 注意：diagram_model.add_line 可能需要一个 line 实例，而不是 line_type
+                    # 如果 diagram_model.add_line 期望 line_type，你需要调整它或直接添加 new_line_instance
+                    self.diagram_model.add_line(line=new_line_instance) # 假设 add_line 可以直接接受 Line 实例
+                    
+                    # 关键：更新对话框内部的 line 引用，以便 line_updated 信号传递的是正确的对象
+                    self.line = new_line_instance
+                    QMessageBox.information(self, "操作成功", f"线条 {new_line_id} 类型已更换并更新。")
+
+                except ValueError as e:
+                    QMessageBox.critical(self, "操作失败", str(e))
+                    super().reject()
+                    return
+                except Exception as e:
+                    QMessageBox.critical(self, "错误", f"更新线条时发生未知错误: {e}")
+                    super().reject()
+                    return
+            # --- 线条类型未变化时的处理逻辑 (编辑现有线条) ---
+            else:
+                # 直接更新现有线条的属性
+                self.line.label = common_kwargs['label']
+                self.line.label_offset = common_kwargs['label_offset']
+                self.line.bezier_offset = common_kwargs['bezier_offset']
+                self.line.linewidth = common_kwargs['linewidth']
+                self.line.color = common_kwargs['color']
+                self.line.linestyle = common_kwargs['linestyle']
+                self.line.alpha = common_kwargs['alpha']
+                self.line.zorder = common_kwargs['zorder']
+                self.line.label_fontsize = common_kwargs['label_fontsize']
+                self.line.label_color = common_kwargs['label_color']
+                self.line.label_ha = common_kwargs['label_ha']
+                self.line.label_va = common_kwargs['label_va']
+                self.line.style = common_kwargs['style']
+                self.line._angleIn = common_kwargs['angleIn']
+                self.line._angleOut = common_kwargs['angleOut']
+
+                # 通过特定编辑器更新其独有属性
+                if selected_particle_class in self.specific_editors:
+                    current_editor = self.specific_editors[selected_particle_class]
+                    current_editor.apply_properties(self.line)
+
+                QMessageBox.information(self, "操作成功", f"线条 {self.line.id} 属性已更新。")
+
+            super().accept()  # 接受对话框
 
     # 在 open_edit_line_dialog 函数内部实例化并执行这个局部定义的对话框
     dialog = _InternalEditLineDialog(line, diagram_model=diagram_model, parent_dialog=parent_widget)
-    
+
     if dialog.exec() == QDialog.Accepted:
-        QMessageBox.information(parent_widget, "编辑成功", f"线条 {line.id} 属性已更新。")
-        return True # 返回 True 表示成功，LineController 会触发刷新
+        # 对话框接受后，dialog.line 已经是更新后的线条对象，并且已经在 diagram_model 中
+        return True
     else:
+        # 对话框取消
         QMessageBox.information(parent_widget, "编辑取消", f"线条 {line.id} 属性编辑已取消。")
         return False

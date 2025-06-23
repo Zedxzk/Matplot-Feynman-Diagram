@@ -86,28 +86,28 @@ class EditLineDialog(QDialog):
         self.layout.addWidget(line_plot_group)
 
         # Line Width
-        self.linewidth_input = self._create_spinbox_row("线宽:", self.line.linePlotConfig.get('linewidth', 1.0), min_val=0.1, max_val=10.0, step=0.1)
+        self.linewidth_input = self._create_spinbox_row("线宽:", self.line.linePlotConfig().get('linewidth', 1.0), min_val=0.1, max_val=10.0, step=0.1)
         line_plot_layout.addLayout(self.linewidth_input)
 
         # Line Color
         self.line_color_btn = QPushButton("线条颜色")
         self.line_color_btn.clicked.connect(lambda: self._pick_color(self.line_color_btn, 'line_color_picked'))
         line_plot_layout.addWidget(self.line_color_btn)
-        self._set_button_color(self.line_color_btn, self.line.linePlotConfig.get('color', 'black'))
+        self._set_button_color(self.line_color_btn, self.line.linePlotConfig().get('color', 'black'))
 
         # Line Style (Matplotlib)
         line_style_mpl_layout = QHBoxLayout()
         line_style_mpl_layout.addWidget(QLabel("线条样式(mpl):"))
-        self.linestyle_input = QLineEdit(self.line.linePlotConfig.get('linestyle', 'solid')) # Default to solid
+        self.linestyle_input = QLineEdit(self.line.linePlotConfig().get('linestyle', 'solid')) # Default to solid
         line_style_mpl_layout.addWidget(self.linestyle_input)
         line_plot_layout.addLayout(line_style_mpl_layout)
 
         # Alpha
-        self.alpha_input = self._create_spinbox_row("透明度:", self.line.linePlotConfig.get('alpha', 1.0), min_val=0.0, max_val=1.0, step=0.01)
+        self.alpha_input = self._create_spinbox_row("透明度:", self.line.linePlotConfig().get('alpha', 1.0), min_val=0.0, max_val=1.0, step=0.01)
         line_plot_layout.addLayout(self.alpha_input)
 
         # ZOrder
-        self.zorder_input = self._create_spinbox_row("Z轴顺序:", self.line.linePlotConfig.get('zorder', 1), is_int=True, min_val=-100, max_val=100)
+        self.zorder_input = self._create_spinbox_row("Z轴顺序:", self.line.linePlotConfig().get('zorder', 1), is_int=True, min_val=-100, max_val=100)
         line_plot_layout.addLayout(self.zorder_input)
 
 
@@ -117,21 +117,21 @@ class EditLineDialog(QDialog):
         self.layout.addWidget(label_plot_group)
 
         # Font Size
-        self.fontsize_input = self._create_spinbox_row("字体大小:", self.line.labelPlotConfig.get('fontsize', 10), is_int=True, min_val=5, max_val=72)
+        self.fontsize_input = self._create_spinbox_row("字体大小:", self.line.labelPlotConfig().get('fontsize', 10), is_int=True, min_val=5, max_val=72)
         label_plot_layout.addLayout(self.fontsize_input)
 
         # Label Color
         self.label_color_btn = QPushButton("标签颜色")
         self.label_color_btn.clicked.connect(lambda: self._pick_color(self.label_color_btn, 'label_color_picked'))
         label_plot_layout.addWidget(self.label_color_btn)
-        self._set_button_color(self.label_color_btn, self.line.labelPlotConfig.get('color', 'black'))
+        self._set_button_color(self.label_color_btn, self.line.labelPlotConfig().get('color', 'black'))
 
         # Horizontal Alignment
         ha_layout = QHBoxLayout()
         ha_layout.addWidget(QLabel("水平对齐:"))
         self.ha_combo = QComboBox()
         self.ha_combo.addItems(['left', 'center', 'right'])
-        self.ha_combo.setCurrentText(self.line.labelPlotConfig.get('ha', 'center'))
+        self.ha_combo.setCurrentText(self.line.labelPlotConfig().get('ha', 'center'))
         ha_layout.addWidget(self.ha_combo)
         label_plot_layout.addLayout(ha_layout)
 
@@ -140,7 +140,7 @@ class EditLineDialog(QDialog):
         va_layout.addWidget(QLabel("垂直对齐:"))
         self.va_combo = QComboBox()
         self.va_combo.addItems(['top', 'center', 'bottom', 'baseline'])
-        self.va_combo.setCurrentText(self.line.labelPlotConfig.get('va', 'center'))
+        self.va_combo.setCurrentText(self.line.labelPlotConfig().get('va', 'center'))
         va_layout.addWidget(self.va_combo)
         label_plot_layout.addLayout(va_layout)
 
@@ -195,9 +195,9 @@ class EditLineDialog(QDialog):
         
         # 尝试从 line.linePlotConfig 或 line.labelPlotConfig 获取初始颜色
         if temp_attr_name == 'line_color_picked':
-            initial_qcolor = QColor(self.line.linePlotConfig.get('color', 'black'))
+            initial_qcolor = QColor(self.line.linePlotConfig().get('color', 'black'))
         elif temp_attr_name == 'label_color_picked':
-            initial_qcolor = QColor(self.line.labelPlotConfig.get('color', 'black'))
+            initial_qcolor = QColor(self.line.labelPlotConfig().get('color', 'black'))
         else:
             initial_qcolor = QColor(current_color_str)
 
@@ -233,14 +233,14 @@ class EditLineDialog(QDialog):
 
         # 更新 linePlotConfig 中的参数
         updated_data['linewidth'] = self.linewidth_input[1].value()
-        updated_data['color'] = getattr(self, '_line_color_picked', self.line.linePlotConfig.get('color'))
+        updated_data['color'] = getattr(self, '_line_color_picked', self.line.linePlotConfig().get('color'))
         updated_data['linestyle'] = self.linestyle_input.text()
         updated_data['alpha'] = self.alpha_input[1].value()
         updated_data['zorder'] = self.zorder_input[1].value()
 
         # 更新 labelPlotConfig 中的参数
         updated_data['fontsize'] = self.fontsize_input[1].value()
-        updated_data['label_color'] = getattr(self, '_label_color_picked', self.line.labelPlotConfig.get('color'))
+        updated_data['label_color'] = getattr(self, '_label_color_picked', self.line.labelPlotConfig().get('color'))
         updated_data['ha'] = self.ha_combo.currentText()
         updated_data['va'] = self.va_combo.currentText()
 

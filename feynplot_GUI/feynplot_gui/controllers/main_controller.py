@@ -104,8 +104,8 @@ class MainController(QObject):
         # self.toolbox_controller.mode_changed.connect(self._on_tool_mode_changed) # 内部更新 MainController 的模式
         # self.toolbox_controller.mode_changed.connect(self.canvas_controller.set_mode) # 更新 CanvasController 的模式
                 
-        self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_from_toolbox)
-        self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_from_navigation_bar)
+        # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_from_toolbox)
+        # self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_from_navigation_bar)
 
         # 将 ToolboxWidget 的操作信号直接连接到 MainController 的方法
         # 假设 ToolboxWidget 已经有这些信号
@@ -124,7 +124,7 @@ class MainController(QObject):
         self.main_window.navigation_bar_widget_instance.add_vertex_button_clicked.connect(self.start_add_vertex_process)
         self.main_window.navigation_bar_widget_instance.add_line_button_clicked.connect(self.start_add_line_process)
         # self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_to_file)
-        self.main_window.navigation_bar_widget_instance.load_project_action_triggered.connect(self.load_diagram_from_file)
+        # self.main_window.navigation_bar_widget_instance.load_project_action_triggered.connect(self.load_diagram_from_file)
         # self.main_window.navigation_bar_widget_instance.clear_diagram_action_triggered.connect(self.clear_diagram)
         
         # 对象菜单的通用编辑和删除信号 (由 NavigationBarWidget 发出)
@@ -145,11 +145,63 @@ class MainController(QObject):
         # self.selection_changed.connect(self.canvas_controller.set_selected_object) # CanvasWidget 根据 ID 和 Type 更新高亮
         self.selection_changed.connect(self.vertex_controller.set_selected_item_in_list) # 列表选中状态
         self.selection_changed.connect(self.line_controller.set_selected_item_in_list)  # 列表选中状态
-        self.selection_changed.connect(self.navigation_bar_controller.update_object_menu_status) # 更新对象菜单的启用状态
+        # self.selection_changed.connect(self.navigation_bar_controller.update_object_menu_status) # 更新对象菜单的启用状态
         # self.selection_changed.connect(self.toolbox_controller.update_delete_buttons_status) # 如果 toolbox_controller 有这个方法
 
 
     # --- MainController 内部槽函数和公共方法 ---
+    def set_diagram_model(self, loaded_diagram: FeynmanDiagram):
+        """
+        根据新加载的Diagram对象更新当前的diagram_model。
+        方法：清空现有模型内容，然后将加载的元素逐一添加到现有模型中。
+        """
+        if not isinstance(loaded_diagram,FeynmanDiagram):
+            raise TypeError("loaded_diagram 必须是 feynplot.core.diagram.Diagram 的实例。")
+
+        # 1. 清空当前模型的所有内容
+        # 重要：先移除线条，因为线条依赖顶点
+        for line in list(self.diagram_model.lines): # 使用list()创建副本以安全迭代
+            self.diagram_model.remove_line(line)
+        for vertex in list(self.diagram_model.vertices): # 使用list()创建副本以安全迭代
+            self.diagram_model.remove_vertex(vertex)
+
+        # 2. 将加载的顶点和线条逐一添加到现有模型
+        # 注意：这里需要确保添加线条时，其引用的顶点是当前模型中的顶点实例。
+        # 最稳妥的方法是，先添加所有顶点，然后根据ID映射来连接线条。
+        
+        # 建立旧顶点ID到新顶点实例的映射（如果ID是唯一且稳定的）
+        # 或者，如果loaded_diagram中的顶点是全新的实例，我们直接添加它们
+        vertex_map = {} # 用于存储新旧顶点ID的映射，以便重新连接线条
+        
+        for vertex in loaded_diagram.vertices:
+            # 假设 add_vertex 方法会处理将顶点添加到 self.diagram_model
+            # 并且返回添加后的顶点实例（可能是同一个，也可能是拷贝后的新实例）
+            # 我们需要保存这个新实例的引用，如果需要通过ID重新连接线条。
+            self.diagram_model.add_vertex(vertex) # 直接添加新实例
+            vertex_map[vertex.id] = vertex # 假设vertex.id是唯一的
+
+        for line in loaded_diagram.lines:
+            # 确保线条连接的是当前模型中的顶点实例
+            start_v = vertex_map.get(line.start_vertex.id)
+            end_v = vertex_map.get(line.end_vertex.id)
+            line_type = vertex_map.get(line.line_type)
+
+            if start_v and end_v:
+                # 重新创建线条，确保它引用的是当前模型中的顶点对象
+                new_line_instance = Line(start_vertex=start_v, end_vertex=end_v, **line.get_properties())
+                print(new_line_instance)
+                self.diagram_model.add_line(line=new_line_instance)
+            else:
+                print(f"警告: 无法为线条 {line.id} 找到对应的顶点，跳过此线条。")
+                # 理论上，如果 import_diagram_from_json 逻辑正确，不应该出现这种情况。
+                self.status_message.emit(f"警告: 无法加载线条 {line.id}，顶点缺失。")
+
+        self.selected_item = None # 清除任何之前的选择
+
+        # 3. 通知所有相关组件模型已更新并重新绘制
+        # self.diagram_updated.emit()
+        # self.selection_changed.emit(self.selected_item)
+        self.update_all_views()
 
     def _on_tool_mode_changed(self, mode: str):
         """当工具模式改变时，更新 MainController 内部状态。"""
@@ -656,21 +708,21 @@ class MainController(QObject):
 
 
 
-    def load_diagram_from_file(self):
-        """从文件加载图。"""
-        file_path, _ = QFileDialog.getOpenFileName(self.main_window, "加载费曼图", "", "JSON Files (*.json);;All Files (*)")
-        if file_path:
-            try:
-                # FeynmanDiagram.load_from_json 应该返回一个新的 FeynmanDiagram 实例
-                loaded_diagram = FeynmanDiagram.load_from_json(file_path)
-                self.diagram_model = loaded_diagram # 替换当前模型
-                self.update_all_views() # 加载后更新所有视图
-                self.clear_selection() # 清除选中状态
-                self.status_message.emit(f"图表已成功从 {file_path} 加载。")
-            except Exception as e:
-                QMessageBox.critical(self.main_window, "加载失败", f"加载图表时发生错误：\n{str(e)}")
-        else:
-            self.status_message.emit("加载操作已取消。")
+    # def load_diagram_from_file(self):
+    #     """从文件加载图。"""
+    #     file_path, _ = QFileDialog.getOpenFileName(self.main_window, "加载费曼图", "", "JSON Files (*.json);;All Files (*)")
+    #     if file_path:
+    #         try:
+    #             # FeynmanDiagram.load_from_json 应该返回一个新的 FeynmanDiagram 实例
+    #             loaded_diagram = FeynmanDiagram.load_from_json(file_path)
+    #             self.diagram_model = loaded_diagram # 替换当前模型
+    #             self.update_all_views() # 加载后更新所有视图
+    #             self.clear_selection() # 清除选中状态
+    #             self.status_message.emit(f"图表已成功从 {file_path} 加载。")
+    #         except Exception as e:
+    #             QMessageBox.critical(self.main_window, "加载失败", f"加载图表时发生错误：\n{str(e)}")
+    #     else:
+    #         self.status_message.emit("加载操作已取消。")
 
     def clear_diagram(self):
         """

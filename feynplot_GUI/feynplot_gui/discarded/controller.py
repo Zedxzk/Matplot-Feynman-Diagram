@@ -88,7 +88,7 @@ class Controller(QObject):
         # # # 检查 Line 1
         # # print(f"Line '{line1.label}' (ID: {line1.id}):")
         # # print(f"  Start: ({line1.v_start.x}, {line1.v_start.y}) -> End: ({line1.v_end.x}, {line1.v_end.y})")
-        # # print(f"   Arrow: {line1.linePlotConfig.get('arrow', False)}, Color: {line1.linePlotConfig.get('color', 'N/A')}")
+        # # print(f"   Arrow: {line1.linePlotConfig().get('arrow', False)}, Color: {line1.linePlotConfig().get('color', 'N/A')}")
 
         # # Line 2: Photon Emission -> Electron Out
         # line2 = self.diagram_model.add_line(
@@ -100,7 +100,7 @@ class Controller(QObject):
         # # 检查 Line 2
         # # print(f"Line '{line2.label}' (ID: {line2.id}):")
         # # print(f"  Start: ({line2.v_start.x}, {line2.v_start.y}) -> End: ({line2.v_end.x}, {line2.v_end.y})")
-        # # print(f"   Arrow: {line2.linePlotConfig.get('arrow', False)}, Color: {line2.linePlotConfig.get('color', 'N/A')}")
+        # # print(f"   Arrow: {line2.linePlotConfig().get('arrow', False)}, Color: {line2.linePlotConfig().get('color', 'N/A')}")
 
 
         # # Line 3: Electron Out -> Muon In
@@ -113,7 +113,7 @@ class Controller(QObject):
         # # 检查 Line 3
         # # print(f"Line '{line3.label}' (ID: {line3.id}):")
         # # print(f"  Start: ({line3.v_start.x}, {line3.v_start.y}) -> End: ({line3.v_end.x}, {line3.v_end.y})")
-        # # print(f"  LineStyle (Plot): {line3.linePlotConfig.get('linestyle', 'N/A')}")
+        # # print(f"  LineStyle (Plot): {line3.linePlotConfig().get('linestyle', 'N/A')}")
 
 
         # # Line 4: Muon In -> Muon Out
@@ -126,7 +126,7 @@ class Controller(QObject):
         # # 检查 Line 4
         # print(f"Line '{line4.label}' (ID: {line4.id}):")
         # print(f"  Start: ({line4.v_start.x}, {line4.v_start.y}) -> End: ({line4.v_end.x}, {line4.v_end.y})")
-        # print(f"  Arrow: {line4.linePlotConfig.get('arrow', False)}")
+        # print(f"  Arrow: {line4.linePlotConfig().get('arrow', False)}")
         # print("------------------------------------------")
         
         # self.update_view() # 确保视图在初始化后更新

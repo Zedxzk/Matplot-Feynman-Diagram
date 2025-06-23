@@ -2,6 +2,9 @@
 from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line, FermionLine, AntiFermionLine, PhotonLine, GluonLine, WPlusLine, WMinusLine, ZBosonLine
 
+# Import the new I/O functions (assuming they are in feynplot.io.diagram_io)
+# from feynplot.io.diagram_io import export_diagram_to_json, import_diagram_from_json
+
 class FeynmanDiagram:
     def __init__(self):
         self.vertices = []
@@ -243,6 +246,9 @@ class FeynmanDiagram:
             self._vertex_ids.discard(vertex_id)
             return True
         return False
+    
+    def remove_vertex(self, vertex_id: str) -> bool:
+        return self.delete_vertex(vertex_id)
 
     def delete_item(self, item_id: str, item_type: str) -> bool:
         """
@@ -294,7 +300,7 @@ class FeynmanDiagram:
             return self.get_line_by_id(selected_id)
         return None
 
-    # ---
+    # --- Utility Methods ---
     
     def clear_diagram(self):
         """
@@ -305,3 +311,37 @@ class FeynmanDiagram:
         self.lines.clear()
         self._vertex_ids.clear()
         self._line_ids.clear()
+
+    def hide_all_vertices(self):
+        """隐藏图中所有顶点。"""
+        for vertex in self.vertices:
+            # Assumes Vertex has an 'is_visible' attribute
+            vertex.hide()
+    
+    def show_all_vertices(self): 
+        """显示图中所有顶点。"""
+        for vertex in self.vertices:
+            # Assumes Vertex has an 'is_visible' attribute
+            vertex.show()
+
+    def hide_all_vertice_labels(self):
+        """隐藏图中所有顶点的标签。"""
+        for vertex in self.vertices:
+            # Assumes Vertex has a hide_label() method
+            vertex.hide_label()
+    
+    def show_all_vertice_labels(self): 
+        """显示图中所有顶点的标签。"""
+        for vertex in self.vertices:
+            # Assumes Vertex has a show_label() method
+            vertex.show_label()
+
+    # --- JSON Export/Import Methods (delegating to diagram_io) ---
+    # These methods would be present if you followed the previous refactoring advice.
+    # def save(self, filename: str):
+    #     from feynplot.io.diagram_io import export_diagram_to_json
+    #     export_diagram_to_json(self, filename)
+
+    # def load(self, filename: str):
+    #     from feynplot.io.diagram_io import import_diagram_from_json
+    #     import_diagram_from_json(filename, diagram_instance=self)

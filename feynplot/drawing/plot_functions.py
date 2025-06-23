@@ -112,7 +112,7 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
     high_res_bezier_plot_options['color'] = 'lightgray' # 总是浅灰色
     high_res_bezier_plot_options['zorder'] = original_zorder # 确保在所有线的最底层
 
-    ax.plot(high_res_bezier_path[:, 0], high_res_bezier_path[:, 1], **high_res_bezier_plot_options)
+    # ax.plot(high_res_bezier_path[:, 0], high_res_bezier_path[:, 1], **high_res_bezier_plot_options)
 
     # 如果线被选中，调整主要锯齿线的绘图属性
     if line.is_selected:
@@ -254,6 +254,8 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
     # 复制字典以避免修改原始对象内部的配置
     current_scatter_props = vertex.get_scatter_properties().copy()
     current_label_props = vertex.get_label_properties().copy()
+    print(f"current_scatter_props: {current_scatter_props}")
+    print(f"current_label_props: {current_label_props}")
 
     # 移除冲突的参数
     if 'c' in current_scatter_props and 'color' in current_scatter_props:
@@ -282,17 +284,19 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         current_label_props['zorder'] = original_zorder + 11
 
     # --- 修改这里：只绘制一次点状顶点 ---
-    ax.scatter(vertex.x, vertex.y, **current_scatter_props)
+    if not vertex.hidden_vertex:
+        print(current_scatter_props)
+        ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
     # 绘制标签
-    if vertex.label:
+    if vertex.label and not vertex.hidden_vertex and not vertex.hidden_label:
         # --- 修改这里：使用 str2latex ---
         label_in_latex = str2latex(vertex.label)
         ax.text(
             vertex.x + vertex.label_offset[0],
             vertex.y + vertex.label_offset[1],
             label_in_latex ,
-            # fontname='Times New Roman'
+            # fontdict={'weight': "bold", 'style': "italic"},
             **current_label_props # 使用调整后的标签属性
         )
 

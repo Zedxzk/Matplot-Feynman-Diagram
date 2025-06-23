@@ -42,9 +42,11 @@ class SelectionHighlighter: # 假设你的类名就是 SelectionHighlighter
             elif isinstance(self._selected_item_data, Line):
                 if hasattr(self._selected_item_data, 'linePlotConfig') and isinstance(self._selected_item_data.linePlotConfig, dict):
                     self._selected_item_data.is_selected = False
-                    self._selected_item_data.linePlotConfig['color'] = original_props.get('color', 'black') # 如果没找到，使用默认值
-                    self._selected_item_data.linePlotConfig['linewidth'] = original_props.get('linewidth', 1.0)
-                    print(f"DEBUG: 清除高亮 Line ID={self._selected_item_data.id}, 恢复颜色='{self._selected_item_data.linePlotConfig.get('color', 'N/A')}'")
+                    self._selected_item_data.color = original_props.get('color', 'black')
+                    self._selected_item_data.linewidth = original_props.get('linewidth', 1.0)
+                    self._selected_item_data.color = 'red'
+                    self._selected_item_data.linewidth = 3.0
+                    print(f"DEBUG: 清除高亮 Line ID={self._selected_item_data.id}, 恢复颜色='{self._selected_item_data.linePlotConfig().get('color', 'N/A')}'")
         
         # 清除后，重绘画布以应用更改
         self.ctrl.canvas.update_canvas()
@@ -61,9 +63,9 @@ class SelectionHighlighter: # 假设你的类名就是 SelectionHighlighter
             l_gamma = self.ctrl.diagram_model.get_line_by_id('l_gamma')
             
             print("--- DEBUG(BEFORE highlight): 当前线条颜色和配置地址 ---")
-            if l_mu: print(f"l_mu: 颜色='{l_mu.linePlotConfig.get('color', 'N/A')}', 配置地址={id(l_mu.linePlotConfig)}")
-            if l_e2: print(f"l_e2: 颜色='{l_e2.linePlotConfig.get('color', 'N/A')}', 配置地址={id(l_e2.linePlotConfig)}")
-            if l_gamma: print(f"l_gamma: 颜色='{l_gamma.linePlotConfig.get('color', 'N/A')}', 配置地址={id(l_gamma.linePlotConfig)}")
+            if l_mu: print(f"l_mu: 颜色='{l_mu.linePlotConfig().get('color', 'N/A')}', 配置地址={id(l_mu.linePlotConfig)}")
+            if l_e2: print(f"l_e2: 颜色='{l_e2.linePlotConfig().get('color', 'N/A')}', 配置地址={id(l_e2.linePlotConfig)}")
+            if l_gamma: print(f"l_gamma: 颜色='{l_gamma.linePlotConfig().get('color', 'N/A')}', 配置地址={id(l_gamma.linePlotConfig)}")
             print("--------------------------------------------------")
 
         # 设置选中项的状态和高亮属性
@@ -79,8 +81,7 @@ class SelectionHighlighter: # 假设你的类名就是 SelectionHighlighter
                     'size': self._selected_item_data.size
                 }
                 self._selected_item_data.is_selected = True
-                self._selected_item_data.color = 'red'
-                self._selected_item_data.linewidth = 3.0
+
                 self._selected_item_data.edgecolor = 'red'
                 self._selected_item_data.size = 200
                 print(f"DEBUG: 应用高亮到 Vertex ID={self._selected_item_data.id}, 新颜色='{self._selected_item_data.color}'")
@@ -88,13 +89,13 @@ class SelectionHighlighter: # 假设你的类名就是 SelectionHighlighter
             elif isinstance(self._selected_item_data, Line):
                 if hasattr(self._selected_item_data, 'linePlotConfig') and isinstance(self._selected_item_data.linePlotConfig, dict):
                     original_props = {
-                        'color': self._selected_item_data.linePlotConfig.get('color', 'black'),
-                        'linewidth': self._selected_item_data.linePlotConfig.get('linewidth', 1.0)
+                        'color': self._selected_item_data.linePlotConfig().get('color', 'black'),
+                        'linewidth': self._selected_item_data.linePlotConfig().get('linewidth', 1.0)
                     }
                     self._selected_item_data.is_selected = True
-                    self._selected_item_data.linePlotConfig['color'] = 'red'
-                    self._selected_item_data.linePlotConfig['linewidth'] = 3.0
-                    print(f"DEBUG: 应用高亮到 Line ID={self._selected_item_data.id}, 新颜色='{self._selected_item_data.linePlotConfig.get('color', 'N/A')}'")
+                    self._selected_item_data.color = 'red'
+                    self._selected_item_data.linewidth = 3.0
+                    print(f"DEBUG: 应用高亮到 Line ID={self._selected_item_data.id}, 新颜色='{self._selected_item_data.linePlotConfig().get('color', 'N/A')}'")
                 else:
                     print(f"警告: 选中的线条对象 {self._selected_item_data.id} 没有 linePlotConfig 字典，无法高亮其绘图属性。")
                     self._selected_item_data.is_selected = True 
@@ -115,9 +116,9 @@ class SelectionHighlighter: # 假设你的类名就是 SelectionHighlighter
             l_gamma = self.ctrl.diagram_model.get_line_by_id('l_gamma')
             
             print("--- DEBUG(AFTER highlight): 当前线条颜色和配置地址 ---")
-            if l_mu: print(f"l_mu: 颜色='{l_mu.linePlotConfig.get('color', 'N/A')}', 配置地址={id(l_mu.linePlotConfig)}")
-            if l_e2: print(f"l_e2: 颜色='{l_e2.linePlotConfig.get('color', 'N/A')}', 配置地址={id(l_e2.linePlotConfig)}")
-            if l_gamma: print(f"l_gamma: 颜色='{l_gamma.linePlotConfig.get('color', 'N/A')}', 配置地址={id(l_gamma.linePlotConfig)}")
+            if l_mu: print(f"l_mu: 颜色='{l_mu.linePlotConfig().get('color', 'N/A')}', 配置地址={id(l_mu.linePlotConfig)}")
+            if l_e2: print(f"l_e2: 颜色='{l_e2.linePlotConfig().get('color', 'N/A')}', 配置地址={id(l_e2.linePlotConfig)}")
+            if l_gamma: print(f"l_gamma: 颜色='{l_gamma.linePlotConfig().get('color', 'N/A')}', 配置地址={id(l_gamma.linePlotConfig)}")
             print("-------------------------------------------------")
 
         # self.ctrl.canvas.update_canvas() # 这行代码应该由 set_selected_item 或 Controller 中的 update_view 管理

@@ -96,7 +96,7 @@ class VertexListWidget(QListWidget):
             vertex_data: 实际的 Vertex 对象。
         """
         # 直接使用中文 "顶点"
-        item_text = f"[{vertex_data.id}] 顶点: {vertex_data.label} ({vertex_data.x:.2f}, {vertex_data.y:.2f})"
+        item_text = rf"[{vertex_data.id}] 顶点: {vertex_data.label} ({vertex_data.x:.2f}, {vertex_data.y:.2f})"
         item = QListWidgetItem(item_text)
         item.setData(Qt.ItemDataRole.UserRole, vertex_data) # 将 Vertex 对象存储在用户数据中
         self.addItem(item)

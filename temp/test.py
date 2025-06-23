@@ -8,6 +8,6 @@ plt.rcParams['mathtext.it'] = 'Times New Roman'
 plt.rcParams['mathtext.bf'] = 'Times New Roman'
 
 plt.title(r'This is a test    $\mathrm{a}^2 + b^2 = \bf{c}^2$', fontsize=25)
-plt.text(0.5, 0.5, r'$\mathrm{a}^2 + b^2 = \bf{c}^2$', fontsize=25)
+plt.text(0.5, 0.5, r'$\mathit{a}^2 + b^2 = \bf{c}^2$', fontsize=25)
 
 plt.show()

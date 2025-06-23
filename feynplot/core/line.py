@@ -1,38 +1,45 @@
 import math
+from matplotlib.pyplot import get_plot_commands
 import numpy as np
 from typing import Dict, Any, Optional
 from debug_utils import cout
 
 import debug_utils
-# from dataclasses import dataclass, field # 如果你需要dataclass，请保留，目前看来你没有用
-# from feynplot.core.gluon_methods import generate_gluon_helix # 假设这个导入在运行时需要
+import enum 
 
-# --- LineStyle 枚举 ---
-class LineStyle:
-    STRAIGHT = 'straight' # 新增：通用的直线样式
+# --- LineStyle Enum ---
+class LineStyle(enum.Enum): 
+    STRAIGHT = 'straight'
     FERMION = 'fermion'
     PHOTON = 'photon'
     GLUON = 'gluon'
     WZ = 'wz'
 
-# --- Line 类 ---
+# --- Line Class ---
 class Line:
-    # 用于生成唯一ID的计数器
-    _line_counter_global = 0
-
-class Line:
+    # Counter for generating unique IDs
     _line_counter_global = 0
 
     def __init__(self, v_start, v_end,
-                #  style: LineStyle = LineStyle.STRAIGHT, # <-- 保持 style 作为显式参数
                  label: str = '',
-                 label_offset=(0.0, -0.5),
-                 line_plot_config: Optional[Dict[str, Any]] = None,
-                 label_plot_config: Optional[Dict[str, Any]] = None,
+                 label_offset=(0.5, 0.0),
                  angleIn=None, angleOut=None, bezier_offset=0.3,
+                 # Direct line plotting attributes (formerly in linePlotConfig)
+                 linewidth: float = 1.0,
+                 color: str = 'black',
+                 linestyle: Optional[str] = '-', # Default for STRAIGHT line style
+                 alpha: float = 1.0,
+                 zorder: int = 1,
+                 # Direct label plotting attributes (formerly in labelPlotConfig)
+                 label_fontsize: int = 30, # Renamed to avoid clash with `fontsize` kwarg
+                 label_color: str = 'black', # Renamed to avoid clash with `color` kwarg
+                 label_ha: str = 'center',
+                 label_va: str = 'center',
+                 # Style is now an internal property, not directly passed to super in subclasses
+                 style: LineStyle = LineStyle.STRAIGHT, 
                  **kwargs):
 
-        # 确保 v_start 和 v_end 被正确赋值
+        # Ensure v_start and v_end are correctly assigned
         if not (hasattr(v_start, 'x') and hasattr(v_start, 'y')):
             raise TypeError("v_start 必须有 x 和 y 属性")
         if not (hasattr(v_end, 'x') and hasattr(v_end, 'y')):
@@ -41,10 +48,16 @@ class Line:
         self.v_start = v_start
         self.v_end = v_end
 
-        # --- 修正 style 处理逻辑 ---
-        # 获取 kwargs 中可能存在的 style 字符串
-        kwargs_style_str = kwargs.pop('style', None) 
-        
+        # Line style (now a direct attribute)
+        # Handle style conversion from string to enum if passed via kwargs
+        if isinstance(style, str):
+            try:
+                self.style = getattr(LineStyle, style.upper())
+            except KeyError:
+                cout(f"WARNING: Invalid LineStyle string '{style}'. Defaulting to STRAIGHT.")
+                self.style = LineStyle.STRAIGHT
+        else:
+            self.style = style
 
         self.label = label
         self.label_offset = np.array(label_offset)
@@ -54,49 +67,68 @@ class Line:
         
         self.bezier_offset = bezier_offset
 
-        self.id = kwargs.pop('id', f"line_{Line._line_counter_global}")
-        if self.id.startswith("line_"):
+        self.id = kwargs.pop('id', f"l_{Line._line_counter_global}")
+        if self.id.startswith("l_"):
             Line._line_counter_global += 1
 
-        self.linePlotConfig = line_plot_config if line_plot_config is not None else {}
-        self.labelPlotConfig = label_plot_config if label_plot_config is not None else {}
+        # --- Direct Line Plotting Attributes ---
+        self.linewidth = kwargs.pop('linewidth', linewidth)
+        self.color = kwargs.pop('color', color)
+        # If linestyle wasn't explicitly passed, use the default based on the initial style.
+        # This will be overridden by style_properties_defaults in get_plot_properties if no style.
+        self.linestyle = kwargs.pop('linestyle', linestyle) 
+        self.alpha = kwargs.pop('alpha', alpha)
+        self.zorder = kwargs.pop('zorder', zorder)
+
+        # Support aliases for line properties
+        if 'lw' in kwargs: self.linewidth = kwargs.pop('lw')
+        if 'c' in kwargs: self.color = kwargs.pop('c')
+        if 'ls' in kwargs: self.linestyle = kwargs.pop('ls')
+
+        # --- Direct Label Plotting Attributes ---
+        self.label_fontsize = kwargs.pop('fontsize', label_fontsize) # 'fontsize' is a common kwarg in matplotlib
+        self.label_color = kwargs.pop('label_color', label_color) # 'label_color' as explicit kwarg
+        self.label_ha = kwargs.pop('ha', label_ha)
+        self.label_va = kwargs.pop('va', label_va)
+
+        # Support aliases for label properties
+        if 'label_size' in kwargs: self.label_fontsize = kwargs.pop('label_size')
+        if 'labelcolor' in kwargs: self.label_color = kwargs.pop('labelcolor')
 
         self.is_selected: bool = False 
 
-        # 从 kwargs 中提取常见的 Matplotlib 参数，并将其归类到对应的配置字典中
-        # 对于线条绘图参数 (linePlotConfig)
-        self.linePlotConfig['linewidth'] = kwargs.pop('linewidth', self.linePlotConfig.get('linewidth', 1.0))
-        self.linePlotConfig['color'] = kwargs.pop('color', self.linePlotConfig.get('color', 'black'))
-        self.linePlotConfig['linestyle'] = kwargs.pop('linestyle', self.linePlotConfig.get('linestyle', None))
-        self.linePlotConfig['alpha'] = kwargs.pop('alpha', self.linePlotConfig.get('alpha', 1.0))
-        self.linePlotConfig['zorder'] = kwargs.pop('zorder', self.linePlotConfig.get('zorder', 1))
+        # Store any remaining kwargs directly as attributes, or raise warning if unexpected
+        # For line, it's safer to store them in a dedicated 'metadata' or 'plot_config_extra'
+        # dictionary if they aren't explicitly consumed, to avoid polluting the object's namespace.
+        # For now, we'll follow the existing pattern if they are not predefined attributes.
+        self.metadata = {}
+        for key, value in kwargs.items():
+            if not hasattr(self, key): # Only set if it's not already a predefined attribute
+                # Check for other valid matplotlib.lines.Line2D properties
+                # This is a heuristic; a more robust solution would be to match against
+                # a known list of valid line plot properties.
+                if key in ['dash_joinstyle', 'dash_capstyle', 'solid_joinstyle', 'solid_capstyle',
+                           'drawstyle', 'fillstyle', 'markerfacecolor', 'markeredgecolor',
+                           'markeredgewidth', 'markersize', 'marker', 'visible', 'picker',
+                           'pickradius', 'antialiased', 'rasterized', 'url', 'snap']:
+                    setattr(self, key, value)
+                else:
+                    self.metadata[key] = value # Store truly unknown kwargs in metadata
+            # else:
+                # If it already has the attribute, it was either set by init default
+                # or through an alias. We don't want to re-set it if it was consumed.
 
-        # 支持别名 (例如 'lw' for 'linewidth', 'c' for 'color', 'ls' for 'linestyle')
-        if 'lw' in kwargs: self.linePlotConfig['linewidth'] = kwargs.pop('lw')
-        if 'c' in kwargs: self.linePlotConfig['color'] = kwargs.pop('c')
-        if 'ls' in kwargs: self.linePlotConfig['linestyle'] = kwargs.pop('ls')
 
-        # 对于标签绘图参数 (labelPlotConfig)
-        self.labelPlotConfig['fontsize'] = kwargs.pop('fontsize', self.labelPlotConfig.get('fontsize', 10))
-        self.labelPlotConfig['color'] = kwargs.pop('label_color', self.labelPlotConfig.get('color', 'black'))
-        self.labelPlotConfig['ha'] = kwargs.pop('ha', self.labelPlotConfig.get('ha', 'center'))
-        self.labelPlotConfig['va'] = kwargs.pop('va', self.labelPlotConfig.get('va', 'center'))
-
-        # 支持别名 (例如 'label_size' for 'fontsize', 'labelcolor' for 'color')
-        if 'label_size' in kwargs: self.labelPlotConfig['fontsize'] = kwargs.pop('label_size')
-        if 'labelcolor' in kwargs: self.labelPlotConfig['color'] = kwargs.pop('labelcolor')
-
-        # 将所有未被明确提取的剩余 kwargs 更新到 linePlotConfig 中
-        # 这是一种通用处理未知绘图参数的方式，如果有冲突，用户传入的kwargs会覆盖默认和LineStyle预设
-        self.linePlotConfig.update(kwargs)
-        # --- 在这里添加新的调试打印语句 ---
-        # 如果 angleIn/out 没传，则自动计算
+        # If angleIn/out not provided, calculate them
         if self._angleOut is None or self._angleIn is None:
             self.set_vertices(v_start, v_end)
-        cout(f"DEBUG(Line_init): ID='{self.id}', linePlotConfig地址={id(self.linePlotConfig)}, 初始颜色='{self.linePlotConfig.get('color', '未设置')}'")
-        # --- 调试打印结束 ---
+        
+        cout(f"DEBUG(Line_init): ID='{self.id}', Color='{self.color}', Linewidth='{self.linewidth}', Style='{self.style.name}'")
+
 
     def set_vertices(self, v_start, v_end):
+        # IMPORTANT: v_start and v_end must be Vertex-like objects, not their IDs.
+        # Ensure we're assigning objects, not re-calculating from IDs.
         if not (hasattr(v_start, 'x') and hasattr(v_start, 'y')):
             raise TypeError("v_start 必须有 x 和 y 属性")
         if not (hasattr(v_end, 'x') and hasattr(v_end, 'y')):
@@ -105,21 +137,30 @@ class Line:
         self.v_start = v_start
         self.v_end = v_end
 
-        # 仅在 _angleOut 或 _angleIn 未明确设置时才计算
+        # Only calculate if _angleOut or _angleIn are not explicitly set
         if self._angleOut is None:
-            self._angleOut = self._calc_angle(v_start, v_end)
+            self._angleOut = self._calc_angle(self.v_start, self.v_end)
         if self._angleIn is None:
-            self._angleIn = self._calc_angle(v_end, v_start)
+            self._angleIn = self._calc_angle(self.v_end, self.v_start)
 
-    def set_angles(self, v_start = None , v_end = None, angleOut=None, angleIn=None):
-        if v_start is not None and v_end is not None:
+    def set_angles(self, v_start=None, v_end=None, angleOut=None, angleIn=None):
+        # Update vertices if provided
+        if v_start is not None:
             self.v_start = v_start
+        if v_end is not None:
             self.v_end = v_end
-            self._angleOut = self._calc_angle(v_start, v_end)
-            self._angleIn = self._calc_angle(v_end, v_start)
-        if angleOut is not None and angleIn is not None:
+
+        # Only update angles if explicitly provided or if vertices were updated and angles are None
+        if angleOut is not None:
             self._angleOut = angleOut
+        elif v_start is not None and v_end is not None: # Recalculate if vertices changed and angleOut not given
+            self._angleOut = self._calc_angle(self.v_start, self.v_end)
+
+        if angleIn is not None:
             self._angleIn = angleIn
+        elif v_start is not None and v_end is not None: # Recalculate if vertices changed and angleIn not given
+            self._angleIn = self._calc_angle(self.v_end, self.v_start)
+
 
     @staticmethod
     def _calc_angle(p1, p2):
@@ -151,10 +192,10 @@ class Line:
 
     def get_plot_properties(self) -> Dict[str, Any]:
         """
-        返回适用于 Matplotlib plot() 函数的样式字典。
-        优先级：LineStyle 默认值 < 用户传入的 line_plot_config 字典 < kwargs (最终传入)
+        Returns a dictionary of plot properties suitable for Matplotlib plot() function.
+        Prioritization: LineStyle defaults < instance attributes (final value)
         """
-        # 默认样式，基于 LineStyle
+        # Default styles based on LineStyle
         style_properties_defaults = {
             LineStyle.STRAIGHT: {'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1},
             LineStyle.FERMION: {'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1},
@@ -163,23 +204,41 @@ class Line:
             LineStyle.WZ:      {'linestyle': '-.', 'color': 'green', 'linewidth': 1.0, 'zorder': 1},
         }
         
-        # 获取 LineStyle 对应的基础样式，如果 style 不在 defaults 中，则使用通用默认值
-        final_properties = style_properties_defaults.get(LineStyle.STRAIGHT)
-        # .get(self.style, {
-        #     'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1
-        # }).copy()
+        # Start with properties based on the line's style
+        # Use a copy to ensure we don't modify the default dicts directly
+        final_properties = style_properties_defaults.get(self.style, {
+            'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1
+        }).copy()
 
-        # 合并 self.linePlotConfig 中存储的参数。这会覆盖 LineStyle 的默认值。
-        final_properties.update(self.linePlotConfig)
-        
+        # Override with instance's direct attributes if they are not None
+        # This ensures user-set values take precedence
+        if self.linewidth is not None:
+            final_properties['linewidth'] = self.linewidth
+        if self.color is not None:
+            final_properties['color'] = self.color
+        if self.linestyle is not None:
+            final_properties['linestyle'] = self.linestyle
+        if self.alpha is not None:
+            final_properties['alpha'] = self.alpha
+        if self.zorder is not None:
+            final_properties['zorder'] = self.zorder
+
+        # Add any extra properties stored in metadata (if they are valid plot properties)
+        # This could be more sophisticated by checking against a list of valid kwargs for Line2D
+        # For now, we'll just add them to the properties
+        final_properties.update(self.metadata)
+
         return final_properties
+    
+    def linePlotConfig(self):
+        return self.get_plot_properties()
 
     def get_label_properties(self) -> Dict[str, Any]:
         """
-        返回适用于 Matplotlib text() 函数的标签样式字典。
-        优先级：默认值 < 用户传入的 label_plot_config 字典 < kwargs (最终传入)
+        Returns a dictionary of label properties suitable for Matplotlib text() function.
+        Prioritization: default values < instance attributes (final value)
         """
-        # 标签默认样式，如果用户没有指定，则使用这些
+        # Label default styles
         default_label_properties = {
             'fontsize': 10,
             'color': 'black',
@@ -187,69 +246,100 @@ class Line:
             'va': 'center'
         }
         
-        # 合并 self.labelPlotConfig 中存储的参数。
+        # Start with defaults and then override with instance's direct attributes
         final_label_properties = default_label_properties.copy()
-        final_label_properties.update(self.labelPlotConfig)
+
+        if self.label_fontsize is not None:
+            final_label_properties['fontsize'] = self.label_fontsize
+        if self.label_color is not None:
+            final_label_properties['color'] = self.label_color
+        if self.label_ha is not None:
+            final_label_properties['ha'] = self.label_ha
+        if self.label_va is not None:
+            final_label_properties['va'] = self.label_va
         
         return final_label_properties
 
-    # --- 新增的 update_properties 方法，用于动态更新属性 ---
+    def labelPlotConfig(self):
+        return self.get_label_properties()
+
+
+    # --- New update_properties method for dynamic attribute updates ---
     def update_properties(self, **kwargs):
         """
-        根据传入的关键字参数更新线条的属性。
-        这包括直接属性、linePlotConfig 和 labelPlotConfig 中的参数。
+        Updates the line's properties based on the provided keyword arguments.
+        This includes direct attributes.
         """
         for key, value in kwargs.items():
-            if hasattr(self, key) and not key.startswith('_'): # 避免修改私有属性
-                # 特殊处理 numpy 数组 (例如 label_offset)
-                if key == 'label_offset' and isinstance(value, (list, tuple)):
-                    setattr(self, key, np.array(value))
-                # 特殊处理 LineStyle 枚举
-                elif key == 'style' and isinstance(value, str):
+            # Handle aliases first, mapping them to the actual attribute names
+            if key == 'lw': 
+                self.linewidth = value
+            elif key == 'c': 
+                self.color = value
+            elif key == 'ls': 
+                self.linestyle = value
+            elif key == 'label_size': 
+                self.label_fontsize = value
+            elif key == 'labelcolor': 
+                self.label_color = value
+            # Explicitly handle style conversion
+            elif key == 'style' and isinstance(value, (str, LineStyle)):
+                if isinstance(value, str):
                     try:
-                        setattr(self, key, LineStyle[value.upper()])
+                        self.style = LineStyle[value.upper()]
                     except KeyError:
-                        print(f"警告: 无效的 LineStyle '{value}'。属性 '{key}' 未更新。")
-                # 显式处理 linePlotConfig 和 labelPlotConfig 的字典更新
-                elif key == 'linePlotConfig' and isinstance(value, dict):
-                    self.linePlotConfig.update(value)
-                elif key == 'labelPlotConfig' and isinstance(value, dict):
-                    self.labelPlotConfig.update(value)
-                else:
-                    setattr(self, key, value)
-            # 如果不是直接属性，检查是否为 linePlotConfig 或 labelPlotConfig 中的常见参数
-            elif key in self.linePlotConfig:
-                self.linePlotConfig[key] = value
-            elif key in self.labelPlotConfig:
-                self.labelPlotConfig[key] = value
-            # 处理别名，并将其映射到对应的配置字典中
-            elif key == 'lw': self.linePlotConfig['linewidth'] = value
-            elif key == 'c': self.linePlotConfig['color'] = value
-            elif key == 'ls': self.linePlotConfig['linestyle'] = value
-            elif key == 'label_size': self.labelPlotConfig['fontsize'] = value
-            elif key == 'labelcolor': self.labelPlotConfig['color'] = value
+                        cout(f"WARNING: Invalid LineStyle '{value}'. Property '{key}' not updated.")
+                else: # Assume it's already a LineStyle enum
+                    self.style = value
+            # Handle specific attributes that might need type conversion
+            elif key == 'label_offset' and isinstance(value, (list, tuple)):
+                self.label_offset = np.array(value)
+            # Directly set other attributes if they exist
+            elif hasattr(self, key):
+                setattr(self, key, value)
             else:
-                # 对于未知参数，默认添加到 linePlotConfig
-                self.linePlotConfig[key] = value
-                # print(f"警告: 属性 '{key}' 未直接处理，已存储在 linePlotConfig 中。") # 警告太多可以关闭
+                # For any other unknown kwargs, store them in metadata
+                self.metadata[key] = value
+                # cout(f"WARNING: Attribute '{key}' not found or handled for Line.update_properties. Storing in metadata.")
 
-# --- 子类 (根据你的代码，它们现在不需要额外的修改，因为 is_selected 在基类中) ---
 
-# --- 修正 FermionLine 类 ---
+    # --- to_dict and from_dict methods for serialization/deserialization ---
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Serializes the Line instance to a dictionary by calling an external IO helper.
+        """
+        # Local import to avoid top-level circular dependency
+        from feynplot.io.diagram_io import _line_to_dict
+        return _line_to_dict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], vertices_map: Dict[str, Any]) -> 'Line':
+        """
+        Creates a Line instance from dictionary data by calling an external IO helper.
+        This is a class method, allowing creation via Line.from_dict(data, vertices_map).
+        """
+        # Local import to avoid top-level circular dependency
+        from feynplot.io.diagram_io import _line_from_dict
+        return _line_from_dict(data, vertices_map)
+
+# --- Subclasses ---
+
 class FermionLine(Line):
     def __init__(
-        self, v_start, v_end, # <-- 必须有 v_start, v_end
-        arrow=True, # <-- 重新将 arrow 作为 FermionLine 的显式参数
+        self, v_start, v_end, 
+        arrow=True, 
         arrow_filled=False,
         arrow_position: Optional[float] = 0.5,
         arrow_size=10.0,
         arrow_line_width=None,
         arrow_reversed=False, 
-        **kwargs # <-- 接收其他通用参数，传递给 Line 基类
+        style: LineStyle = LineStyle.FERMION, # <--- 修正点：默认值在这里
+        **kwargs
     ):
-        # 将 v_start, v_end 和其他通用 kwargs 传递给父类
-        super().__init__(v_start, v_end, style=LineStyle.FERMION, **kwargs)
-        # FermionLine 自身管理箭头的属性
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style)
+        super().__init__(v_start, v_end, style=style_to_pass, **kwargs)
+        # FermionLine manages its own arrow properties
         self.arrow = arrow
         self.arrow_filled = arrow_filled
         self.arrow_position = arrow_position
@@ -257,147 +347,166 @@ class FermionLine(Line):
         self.arrow_line_width = arrow_line_width
         self.arrow_reversed = arrow_reversed
 
-
-
 class AntiFermionLine(FermionLine):
     def __init__(
-        self,
-        arrow_reversed=True, # 反费米子线默认箭头方向反转
+        self, v_start, v_end, # Explicitly include v_start, v_end here
+        arrow_reversed=True, # Anti-fermion line defaults to reversed arrow direction
         **kwargs
     ):
-        super().__init__(arrow_reversed=arrow_reversed, **kwargs)
+        # FermionLine 的 style 默认就是 FERMION，所以这里不需要再处理 style 参数
+        # 除非 AntiFermionLine 需要一个完全不同的 LineStyle
+        super().__init__(v_start=v_start, v_end=v_end, arrow_reversed=arrow_reversed, **kwargs)
 
 class BosonLine(Line):
-    def __init__(self, v_start, v_end, **kwargs): # <-- Correctly accepts v_start, v_end
-        # PROBLEM (if not fixed): This super() call also needs v_start and v_end
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs) # <--- If this doesn't pass v_start, v_end, it's also a problem
+    def __init__(self, v_start, v_end, **kwargs):
+        # BosonLine 是一个基类，通常不会直接实例化，所以它没有自己的特定 style 默认值
+        # 它会继承 Line 的 STRAIGHT 默认 style
+        super().__init__(v_start=v_start, v_end=v_end, **kwargs)
 
 # -------------------------
-# 费米子示例 - 在最具体的子类中处理默认 label
+# Fermion Examples - Handle default label in the most specific subclass
 # -------------------------
 
 class ElectronLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'e⁻')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$e^{-}$') # Use LaTeX for proper rendering
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class PositronLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'e⁺')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$e^{+}$') # Use LaTeX
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class MuonLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'μ⁻')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$\mu^{-}$') # Use LaTeX
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class TauLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'τ⁻')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$\tau^{-}$') # Use LaTeX
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class NeutrinoLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'ν')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$\nu$') # Use LaTeX
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 # -------------------------
-# 夸克示例 (与费米子示例类似，都在具体子类中处理 label)
+# Quark Examples (Similar to Fermion examples, handle label in specific subclass)
 # -------------------------
 
 class UpQuarkLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'u')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$u$')
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class DownQuarkLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'd')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$d$')
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class CharmQuarkLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'c')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$c$')
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class StrangeQuarkLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 's')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$s$')
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class TopQuarkLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 't')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$t$')
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 class BottomQuarkLine(FermionLine):
     def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'b')
-        super().__init__( v_start=v_start, v_end=v_end, **kwargs)
+        label = kwargs.pop('label', r'$b$')
+        super().__init__(v_start=v_start, v_end=v_end, label=label, **kwargs)
 
 # -------------------------
-# 玻色子示例 - 修正 GluonLine 和其他具体玻色子
+# Boson Examples - Corrected GluonLine and other specific bosons
 # -------------------------
 
 class PhotonLine(BosonLine):
-    def __init__(self, v_start, v_end, amplitude=0.1, wavelength=0.5, initial_phase=0, final_phase=0, **kwargs): # <-- Correctly accepts v_start, v_end
-        label = kwargs.pop('label', r'\gamma')
-        # PROBLEM: You're NOT passing v_start and v_end to super().__init__ here!
-        super().__init__(label=label, v_start=v_start, v_end=v_end, **kwargs) # <--- This is the exact line causing the error!
+    def __init__(self, v_start, v_end, amplitude=0.1, wavelength=0.5, initial_phase=0, final_phase=0, 
+                 style: LineStyle = LineStyle.PHOTON, # <--- 修正点：默认值在这里
+                 **kwargs):
+        label = kwargs.pop('label', r'$\gamma$')
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style) 
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs) 
         self.amplitude = amplitude
         self.wavelength = wavelength
         self.initial_phase = initial_phase
         self.final_phase = final_phase
 
 class GluonLine(BosonLine):
-    def __init__(self,  v_start, v_end,amplitude=0.1, wavelength=0.2, n_cycles=16, bezier_offset=0.3, **kwargs):
-        label = kwargs.pop('label', 'g')
-        super().__init__(label=label,v_start=v_start, v_end=v_end, style=LineStyle.GLUON, **kwargs)
+    def __init__(self, v_start, v_end, amplitude=0.15, wavelength=0.2, n_cycles=16, bezier_offset=0.3, 
+                 style: LineStyle = LineStyle.GLUON, # <--- 修正点：默认值在这里
+                 **kwargs):
+        label = kwargs.pop('label', r'$g$')
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
         self.amplitude = amplitude
         self.wavelength = wavelength
         self.n_cycles = n_cycles
         self.bezier_offset = bezier_offset
 
     def get_plot_path(self):
-        # 假设 feynplot.core.gluon_methods 存在且可用
+        # Assuming feynplot.core.gluon_methods exists and is available
         from feynplot.core.gluon_methods import generate_gluon_helix
         if self.v_start is None or self.v_end is None:
             raise ValueError("v_start 和 v_end 必须先设置")
         return generate_gluon_helix(self)
 
-
 class WPlusLine(BosonLine):
-    def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', r'W^{+}')
+    def __init__(self, v_start, v_end, 
+                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 **kwargs):
+        label = kwargs.pop('label', r'$W^{+}$')
         
-        # 从 kwargs 中安全地弹出 zigzag_amplitude 和 zigzag_frequency
-        # 如果不存在，则使用默认值
         self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
         self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
         
-        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
 
 class WMinusLine(BosonLine):
-    def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', r'W^{-}')
+    def __init__(self, v_start, v_end, 
+                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 **kwargs):
+        label = kwargs.pop('label', r'$W^{-}$')
         
-        # 从 kwargs 中安全地弹出 zigzag_amplitude 和 zigzag_frequency
         self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
         self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
         
-        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
 
 class ZBosonLine(BosonLine):
-    def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', r'Z^{0}')
+    def __init__(self, v_start, v_end, 
+                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 **kwargs):
+        label = kwargs.pop('label', r'$Z^{0}$')
         
-        # 从 kwargs 中安全地弹出 zigzag_amplitude 和 zigzag_frequency
         self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
         self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
         
-        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
 
 class HiggsLine(BosonLine):
-    def __init__(self, v_start, v_end, **kwargs):
-        label = kwargs.pop('label', 'H')
-        super().__init__(v_start=v_start, v_end=v_end, label=label, style=LineStyle.WZ, **kwargs)
+    def __init__(self, v_start, v_end, 
+                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 **kwargs):
+        label = kwargs.pop('label', r'$H$')
+        # 从 kwargs 中取出 style，如果不存在则使用默认值
+        style_to_pass = kwargs.pop('style', style)
+        super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
