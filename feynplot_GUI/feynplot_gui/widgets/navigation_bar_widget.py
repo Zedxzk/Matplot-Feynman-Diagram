@@ -281,7 +281,7 @@ class NavigationBarWidget(QWidget):
         """
         QMessageBox.about(self, "关于 FeynPlot GUI",
                           "这是一个用于绘制费曼图的简单GUI应用。\n"
-                          "版本: 1.0\n"
+                          "版本: 1.0  Release date: 2025.6.14\n"
                           "作者: ZED(武汉大学->香港中文大学)\n"
                           "邮箱：zedxzk@gmail.com\n"
                           "GitHub: https://github.com/Zedxzk/Matplot-Feynman-Diagram\n"
