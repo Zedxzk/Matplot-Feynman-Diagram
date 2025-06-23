@@ -58,7 +58,7 @@ class Vertex:
         self.is_selected: bool = False
 
         self.size = kwargs.pop('s', 100)
-        self.color = kwargs.pop('c', 'blue')
+        self.color = kwargs.pop('c', 'black')
         self.marker = kwargs.pop('marker', 'o')
         self.alpha = kwargs.pop('alpha', 1.0)
         self.edgecolor = kwargs.pop('edgecolor', self.color)
