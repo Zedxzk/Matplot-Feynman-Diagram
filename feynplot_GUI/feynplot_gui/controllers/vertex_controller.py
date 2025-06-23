@@ -35,7 +35,7 @@ class VertexController(QObject):
         # !! 重要改动 !!
         # 在这些槽函数中，我们将直接调用 main_controller.select_item
         self.vertex_list_widget.vertex_selected.connect(self._on_vertex_list_selected)
-        self.vertex_list_widget.list_blank_clicked.connect(self._on_list_blank_clicked)
+        # self.vertex_list_widget.list_blank_clicked.connect(self._on_list_blank_clicked)
         self.vertex_list_widget.vertex_double_clicked.connect(self._on_vertex_list_double_clicked)
 
         # 连接 VertexListWidget 的右键菜单信号到对应的槽函数
@@ -90,19 +90,27 @@ class VertexController(QObject):
         当用户在顶点列表中选择一个顶点时触发。
         直接调用 MainController 的 select_item 方法进行统一的选中管理。
         """
-        print(f"VertexController: 收到列表选中顶点 {vertex.id}。直接调用 MainController.select_item。")
-        # !! 重要改动 !!
-        self.main_controller.select_item(vertex)
+        # Clear all existing highlights in the model first
+        for v in self.diagram_model.vertices:
+            if hasattr(v, 'highlighted_vertex'):
+                v.highlighted_vertex = False
 
+        if vertex:
+            # Set the highlighted_vertex attribute for the newly selected vertex
+            if hasattr(vertex, 'highlighted_vertex'):
+                vertex.highlighted_vertex = True
+            else:
+                vertex.highlighted_vertex = True # Add the attribute if it doesn't exist
 
-    def _on_list_blank_clicked(self):
-        """
-        当用户在顶点列表中点击空白区域时触发。
-        直接调用 MainController 的 select_item 方法清除选中。
-        """
-        print("VertexController: 收到列表空白点击。直接调用 MainController.select_item(None)。")
-        # !! 重要改动 !!
-        self.main_controller.select_item(None)
+            # Call MainController's select_item method to unify selection management
+            self.main_controller.select_item(vertex)
+            self.main_controller.status_message.emit(f"顶点 {vertex.id} 已选中并高亮。")
+        else:
+            self.main_controller.select_item(None) # Clear selection
+            self.main_controller.status_message.emit("顶点列表选中已清除。所有顶点高亮已移除。")
+
+        # After selection change, ensure the view is updated to reflect the highlight status
+        self.main_controller.update_all_views() # Assuming this updates the canvas as well
 
 
     def _on_vertex_list_double_clicked(self, vertex: Vertex):
@@ -123,14 +131,22 @@ class VertexController(QObject):
         """
         print(f"VertexController: 收到列表右键编辑顶点请求: {vertex.id}。发出 request_edit_vertex 信号。")
         self.request_edit_vertex.emit(vertex)
+        self._on_edit_vertex_requested(vertex=vertex)
 
     def _on_delete_vertex_requested_from_list(self, vertex: Vertex):
         """
         处理来自 VertexListWidget 右键菜单的“删除顶点”请求。
-        发出信号请求 MainController 处理删除操作。
+        此方法将请求转发给 MainController 来处理实际的删除逻辑。
+
+        Args:
+            vertex (Vertex): 从列表中右键点击并选择删除的顶点实例。
         """
-        print(f"VertexController: 收到列表右键删除顶点请求: {vertex.id}。发出 request_delete_vertex 信号。")
-        self.request_delete_vertex.emit(vertex)
+        # Print status message to indicate the request has been received (optional, for debugging)
+        self.main_controller.status_message.emit(f"列表接收到删除顶点请求: {vertex.id} (转发中...)")
+
+        # Call MainController's delete_selected_vertex method, passing the specified vertex
+        # This way, the delete dialog will pre-select and lock this vertex
+        self.main_controller.delete_selected_vertex(vertex)
 
     def _on_search_vertex_requested_from_list(self, vertex: Vertex):
         """
@@ -140,7 +156,28 @@ class VertexController(QObject):
         print(f"VertexController: 收到列表右键检索顶点请求: {vertex.id}。发出 request_search_vertex 信号。")
         self.request_search_vertex.emit(vertex)
 
-    # 辅助函数 (如果需要，通常与 MainController 的逻辑更相关)
+
     def _get_parent_widget(self):
-        """获取对话框的父控件。"""
-        return self.main_controller.main_window
+        """辅助函数，获取对话框的父控件。"""
+        # Assume MainController has main_window and canvas_widget attributes
+        return self.main_controller.main_window if hasattr(self.main_controller, 'main_window') and self.main_controller.main_window else self.main_controller.canvas_widget
+
+
+    def _on_edit_vertex_requested(self, vertex: Vertex):
+        """
+        处理来自 VertexListWidget 右键菜单的“编辑顶点”请求。
+        通过调用外部函数来处理编辑对话框。
+        """
+        self.main_controller.status_message.emit(f"列表接收到编辑顶点请求: {vertex.id}")
+
+        parent_widget = self._get_parent_widget() # Get parent widget
+
+        # Call the imported functional function
+        if open_edit_vertex_dialog(vertex, self.main_controller.diagram_model, parent_widget=parent_widget):
+            # If successfully edited, notify MainController to update UI
+            self.main_controller.update_all_views() # Assume MainController has a method to trigger all UI updates
+            self.main_controller.status_message.emit(f"顶点 {vertex.id} 属性已成功更新并刷新。")
+            # Re-set the selected item to ensure its highlighted state is preserved/updated
+            self.set_selected_item_in_list(vertex)
+        else:
+            self.main_controller.status_message.emit(f"顶点 {vertex.id} 属性编辑操作已取消。")
