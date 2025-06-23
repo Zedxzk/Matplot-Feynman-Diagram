@@ -17,6 +17,8 @@ from feynplot.core.WZ_methods import generate_WZ_zigzag
 from feynplot.core.fermion_methods import generate_fermion_line
 import mplhep as hep
 
+from feynplot.drawing.fontSettings import *
+
 
 def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict):
     # 复制字典以避免修改原始对象内部的配置
@@ -289,9 +291,9 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         ax.text(
             vertex.x + vertex.label_offset[0],
             vertex.y + vertex.label_offset[1],
-            label_in_latex + "test test",
-            fontname='Times New Roman'
-            # **current_label_props # 使用调整后的标签属性
+            label_in_latex ,
+            # fontname='Times New Roman'
+            **current_label_props # 使用调整后的标签属性
         )
 
 

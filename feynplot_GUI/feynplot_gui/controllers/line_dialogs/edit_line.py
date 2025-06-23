@@ -60,6 +60,15 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             label_layout.addWidget(self.label_input)
             basic_layout.addLayout(label_layout)
 
+            # --- 标签字体大小 ---
+            # 使用 getattr 安全地获取 label_size，如果不存在则默认为 12.0
+            initial_label_size = getattr(self.line, 'label_size', 12.0) 
+            self.label_fontsize_layout, self.label_fontsize_input = self._create_spinbox_row(
+                "标签字体大小:", initial_label_size, min_val=1.0, max_val=72.0, step=0.5
+            )
+            basic_layout.addLayout(self.label_fontsize_layout)
+
+
             # 显示起点和终点（只读信息）
             start_label = self.line.v_start.label if self.line.v_start else '无'
             start_id = self.line.v_start.id if self.line.v_start else 'N/A'
