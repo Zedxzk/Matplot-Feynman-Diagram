@@ -7,15 +7,19 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 # 确保导入 FeynmanDiagram 类
 from feynplot.core.diagram import FeynmanDiagram 
-# 如果你的 Line 类也需要显示一些特定属性，可能需要导入它
-from feynplot.core.line import Line # 仅为了类型提示，实际可能不需要在Dialog中直接使用
+# 导入 Line 类型用于类型提示
+from feynplot.core.line import Line 
+from typing import Optional # 导入 Optional 用于类型提示
 
 class DeleteLineDialog(QDialog):
-    def __init__(self, diagram: FeynmanDiagram, parent=None):
+    def __init__(self, diagram: FeynmanDiagram, line_to_delete: Optional[Line] = None, parent=None):
         """
         用于确认删除线条的对话框。
+
         Args:
             diagram (FeynmanDiagram): 包含所有线条数据的费曼图模型实例。
+            line_to_delete (Optional[Line]): 可选参数，如果提供，则预选并锁定此线条。
+                                              默认为 None。
             parent (QWidget, optional): 父窗口部件。
         """
         super().__init__(parent)
@@ -24,6 +28,10 @@ class DeleteLineDialog(QDialog):
 
         self.diagram = diagram # 存储 diagram 实例
         self.lines_data = diagram.lines # 获取所有可用的线条数据
+
+        # 将传入的预选线条保存到实例变量
+        self._pre_selected_line = line_to_delete
+        # self.selected_line 将在 get_selected_line 中返回
 
         main_layout = QVBoxLayout(self)
         form_layout = QFormLayout()
@@ -39,15 +47,39 @@ class DeleteLineDialog(QDialog):
         else:
             for i, line in enumerate(self.lines_data):
                 # 尝试构建一个有意义的显示文本，显示线条ID、类型以及连接的顶点ID
-                # 假设 Line 对象有 v_start 和 v_end 属性，它们是 Vertex 对象
                 start_vertex_id = line.v_start.id if line.v_start else "N/A"
                 end_vertex_id = line.v_end.id if line.v_end else "N/A"
                 line_type_name = type(line).__name__ # 获取线条的实际类型名称 (e.g., FermionLine)
 
-                display_text = f"L{i}: {line.id} ({line_type_name}) from {start_vertex_id} to {end_vertex_id}"
+                # 使用 line.label 作为主要显示，如果 label 为空则使用默认格式
+                display_text = f"[{line.id}] {line.label or line_type_name} ({start_vertex_id} -> {end_vertex_id})"
+                
                 # 将实际的 Line 对象作为用户数据存储
                 self.delete_line_combobox.addItem(display_text, line)
-        
+            
+            # 如果提供了预选线条，则设置并锁定下拉框
+            if self._pre_selected_line:
+                # 查找与 _pre_selected_line 对应的数据项
+                # 使用循环查找，因为 findData 默认只比较值，不比较对象ID
+                found_index = -1
+                for i in range(self.delete_line_combobox.count()):
+                    item_data = self.delete_line_combobox.itemData(i)
+                    if item_data and hasattr(item_data, 'id') and item_data.id == self._pre_selected_line.id:
+                        found_index = i
+                        break
+
+                if found_index != -1:
+                    self.delete_line_combobox.setCurrentIndex(found_index)
+                    self.delete_line_combobox.setEnabled(False) # 锁定下拉框
+                else:
+                    # 如果预选线条不在当前图中，则退回正常模式并警告
+                    QMessageBox.warning(self, "警告", "预选线条在图中不存在，请手动选择。")
+                    self._pre_selected_line = None # 清除预选状态
+            
+            # 如果没有预选，或者预选失败，确保下拉框是可交互的
+            if not self._pre_selected_line:
+                self.delete_line_combobox.setEnabled(True)
+
         main_layout.addLayout(form_layout)
 
         # 3. 添加标准确认和取消按钮
@@ -61,56 +93,31 @@ class DeleteLineDialog(QDialog):
         # 初始时，如果没有任何线条，禁用 OK 按钮
         if not self.lines_data:
             button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+            self.delete_line_combobox.setEnabled(False) # 确保禁用
+        else:
+            # 初始时，OK 按钮默认可用（只要有线条可供选择），除非被锁定且预选失败
+            # 如果没有预选，或者预选失败，OK 按钮初始是可用的
+            if self._pre_selected_line is None: # 表示用户可以自己选择
+                button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
+            elif found_index == -1: # 表示预选失败，用户仍需选择
+                 button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
+            else: # 预选成功并锁定
+                 button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
 
-    def get_selected_line(self) :
+
+    def get_selected_line(self) -> Optional[Line]:
         """
         获取用户选择的 Line 对象。
+
         Returns:
-            Line: 用户在下拉列表中选择的 Line 对象，如果没有选择或没有可用线条则返回 None。
+            Optional[Line]: 用户在下拉列表中选择的 Line 对象，如果没有选择或没有可用线条则返回 None。
         """
-        if self.delete_line_combobox.isEnabled() and self.delete_line_combobox.count() > 0:
-            # 获取当前选中项的用户数据，这个用户数据就是我们存储的 Line 对象
-            return self.delete_line_combobox.currentData()
+        if self.delete_line_combobox.isEnabled() or self._pre_selected_line: # 如果是禁用的，说明有预选
+            # 如果有预选，直接返回预选的线条
+            if self._pre_selected_line and self.delete_line_combobox.isEnabled() == False:
+                return self._pre_selected_line
+            
+            # 否则，从当前下拉框的选中项中获取
+            if self.delete_line_combobox.count() > 0:
+                return self.delete_line_combobox.currentData()
         return None
-
-# # 示例用法 (仅供测试，通常在 MainController 或其他地方调用)
-# if __name__ == '__main__':
-#     import sys
-#     from PySide6.QtWidgets import QApplication
-#     from feynplot.core.vertex import Vertex
-#     from feynplot.core.line import FermionLine, PhotonLine
-
-#     app = QApplication(sys.argv)
-
-#     # 创建一个虚拟的 FeynmanDiagram 实例并添加一些数据
-#     diagram = FeynmanDiagram()
-#     v1 = diagram.add_vertex(x=0.0, y=0.0, label="Origin")
-#     v2 = diagram.add_vertex(x=1.0, y=1.0, label="Point A")
-#     v3 = diagram.add_vertex(x=2.0, y=0.0, label="Point B")
-
-#     l1 = diagram.add_line(v_start=v1, v_end=v2, line_type=FermionLine)
-#     l2 = diagram.add_line(v_start=v2, v_end=v3, line_type=PhotonLine, label="Photon")
-#     l3 = diagram.add_line(v_start=v3, v_end=v1, line_type=FermionLine, label="Return")
-
-#     dialog = DeleteLineDialog(diagram)
-#     result = dialog.exec() # 显示对话框并等待用户交互
-
-#     if result == QDialog.Accepted:
-#         selected_line = dialog.get_selected_line()
-#         if selected_line:
-#             print(f"用户选择了删除线条: ID={selected_line.id}, 类型={type(selected_line).__name__}")
-#             # 在实际应用中，这里会调用 diagram.delete_line(selected_line.id)
-#             if diagram.delete_line(selected_line.id):
-#                 print("线条已从模型中删除。")
-#             else:
-#                 print("线条删除失败。")
-#         else:
-#             print("没有选择任何线条或没有可用线条可删除。")
-#     else:
-#         print("用户取消了删除操作。")
-
-#     # 再次显示对话框，看看删除后是否更新
-#     # dialog_after_delete = DeleteLineDialog(diagram)
-#     # dialog_after_delete.exec()
-
-#     sys.exit(app.exec())

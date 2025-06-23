@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from debug_utils import cout
+from feynplot.shared.common_functions import str2latex
+
 
 # 导入你的核心模型类（如果这些函数直接依赖于 Line 和 Vertex 对象）
 # 这些导入最好放在文件的顶部，以便清晰可见。
@@ -13,6 +15,7 @@ from feynplot.core.gluon_methods import generate_gluon_helix # 假设你正在�
 from feynplot.core.photon_methods import generate_photon_wave
 from feynplot.core.WZ_methods import generate_WZ_zigzag
 from feynplot.core.fermion_methods import generate_fermion_line
+import mplhep as hep
 
 
 def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict):
@@ -44,9 +47,11 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
     # 绘制光子线的标签
     if line.label:
         mid_idx = len(x_wave) // 2
+        # --- 修改这里：使用 str2latex ---
+        label_in_latex = str2latex(line.label)
         ax.text(x_wave[mid_idx] + line.label_offset[0],
                 y_wave[mid_idx] + line.label_offset[1],
-                line.label,
+                label_in_latex,
                 **current_label_text_options)
 
 
@@ -79,9 +84,11 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
     # 绘制胶子线的标签
     if line.label:
         mid_idx = len(x_helix) // 2
+        # --- 修改这里：使用 str2latex ---
+        label_in_latex = str2latex(line.label)
         ax.text(x_helix[mid_idx] + line.label_offset[0],
                 y_helix[mid_idx] + line.label_offset[1],
-                line.label,
+                label_in_latex,
                 **current_label_text_options)
 
 
@@ -124,9 +131,11 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
         label_x = bezier_base_path_for_zigzag[mid_idx, 0] + line.label_offset[0]
         label_y = bezier_base_path_for_zigzag[mid_idx, 1] + line.label_offset[1]
 
+        # --- 修改这里：使用 str2latex ---
+        label_in_latex = str2latex(line.label)
         ax.text(label_x,
                 label_y,
-                line.label,
+                label_in_latex,
                 **current_label_text_options)
 
 
@@ -216,7 +225,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
         # 设置箭头的线宽，如果未指定则使用线条的线宽
         arrow_lw = arrow_line_width if arrow_line_width is not None else \
-                   current_line_plot_options.get('linewidth', 1.5)
+                           current_line_plot_options.get('linewidth', 1.5)
 
         arrow_props = dict(
             arrowstyle=arrowstyle_str,
@@ -234,7 +243,9 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
         mid_idx = len(fermion_path) // 2
         label_x = fermion_path[mid_idx, 0] + line.label_offset[0]
         label_y = fermion_path[mid_idx, 1] + line.label_offset[1]
-        ax.text(label_x, label_y, line.label, **current_label_text_options)
+        # --- 修改这里：使用 str2latex ---
+        label_in_latex = str2latex(line.label)
+        ax.text(label_x, label_y, label_in_latex, **current_label_text_options)
 
 
 def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
@@ -248,8 +259,6 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
     # 如果有 size 参数，替换成 s
     if 'size' in current_scatter_props:
         current_scatter_props['s'] = current_scatter_props.pop('size')
-
-    ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
 
     original_size = current_scatter_props.get('s', 100)
@@ -270,16 +279,19 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         current_label_props['color'] = 'gold'
         current_label_props['zorder'] = original_zorder + 11
 
-    # 绘制点状顶点
+    # --- 修改这里：只绘制一次点状顶点 ---
     ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
     # 绘制标签
     if vertex.label:
+        # --- 修改这里：使用 str2latex ---
+        label_in_latex = str2latex(vertex.label)
         ax.text(
             vertex.x + vertex.label_offset[0],
             vertex.y + vertex.label_offset[1],
-            vertex.label,
-            **current_label_props # 使用调整后的标签属性
+            label_in_latex + "test test",
+            fontname='Times New Roman'
+            # **current_label_props # 使用调整后的标签属性
         )
 
 
@@ -356,9 +368,11 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
 
     # 3. 绘制标签
     if vertex.label:
+        # --- 修改这里：使用 str2latex ---
+        label_in_latex = str2latex(vertex.label)
         ax.text(
             vertex.x + vertex.label_offset[0],
             vertex.y + vertex.label_offset[1],
-            vertex.label,
+            label_in_latex,
             **current_label_props # 使用调整后的标签属性
         )

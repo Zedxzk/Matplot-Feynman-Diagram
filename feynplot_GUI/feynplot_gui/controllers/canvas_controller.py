@@ -48,6 +48,16 @@ class CanvasController(QObject):
         self.canvas_widget.object_moved.connect(self._handle_object_moved_on_canvas_widget)
         self.canvas_widget.selection_cleared.connect(self._handle_selection_cleared_on_canvas_widget)
 
+    def get_fig(self):
+        return self.canvas_widget.get_figure()
+    
+    def get_ax(self):
+        return self.canvas_widget.get_axes()
+    
+    def get_backend(self):
+        return self._matplotlib_backend
+
+
     def set_mode(self, mode: str):
         """
         设置当前画布的模式（如“选择”、“添加顶点”、“添加线条”）。
@@ -65,7 +75,8 @@ class CanvasController(QObject):
         vertices_data = self.diagram_model.vertices
         lines_data = self.diagram_model.lines
         selected_item = self.main_controller.get_selected_item() # 获取当前选中的项以便高亮
-
+        # self.get_ax().clear() # 清除旧绘图
+        # self.get_fig().clear() # 清除旧绘图
         # **关键改动：直接调用 MatplotlibBackend 的 render 方法**
         # 传入所有绘制所需的数据，包括当前选中项的信息
         # MatplotlibBackend 将负责清除旧绘图、设置轴、绘制所有元素和高亮选中项

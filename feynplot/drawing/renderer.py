@@ -1,10 +1,13 @@
 # /home/zed/pyfeynmandiagram/feynplot/drawing/renderer.py
 # from cout import cout
+from cProfile import label
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, List
+from feynplot.shared.common_functions import str2latex
+import os
 
 # 导入你的核心模型类
 from feynplot.core.vertex import Vertex, VertexType
@@ -27,7 +30,7 @@ class MatplotlibBackend:
         else:
             self.fig = fig
             self.ax = ax
-
+        MatplotlibBackend._render_call_count = 0
         self.ax.set_aspect('equal', adjustable='box')
         self.ax.set_axis_off()
         self.fig.tight_layout()
@@ -46,7 +49,23 @@ class MatplotlibBackend:
         self.fig.canvas.draw_idle()
 
     def render(self, vertices: List[Vertex], lines: List[Line]):
-        self.ax.clear()
+        MatplotlibBackend._render_call_count += 1
+        print(f"\n--- Render Call #{MatplotlibBackend._render_call_count} ---")
+        print(f"Current Axes ID in render: {id(self.ax)}")
+        
+        # --- 重要的修改：重新创建 Axes 对象 ---
+        # 1. 从 Figure 中移除旧的 Axes
+        if self.ax in self.fig.axes: # 确保 self.ax 还在 Figure 的 Axes 列表中
+            self.fig.delaxes(self.ax)
+            print(f"已移除旧的 Axes。当前 Figure 上的 Axes 数量: {len(self.fig.axes)}")
+        
+        # 2. 创建一个全新的 Axes 对象
+        self.ax = self.fig.add_subplot(111)
+        print(f"已创建新的 Axes。新 Axes ID: {id(self.ax)}")
+        print(f"当前 Figure 上的 Axes 数量: {len(self.fig.axes)}")
+        # --- 重新创建 Axes 结束 ---
+
+        # 重新应用 Axes 的初始设置到新的 Axes 对象上
         self.ax.set_aspect('equal', adjustable='box')
         self.ax.set_axis_off()
 
@@ -60,7 +79,17 @@ class MatplotlibBackend:
 
         self.fig.tight_layout()
         self.ax.autoscale_view() # 自动调整视图以包含所有元素
-        self.fig.canvas.draw_idle() # 在渲染结束后触发一次绘制
+        self.fig.canvas.draw_idle() 
+        self.fig.canvas.flush_events() # 强制 Matplotlib 绘制到其内部缓冲区
+
+        # --- 新增：强制 Qt 刷新 widget ---
+        self.fig.canvas.update() # 告诉 Qt 这个 widget 需要重绘
+        # --- 新增结束 ---
+
+        print(f"新 Axes 绘制后的 Artist 数量: {len(self.ax.get_children())}")
+        print(f"--- Render Call #{MatplotlibBackend._render_call_count} 结束 ---\n")
+
+
 
     def _draw_line(self, line: Line):
         line_plot_options = line.get_plot_properties()
@@ -84,10 +113,16 @@ class MatplotlibBackend:
             self.ax.plot([x1, x2], [y1, y2], **line_plot_options)
             # 对于通用直线，如果需要箭头或标签，也需要在_draw_line中处理
             if line.label:
+                label_in_latex = str2latex(line.label)
+                print(f"Label in Latex: {label_in_latex}")
+                input()
                 label_x = (x1 + x2) / 2 + line.label_offset[0]
                 label_y = (y1 + y2) / 2 + line.label_offset[1]
-                self.ax.text(label_x, label_y, line.label, **label_text_options,
+                self.ax.text(label_x, label_y, label_in_latex, **label_text_options,
                              zorder=line_plot_options.get('zorder', 1) + 1)
+            else:
+                input()
+                print(f"No label for line: {line}")
             # 通用直线的箭头绘制也需要在这里处理，可以考虑提取成辅助函数
             # ... (如果需要，添加通用直线的箭头绘制逻辑)
 
@@ -105,11 +140,16 @@ class MatplotlibBackend:
             label_text_options = vertex.get_label_properties()
             # 标签的 zorder 应该比顶点更高
             vertex_zorder = vertex.get_scatter_properties().get('zorder', 2)
-            self.ax.text(label_x, label_y, vertex.label,
-                         **label_text_options, zorder=vertex_zorder + 1)
+            label_in_latex = str2latex(vertex.label)
+            # print(label_in_latex)
+            print(f"Currently drawing:{vertex.label}, {label_x}, {label_y}, {label_in_latex}")
+            # self.ax.text(label_x, label_y, label_in_latex,
+            #              **label_text_options, zorder=vertex_zorder + 1)
 
     def savefig(self, filename, **kwargs):
         self.fig.savefig(filename, **kwargs)
 
     def show(self):
         plt.show()
+
+

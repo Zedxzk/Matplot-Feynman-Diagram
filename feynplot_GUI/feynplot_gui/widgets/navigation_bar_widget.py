@@ -3,6 +3,7 @@
 from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, Signal
+from typing import Optional 
 
 
 class NavigationBarWidget(QWidget):
@@ -17,7 +18,11 @@ class NavigationBarWidget(QWidget):
     edit_selected_line_triggered = Signal()
     delete_selected_object_triggered = Signal() # 可以有一个通用的删除信号，具体删除什么由控制器判断
 
-    def __init__(self, parent=None):
+    # 新增信号：用于触发后端设置对话框
+    # 原有的 show_backend_settings_triggered 信号现在更具体地用于 Matplotlib 设置
+    show_matplotlib_settings_triggered = Signal() 
+
+    def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.init_ui()
 
@@ -27,10 +32,18 @@ class NavigationBarWidget(QWidget):
         
         # --- 菜单栏示例 ---
         self.menu_bar = QMenuBar(self)
-        file_menu  = self.menu_bar.addMenu("文件")
-        edit_menu  = self.menu_bar.addMenu("编辑")
-        view_menu  = self.menu_bar.addMenu("视图")
-        about_menu = self.menu_bar.addMenu("关于") # 你的"关于"菜单
+        file_menu    = self.menu_bar.addMenu("文件")
+        edit_menu    = self.menu_bar.addMenu("编辑")
+        view_menu    = self.menu_bar.addMenu("视图")
+        
+        # === 修改：Backend Settings 菜单 ===
+        self.backend_settings_menu = self.menu_bar.addMenu("后端设置") 
+        
+        # 新增子菜单项：Matplotlib 设置
+        self.show_matplotlib_settings_action = QAction("Matplotlib 设置...", self)
+        # 连接到新的信号
+        self.show_matplotlib_settings_action.triggered.connect(self.show_matplotlib_settings_triggered.emit)
+        self.backend_settings_menu.addAction(self.show_matplotlib_settings_action)
 
         # === 新增：对象操作菜单 ===
         self.obj_menu = self.menu_bar.addMenu("对象")
@@ -46,6 +59,9 @@ class NavigationBarWidget(QWidget):
         self.delete_obj_action.triggered.connect(self.delete_selected_object_triggered.emit)
         self.obj_menu.addAction(self.delete_obj_action)
         
+        # 关于菜单
+        about_menu = self.menu_bar.addMenu("关于")
+
         # 文件菜单项
         save_action = QAction("保存项目", self)
         save_action.triggered.connect(self.save_project_action_triggered.emit)
@@ -67,28 +83,29 @@ class NavigationBarWidget(QWidget):
         main_layout.addWidget(self.menu_bar)
 
         # --- 关于菜单项的完善 ---
-        show_about_action = QAction("关于 FeynPlot GUI", self) # 可以更具体一点
-        show_about_action.triggered.connect(self._show_about_dialog) # 连接到槽函数
-        about_menu.addAction(show_about_action) # 添加到"关于"菜单
+        show_about_action = QAction("关于 FeynPlot GUI", self)
+        show_about_action.triggered.connect(self._show_about_dialog)
+        about_menu.addAction(show_about_action)
         # --- 完善结束 ---
 
         # --- 工具栏示例 ---
         self.tool_bar = QToolBar("主要操作", self)
         self.tool_bar.setMovable(False)
 
-        add_line_button = QPushButton("添加线条")
-        add_line_button.clicked.connect(self.add_line_button_clicked.emit)
-        self.tool_bar.addWidget(add_line_button)
+        # 直接引用按钮，方便后续控制其 enabled 状态
+        self.add_line_button = QPushButton("添加线条")
+        self.add_line_button.clicked.connect(self.add_line_button_clicked.emit)
+        self.tool_bar.addWidget(self.add_line_button)
 
-        add_vertex_button = QPushButton("添加顶点")
-        add_vertex_button.clicked.connect(self.add_vertex_button_clicked.emit) # 修正这里，之前没有连接
-        self.tool_bar.addWidget(add_vertex_button)
+        self.add_vertex_button = QPushButton("添加顶点")
+        self.add_vertex_button.clicked.connect(self.add_vertex_button_clicked.emit)
+        self.tool_bar.addWidget(self.add_vertex_button)
 
         main_layout.addWidget(self.tool_bar)
 
         self.setLayout(main_layout)
 
-    # --- 新增的槽函数和控制方法 ---
+    # --- 槽函数和控制方法 ---
     def _on_edit_object_triggered(self):
         """内部槽函数，用于根据当前选中类型发出特定编辑信号"""
         print("编辑对象操作被触发。")
@@ -99,10 +116,47 @@ class NavigationBarWidget(QWidget):
         """
         self.obj_menu.setEnabled(enabled)
             
-    # 可以添加方法来禁用/启用特定按钮或菜单项
-    def set_add_line_enabled(self, enabled):
-        # 找到对应的Action或Button并设置其 enabled 属性
-        pass
+    def set_add_line_enabled(self, enabled: bool):
+        """
+        启用/禁用“添加线条”菜单项和工具栏按钮。
+        """
+        # 控制菜单项
+        for action in self.menu_bar.actions():
+            if action.text() == "编辑": # 找到“编辑”菜单
+                for sub_action in action.menu().actions():
+                    if sub_action.text() == "添加线条":
+                        sub_action.setEnabled(enabled)
+                        break
+                break
+        # 控制工具栏按钮
+        self.add_line_button.setEnabled(enabled)
+        
+    def set_add_vertex_enabled(self, enabled: bool):
+        """
+        启用/禁用“添加顶点”菜单项和工具栏按钮。
+        """
+        # 控制菜单项
+        for action in self.menu_bar.actions():
+            if action.text() == "编辑": # 找到“编辑”菜单
+                for sub_action in action.menu().actions():
+                    if sub_action.text() == "添加顶点":
+                        sub_action.setEnabled(enabled)
+                        break
+                break
+        # 控制工具栏按钮
+        self.add_vertex_button.setEnabled(enabled)
+
+    def set_edit_object_action_enabled(self, enabled: bool):
+        """
+        设置“编辑属性”动作的启用状态。
+        """
+        self.edit_obj_action.setEnabled(enabled)
+
+    def set_delete_object_action_enabled(self, enabled: bool):
+        """
+        设置“删除对象”动作的启用状态。
+        """
+        self.delete_obj_action.setEnabled(enabled)
 
     def _show_about_dialog(self):
         """

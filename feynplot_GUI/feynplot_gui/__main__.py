@@ -3,20 +3,30 @@
 import sys
 import traceback
 from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import Qt # Import Qt for setting maximumHeight
+
 from feynplot_gui.widgets.main_window import MainWindow
 from feynplot_gui.controllers.main_controller import MainController
-from debug_utils import cout3  # 如果没用可以删除
+
+# from debug_utils import cout3  # 如果没用可以删除
 
 def show_error_dialog(title, message, parent=None):
     """
     显示错误对话框的统一函数。
     """
     msg_box = QMessageBox(parent)
-    msg_box.setIcon(QMessageBox.Critical)
+    msg_box.setIcon(QMessageBox.Icon.Critical)
     msg_box.setText(title)
     msg_box.setInformativeText(message)
     msg_box.setWindowTitle("Error")
     msg_box.setStandardButtons(QMessageBox.Ok)
+    
+    # --- Add this line to limit the maximum height ---
+    msg_box.setMaximumHeight(800) 
+    # Alternatively, use stylesheet if you prefer:
+    # msg_box.setStyleSheet("QMessageBox { max-height: 800px; }")
+    # --- End of added line ---
+
     msg_box.exec()
 
 if __name__ == "__main__":
@@ -49,7 +59,11 @@ if __name__ == "__main__":
                         "The application might not function correctly or may close."
 
         if app:
-            show_error_dialog("Application Startup Error", error_message, parent=window)
+            # Here, 'window' might not be fully initialized if the error occurs very early.
+            # It's safer to just pass 'None' as parent or ensure 'window' is created before calling.
+            # In the startup error, 'window' could still be 'None'.
+            # We'll pass None as parent for the startup error case to avoid issues if window isn't ready.
+            show_error_dialog("Application Startup Error", error_message, parent=None) 
         else:
             print(f"FATAL ERROR (QApplication not initialized): {error_message}", file=sys.stderr)
 

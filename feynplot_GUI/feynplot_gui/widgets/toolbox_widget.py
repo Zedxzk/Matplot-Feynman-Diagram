@@ -19,7 +19,7 @@ class ToolboxWidget(QFrame): # <-- 改为继承 QFrame
     """
     # 定义信号，这些信号将由 MainController 或 ToolboxController 监听
     # 用于通知控制器具体的 UI 操作
-    tool_mode_selected = Signal(str) # 传递选中的工具模式 (e.g., 'select', 'line', 'vertex')
+    # tool_mode_selected = Signal(str) # 传递选中的工具模式 (e.g., 'select', 'line', 'vertex')
     save_diagram_requested = Signal()
     undo_action_requested = Signal()
     redo_action_requested = Signal()

@@ -52,7 +52,7 @@ class ToolboxController(QObject): # 继承自 QObject
         # self.toolbox_widget.redo_action_requested.connect(self.main_controller.redo)
 
         # 保存（如果工具箱中有保存按钮，导航栏通常也有）
-        self.toolbox_widget.save_diagram_requested.connect(self.main_controller.save_diagram_to_file)
+        # self.toolbox_widget.save_diagram_requested.connect(self.main_controller.save_diagram_to_file)
 
         # 清空图（如果需要确认，MainController 来处理确认逻辑）
         # 如果 _on_clear_diagram_button_clicked 最终是触发一个信号，可以直接连接

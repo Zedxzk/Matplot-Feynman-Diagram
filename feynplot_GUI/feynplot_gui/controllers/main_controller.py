@@ -1,8 +1,9 @@
 # feynplot_GUI/feynplot_gui/controllers/main_controller.py
-
+from typing import Optional # Import Optional for type hinting
 from debug_utils import cout, cout3
 from PySide6.QtCore import QObject, Signal, QPointF
 from PySide6.QtWidgets import QMessageBox, QDialog, QFileDialog
+import os
 
 # 导入所有控制器
 from .canvas_controller import CanvasController
@@ -102,14 +103,18 @@ class MainController(QObject):
         # # ToolboxController 现在负责管理模式切换，并发出 mode_changed 信号给 MainController
         # self.toolbox_controller.mode_changed.connect(self._on_tool_mode_changed) # 内部更新 MainController 的模式
         # self.toolbox_controller.mode_changed.connect(self.canvas_controller.set_mode) # 更新 CanvasController 的模式
-        
+                
+        self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_from_toolbox)
+        self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_from_navigation_bar)
+
         # 将 ToolboxWidget 的操作信号直接连接到 MainController 的方法
         # 假设 ToolboxWidget 已经有这些信号
         self.main_window.toolbox_widget_instance.add_vertex_requested.connect(self.start_add_vertex_process)
         self.main_window.toolbox_widget_instance.add_line_requested.connect(self.start_add_line_process)
         self.main_window.toolbox_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
         self.main_window.toolbox_widget_instance.delete_line_requested.connect(self.delete_selected_line)
-        self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_to_file)
+        # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_to_file)
+        # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self)
         # self.main_window.toolbox_widget_instance.load_diagram_requested.connect(self.load_diagram_from_file)
         self.main_window.toolbox_widget_instance.undo_action_requested.connect(self.undo)
         self.main_window.toolbox_widget_instance.redo_action_requested.connect(self.redo)
@@ -118,7 +123,7 @@ class MainController(QObject):
         # --- NavigationBarWidget 信号连接 ---
         self.main_window.navigation_bar_widget_instance.add_vertex_button_clicked.connect(self.start_add_vertex_process)
         self.main_window.navigation_bar_widget_instance.add_line_button_clicked.connect(self.start_add_line_process)
-        self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_to_file)
+        # self.main_window.navigation_bar_widget_instance.save_project_action_triggered.connect(self.save_diagram_to_file)
         self.main_window.navigation_bar_widget_instance.load_project_action_triggered.connect(self.load_diagram_from_file)
         # self.main_window.navigation_bar_widget_instance.clear_diagram_action_triggered.connect(self.clear_diagram)
         
@@ -157,9 +162,9 @@ class MainController(QObject):
         初始化一些示例图数据或从文件加载。
         """
         # 示例：添加一些初始顶点和线条
-        v1 = self.diagram_model.add_vertex(x=0, y=0, label="v1")
-        v2 = self.diagram_model.add_vertex(x=5, y=5, label="v2", vertex_type=VertexType.HIGHER_ORDER)
-        v3 = self.diagram_model.add_vertex(x=5, y=0, label="v3")
+        v1 = self.diagram_model.add_vertex(x=0, y=0, label="v^1\_")
+        v2 = self.diagram_model.add_vertex(x=5, y=5, label="v^2", vertex_type=VertexType.HIGHER_ORDER)
+        v3 = self.diagram_model.add_vertex(x=5, y=0, label="J/\psi")
         
         self.diagram_model.add_line(v_start=v1, v_end=v2, label="l1", line_type=FermionLine)
         self.diagram_model.add_line(v_start=v2, v_end=v3, label="l2", line_type=PhotonLine)
@@ -398,74 +403,101 @@ class MainController(QObject):
         self.canvas_controller.reset_line_creation_state() # 清除 CanvasController 中的临时线条创建状态
 
 
-    def delete_selected_vertex(self):
-        """
-        弹出对话框让用户选择要删除的顶点，并执行删除操作。
-        此方法从工具箱或其他UI触发。
-        """
-        # 1. 实例化删除顶点对话框，并传入当前图模型
-        dialog = DeleteVertexDialog(self.diagram_model, parent=self.main_window)
+    def delete_selected_vertex(self, vertex_to_delete: Optional[Vertex] = None):
+            """
+            弹出对话框让用户选择或确认要删除的顶点，并执行删除操作。
+            如果传入了 vertex_to_delete 参数，则直接预选并锁定该顶点。
+            如果未传入，则尝试使用当前 UI 选中的顶点（如果存在），否则让用户选择。
 
-        # 2. 检查图中是否有顶点可供删除。如果没有，直接提示并返回。
-        if not self.diagram_model.vertices:
-            QMessageBox.information(self.main_window, "没有顶点", "图中目前没有可供删除的顶点。")
-            self.status_message.emit("删除顶点失败：图中没有顶点。")
-            return
+            Args:
+                vertex_to_delete (Optional[Vertex]): 可选参数，指定要删除的顶点实例。
+                                                    如果提供，对话框将预选并锁定此顶点。
+                                                    默认为 None。
+            """
+            # 1. 检查图中是否有顶点可供删除。如果没有，直接提示并返回。
+            if not self.diagram_model.vertices:
+                QMessageBox.information(self.main_window, "没有顶点", "图中目前没有可供删除的顶点。")
+                self.status_message.emit("删除顶点失败：图中没有顶点。")
+                return
 
-        # 3. 显示对话框并等待用户交互
-        if dialog.exec() == QDialog.Accepted:
-            # 4. 如果用户点击了“确定”，获取用户选择的顶点ID
-            selected_vertex_id = dialog.get_selected_vertex_id()
-            
-            if selected_vertex_id:
-                # 5. 再次获取选中顶点的对象，用于在消息中显示其标签
-                # 这步是可选的，但可以提供更友好的用户反馈
-                selected_vertex_obj = self.diagram_model.get_vertex_by_id(selected_vertex_id)
-                vertex_label = selected_vertex_obj.label if selected_vertex_obj else selected_vertex_id
+            # 确定最终要传递给对话框的预选顶点
+            final_pre_selected_vertex = vertex_to_delete
+            if final_pre_selected_vertex is None:
+                # 如果没有通过参数指定顶点，则尝试从 UI 获取当前选中的顶点
+                # 假设 self.get_currently_selected_vertex() 返回一个 Vertex 实例或 None
+                if hasattr(self, 'get_currently_selected_vertex') and callable(self.get_currently_selected_vertex):
+                    final_pre_selected_vertex = self.get_currently_selected_vertex()
+                elif hasattr(self, 'selected_vertex') and isinstance(self.selected_vertex, Vertex):
+                    final_pre_selected_vertex = self.selected_vertex
+                # 你需要根据你的实现调整这里获取选中顶点的方式，确保它返回一个 Vertex 对象或 None。
 
-                # 6. 调用模型层的方法删除顶点
-                try:
-                    # diagram_model.delete_vertex 会同时处理关联边的删除
-                    if self.diagram_model.delete_vertex(selected_vertex_id):
-                        # 如果你有 cout3 函数，可以在这里使用
-                        # cout3(f"已删除顶点: {selected_vertex_id}（标签: {vertex_label}）")
-                        QMessageBox.information(self.main_window, "删除成功", 
-                                                f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 及其关联线条已成功删除。")
-                        self.status_message.emit(f"已删除顶点: {vertex_label} (ID: {selected_vertex_id})。")
-                        self.update_all_views() # 删除后刷新视图
-                        self.clear_selection() # 删除后清除当前选择
-                    else:
-                        # 理论上，如果 get_selected_vertex_id 返回了ID，delete_vertex 应该成功
-                        # 但为了健壮性，这里保留一个失败提示
-                        QMessageBox.warning(self.main_window, "删除失败", 
-                                            f"无法删除顶点 '{vertex_label}' (ID: {selected_vertex_id})。")
-                        self.status_message.emit(f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 删除失败。")
-                except Exception as e:
-                    # 捕获模型层可能抛出的其他异常
-                    self.status_message.emit(f"删除顶点时发生未知错误: {e}")
-                    QMessageBox.critical(self.main_window, "删除顶点错误", f"删除顶点时发生未知错误: {e}")
+            # 2. 实例化删除顶点对话框，并传入当前图模型和最终确定的预选顶点
+            dialog = DeleteVertexDialog(self.diagram_model, vertex_to_delete=final_pre_selected_vertex, parent=self.main_window)
+
+            # 3. 显示对话框并等待用户交互
+            if dialog.exec() == QDialog.Accepted:
+                # 4. 如果用户点击了“确定”，获取用户选择的顶点ID
+                selected_vertex_id = dialog.get_selected_vertex_id()
+                
+                if selected_vertex_id:
+                    # 5. 再次获取选中顶点的对象，用于在消息中显示其标签
+                    selected_vertex_obj = self.diagram_model.get_vertex_by_id(selected_vertex_id)
+                    vertex_label = selected_vertex_obj.label if selected_vertex_obj else selected_vertex_id
+
+                    # 6. 调用模型层的方法删除顶点
+                    try:
+                        if self.diagram_model.delete_vertex(selected_vertex_id):
+                            QMessageBox.information(self.main_window, "删除成功", 
+                                                    f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 及其关联线条已成功删除。")
+                            self.status_message.emit(f"已删除顶点: {vertex_label} (ID: {selected_vertex_id})。")
+                            self.update_all_views() # 删除后刷新视图
+                            self.clear_selection() # 删除后清除当前选择（如果删除的是选中项）
+                        else:
+                            QMessageBox.warning(self.main_window, "删除失败", 
+                                                f"无法删除顶点 '{vertex_label}' (ID: {selected_vertex_id})。")
+                            self.status_message.emit(f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 删除失败。")
+                    except Exception as e:
+                        self.status_message.emit(f"删除顶点时发生未知错误: {e}")
+                        QMessageBox.critical(self.main_window, "删除顶点错误", f"删除顶点时发生未知错误: {e}")
+                else:
+                    QMessageBox.warning(self.main_window, "删除失败", "未选择任何顶点。")
+                    self.status_message.emit("删除顶点操作：未选择顶点。")
             else:
-                # 用户点击了“确定”，但可能没有选择任何顶点 (理论上不应该发生，但以防万一)
-                QMessageBox.warning(self.main_window, "删除失败", "未选择任何顶点。")
-                self.status_message.emit("删除顶点操作：未选择顶点。")
-        else:
-            # 7. 如果用户点击了“取消”
-            self.status_message.emit("顶点删除操作已取消。")
+                # 7. 如果用户点击了“取消”
+                self.status_message.emit("顶点删除操作已取消。")
 
 
     # --- 新增的 delete_selected_line 方法 ---
-    def delete_selected_line(self):
+    def delete_selected_line(self, line_to_delete: Optional[Line] = None):
         """
-        弹出对话框让用户选择要删除的线条，并执行删除操作。
-        """
-        # 1. 实例化删除线条对话框，并传入当前图模型
-        dialog = DeleteLineDialog(self.diagram_model, parent=self.main_window)
+        弹出对话框让用户选择或确认要删除的线条，并执行删除操作。
+        如果传入了 line_to_delete 参数，则直接预选并锁定该线条。
+        如果未传入，则尝试使用当前 UI 选中的线条（如果存在），否则让用户选择。
 
-        # 2. 检查图中是否有线条可供删除。如果没有，直接提示并返回。
+        Args:
+            line_to_delete (Optional[Line]): 可选参数，指定要删除的线条实例。
+                                              如果提供，对话框将预选并锁定此线条。
+                                              默认为 None。
+        """
+        # 1. 检查图中是否有线条可供删除。如果没有，直接提示并返回。
         if not self.diagram_model.lines:
             QMessageBox.information(self.main_window, "没有线条", "图中目前没有可供删除的线条。")
             self.status_message.emit("删除线条失败：图中没有线条。")
             return
+
+        # 确定最终要传递给对话框的预选线条
+        final_pre_selected_line = line_to_delete
+        if final_pre_selected_line is None:
+            # 如果没有通过参数指定线条，则尝试从 UI 获取当前选中的线条
+            # 假设 self.get_currently_selected_line() 返回一个 Line 实例或 None
+            if hasattr(self, 'get_currently_selected_line') and callable(self.get_currently_selected_line):
+                final_pre_selected_line = self.get_currently_selected_line()
+            elif hasattr(self, 'selected_line') and isinstance(self.selected_line, Line):
+                final_pre_selected_line = self.selected_line
+            # 你需要根据你的具体 UI 实现来调整这里获取选中线条的方式。
+
+        # 2. 实例化删除线条对话框，并传入当前图模型和最终确定的预选线条
+        dialog = DeleteLineDialog(self.diagram_model, line_to_delete=final_pre_selected_line, parent=self.main_window)
 
         # 3. 显示对话框并等待用户交互
         if dialog.exec() == QDialog.Accepted:
@@ -511,74 +543,118 @@ class MainController(QObject):
         #     QMessageBox.information(self.main_window, "提示", "没有选中的对象可以删除。")
         pass
 
-    def edit_item_properties(self, item: [Vertex, Line]):
-        """
-        打开属性编辑器来编辑选中项的属性。
-        由双击事件或导航栏“编辑”菜单触发。
-        """
-        if item is None:
-            self.status_message.emit("没有选中的对象可以编辑。")
-            QMessageBox.information(self.main_window, "提示", "没有选中的对象可以编辑。")
-            return
+    # def edit_item_properties(self, item: [Vertex, Line]):
+    #     """
+    #     打开属性编辑器来编辑选中项的属性。
+    #     由双击事件或导航栏“编辑”菜单触发。
+    #     """
+    #     if item is None:
+    #         self.status_message.emit("没有选中的对象可以编辑。")
+    #         QMessageBox.information(self.main_window, "提示", "没有选中的对象可以编辑。")
+    #         return
         
-        if isinstance(item, Vertex):
-            dialog = EditVertexDialog(item, parent=self.main_window)
-            if dialog.exec() == QDialog.Accepted:
-                updated_data = dialog.get_vertex_data()
-                try:
-                    self.diagram_model.update_vertex_properties(
-                        item, 
-                        x=updated_data['x'], y=updated_data['y'], 
-                        label=updated_data['label'], 
-                        vertex_type=updated_data['vertex_type']
-                    )
-                    self.status_message.emit(f"已更新顶点 {item.id} 的属性。")
-                    self.update_all_views() # 更新后强制刷新视图
-                except Exception as e:
-                    self.status_message.emit(f"更新顶点属性失败: {e}")
-                    QMessageBox.critical(self.main_window, "更新错误", f"更新顶点属性失败: {e}")
-            else:
-                self.status_message.emit(f"顶点 {item.id} 属性编辑已取消。")
-        elif isinstance(item, Line):
-            dialog = EditLineDialog(item, parent=self.main_window)
-            if dialog.exec() == QDialog.Accepted:
-                updated_data = dialog.get_line_data()
-                try:
-                    # 确保传递的是 Vertex 实例给 model
-                    start_v = self.diagram_model.get_vertex_by_id(updated_data['v_start'].id)
-                    end_v = self.diagram_model.get_vertex_by_id(updated_data['v_end'].id)
-                    self.diagram_model.update_line_properties(
-                        item, 
-                        v_start=start_v, v_end=end_v, 
-                        label=updated_data['label'], 
-                        line_type=updated_data['line_type']
-                    )
-                    self.status_message.emit(f"已更新线条 {item.id} 的属性。")
-                    self.update_all_views() # 更新后强制刷新视图
-                except Exception as e:
-                    self.status_message.emit(f"更新线条属性失败: {e}")
-                    QMessageBox.critical(self.main_window, "更新错误", f"更新线条属性失败: {e}")
-            else:
-                self.status_message.emit(f"线条 {item.id} 属性编辑已取消。")
+    #     if isinstance(item, Vertex):
+    #         dialog = EditVertexDialog(item, parent=self.main_window)
+    #         if dialog.exec() == QDialog.Accepted:
+    #             updated_data = dialog.get_vertex_data()
+    #             try:
+    #                 self.diagram_model.update_vertex_properties(
+    #                     item, 
+    #                     x=updated_data['x'], y=updated_data['y'], 
+    #                     label=updated_data['label'], 
+    #                     vertex_type=updated_data['vertex_type']
+    #                 )
+    #                 self.status_message.emit(f"已更新顶点 {item.id} 的属性。")
+    #                 self.update_all_views() # 更新后强制刷新视图
+    #             except Exception as e:
+    #                 self.status_message.emit(f"更新顶点属性失败: {e}")
+    #                 QMessageBox.critical(self.main_window, "更新错误", f"更新顶点属性失败: {e}")
+    #         else:
+    #             self.status_message.emit(f"顶点 {item.id} 属性编辑已取消。")
+    #     elif isinstance(item, Line):
+    #         dialog = EditLineDialog(item, parent=self.main_window)
+    #         if dialog.exec() == QDialog.Accepted:
+    #             updated_data = dialog.get_line_data()
+    #             try:
+    #                 # 确保传递的是 Vertex 实例给 model
+    #                 start_v = self.diagram_model.get_vertex_by_id(updated_data['v_start'].id)
+    #                 end_v = self.diagram_model.get_vertex_by_id(updated_data['v_end'].id)
+    #                 self.diagram_model.update_line_properties(
+    #                     item, 
+    #                     v_start=start_v, v_end=end_v, 
+    #                     label=updated_data['label'], 
+    #                     line_type=updated_data['line_type']
+    #                 )
+    #                 self.status_message.emit(f"已更新线条 {item.id} 的属性。")
+    #                 self.update_all_views() # 更新后强制刷新视图
+    #             except Exception as e:
+    #                 self.status_message.emit(f"更新线条属性失败: {e}")
+    #                 QMessageBox.critical(self.main_window, "更新错误", f"更新线条属性失败: {e}")
+    #         else:
+    #             self.status_message.emit(f"线条 {item.id} 属性编辑已取消。")
 
 
-    def edit_selected_object_properties(self):
-        """从导航栏菜单触发，编辑当前选中对象的属性。"""
-        item = self.get_selected_item()
-        self.edit_item_properties(item)
+    # def edit_selected_object_properties(self):
+    #     """从导航栏菜单触发，编辑当前选中对象的属性。"""
+    #     item = self.get_selected_item()
+    #     self.edit_item_properties(item)
 
     # --- 文件操作 ---
     def save_diagram_to_file(self):
-        """保存当前图到文件。"""
-        file_path, _ = QFileDialog.getSaveFileName(self.main_window, "保存费曼图", "", "JSON Files (*.json);;All Files (*)")
-        if file_path:
-            try:
-                self.diagram_model.save_to_json(file_path) # 假设 FeynmanDiagram 有 save_to_json 方法
-                self.status_message.emit(f"图表已成功保存到: {file_path}")
-            except Exception as e:
-                QMessageBox.critical(self.main_window, "保存失败", f"保存图表时发生错误：\n{str(e)}")
-        else:
+        """保存当前图到文件。支持 .json, .pdf, .png 格式。"""
+        file_path, selected_filter = QFileDialog.getSaveFileName(
+            self.main_window,
+            "保存费曼图",
+            "",
+            "JSON Files (*.json);;PDF Files (*.pdf);;PNG Images (*.png);;All Files (*)"
+        )
+
+        if not file_path:
             self.status_message.emit("保存操作已取消。")
+            return
+
+        try:
+            # 根据选择的过滤器确定扩展名
+            extension_mapping = {
+                "JSON Files (*.json)": ".json",
+                "PDF Files (*.pdf)": ".pdf",
+                "PNG Images (*.png)": ".png"
+            }
+            extension = extension_mapping.get(selected_filter, "")
+            
+            # 规范化文件路径
+            if extension and not file_path.lower().endswith(extension.lower()):
+                file_path = f"{os.path.splitext(file_path)[0]}{extension}"
+
+            # 确保目录存在
+            os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
+
+            # 根据扩展名保存文件
+            if file_path.lower().endswith(".json"):
+                # self.diagram_model.save_to_json(file_path)
+                QMessageBox.warning(self.main_window, "错误", "当前功能未实现!")
+                self.status_message.emit(f"图表数据已成功保存到: {file_path}")
+            elif file_path.lower().endswith((".pdf", ".png")):
+                backend = self.canvas_controller.get_backend()
+                if backend is None:
+                    raise ValueError("画布后端未初始化")
+                backend.savefig(file_path, bbox_inches='tight', dpi=300)
+                self.status_message.emit(f"图像已成功保存到: {file_path}")
+            else:
+                # 默认尝试保存为PNG
+                file_path = f"{os.path.splitext(file_path)[0]}.png"
+                self.canvas_controller.get_backend().savefig(file_path)
+                self.status_message.emit(f"图像已默认保存为PNG: {file_path}")
+
+        except Exception as e:
+            QMessageBox.critical(
+                self.main_window, 
+                "保存失败", 
+                f"保存图表时发生错误：\n{str(e)}\n\n请检查文件路径和权限。"
+            )
+            self.status_message.emit(f"保存失败: {str(e)}")
+
+
 
     def load_diagram_from_file(self):
         """从文件加载图。"""
@@ -629,6 +705,15 @@ class MainController(QObject):
         self.status_message.emit("执行重做操作 (待实现)。")
         # self.diagram_model.redo() # 如果你的模型支持重做
         # self.update_all_views()
+    def save_diagram_from_toolbox(self):
+        # QMessageBox.information(self.main_window, "提示", "save_diagram_from_toolbox")
+        # exit()
+        self.save_diagram_to_file()
 
+    def save_diagram_from_navigation_bar(self):
+        # QMessageBox().information(self.main_window, "提示", "save_diagram_from_navigation_bar")
+        self.save_diagram_to_file()
     # --- 其他辅助方法 ---
     # 你可能还需要实现其他更复杂的交互，如多选，复制粘贴等。
+
+

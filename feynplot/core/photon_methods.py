@@ -1,8 +1,6 @@
 import numpy as np
 import math
 
-from regex import P
-
 # 确保导入你的 Bezier 曲线函数
 from feynplot.core.bezier import cubic_bezier, bezier_tangent
 

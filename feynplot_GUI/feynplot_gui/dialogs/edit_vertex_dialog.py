@@ -27,10 +27,11 @@ class EditVertexDialog(QDialog):
         self.layout.addWidget(basic_group)
 
         # X, Y 坐标
-        self.x_input = self._create_spinbox_row("X 坐标:", self.vertex.x)
-        self.y_input = self._create_spinbox_row("Y 坐标:", self.vertex.y)
-        basic_layout.addLayout(self.x_input)
-        basic_layout.addLayout(self.y_input)
+        # _create_spinbox_row 返回 (布局, spinbox实例)，需要用 [1] 来获取 spinbox
+        self.x_input_layout, self.x_input_spinbox = self._create_spinbox_row("X 坐标:", self.vertex.x)
+        self.y_input_layout, self.y_input_spinbox = self._create_spinbox_row("Y 坐标:", self.vertex.y)
+        basic_layout.addLayout(self.x_input_layout)
+        basic_layout.addLayout(self.y_input_layout)
 
         # Label
         label_layout = QHBoxLayout()
@@ -38,6 +39,13 @@ class EditVertexDialog(QDialog):
         self.label_input = QLineEdit(self.vertex.label)
         label_layout.addWidget(self.label_input)
         basic_layout.addLayout(label_layout)
+
+        # --- 新增：标签字体大小 ---
+        self.label_size_layout, self.label_size_spinbox = self._create_spinbox_row(
+            "标签字体大小:", self.vertex.label_size, min_val=1.0, max_val=72.0, step=0.5
+        )
+        basic_layout.addLayout(self.label_size_layout)
+        # --- 新增结束 ---
 
         # Vertex Type
         type_layout = QHBoxLayout()
@@ -50,20 +58,20 @@ class EditVertexDialog(QDialog):
         basic_layout.addLayout(type_layout)
 
         # Coupling Constant
-        self.coupling_input = self._create_spinbox_row("耦合常数:", self.vertex.coupling_constant, min_val=0.0, max_val=100.0, step=0.1)
-        basic_layout.addLayout(self.coupling_input)
+        self.coupling_input_layout, self.coupling_input_spinbox = self._create_spinbox_row("耦合常数:", self.vertex.coupling_constant, min_val=0.0, max_val=100.0, step=0.1)
+        basic_layout.addLayout(self.coupling_input_layout)
 
         # Symmetry Factor
-        self.symmetry_input = self._create_spinbox_row("对称因子:", self.vertex.symmetry_factor, is_int=True, min_val=1, max_val=100)
-        basic_layout.addLayout(self.symmetry_input)
+        self.symmetry_input_layout, self.symmetry_input_spinbox = self._create_spinbox_row("对称因子:", self.vertex.symmetry_factor, is_int=True, min_val=1, max_val=100)
+        basic_layout.addLayout(self.symmetry_input_layout)
 
         # Label Offset
         label_offset_x = self.vertex.label_offset[0] if self.vertex.label_offset is not None and len(self.vertex.label_offset) > 0 else 0.0
         label_offset_y = self.vertex.label_offset[1] if self.vertex.label_offset is not None and len(self.vertex.label_offset) > 1 else 0.0
-        self.label_offset_x_input = self._create_spinbox_row("标签偏移 X:", label_offset_x, min_val=-10.0, max_val=10.0, step=0.1)
-        self.label_offset_y_input = self._create_spinbox_row("标签偏移 Y:", label_offset_y, min_val=-10.0, max_val=10.0, step=0.1)
-        basic_layout.addLayout(self.label_offset_x_input)
-        basic_layout.addLayout(self.label_offset_y_input)
+        self.label_offset_x_input_layout, self.label_offset_x_input_spinbox = self._create_spinbox_row("标签偏移 X:", label_offset_x, min_val=-10.0, max_val=10.0, step=0.1)
+        self.label_offset_y_input_layout, self.label_offset_y_input_spinbox = self._create_spinbox_row("标签偏移 Y:", label_offset_y, min_val=-10.0, max_val=10.0, step=0.1)
+        basic_layout.addLayout(self.label_offset_x_input_layout)
+        basic_layout.addLayout(self.label_offset_y_input_layout)
 
         # --- 结构化顶点参数 ---
         structured_group = QGroupBox("结构化顶点")
@@ -74,8 +82,8 @@ class EditVertexDialog(QDialog):
         self.is_structured_checkbox.setChecked(self.vertex.is_structured)
         structured_layout.addWidget(self.is_structured_checkbox)
 
-        self.structured_radius_input = self._create_spinbox_row("半径:", self.vertex.structured_radius, min_val=0.1, max_val=5.0, step=0.1)
-        structured_layout.addLayout(self.structured_radius_input)
+        self.structured_radius_layout, self.structured_radius_spinbox = self._create_spinbox_row("半径:", self.vertex.structured_radius, min_val=0.1, max_val=5.0, step=0.1)
+        structured_layout.addLayout(self.structured_radius_layout)
 
         self.structured_facecolor_btn = QPushButton("填充颜色")
         self.structured_facecolor_btn.clicked.connect(lambda: self._pick_color(self.structured_facecolor_btn, 'structured_facecolor'))
@@ -87,11 +95,11 @@ class EditVertexDialog(QDialog):
         structured_layout.addWidget(self.structured_edgecolor_btn)
         self._set_button_color(self.structured_edgecolor_btn, self.vertex.structured_edgecolor)
 
-        self.structured_linewidth_input = self._create_spinbox_row("线宽:", self.vertex.structured_linewidth, min_val=0.1, max_val=5.0, step=0.1)
-        structured_layout.addLayout(self.structured_linewidth_input)
+        self.structured_linewidth_layout, self.structured_linewidth_spinbox = self._create_spinbox_row("线宽:", self.vertex.structured_linewidth, min_val=0.1, max_val=5.0, step=0.1)
+        structured_layout.addLayout(self.structured_linewidth_layout)
 
-        self.structured_alpha_input = self._create_spinbox_row("透明度:", self.vertex.structured_alpha, min_val=0.0, max_val=1.0, step=0.01)
-        structured_layout.addLayout(self.structured_alpha_input)
+        self.structured_alpha_layout, self.structured_alpha_spinbox = self._create_spinbox_row("透明度:", self.vertex.structured_alpha, min_val=0.0, max_val=1.0, step=0.01)
+        structured_layout.addLayout(self.structured_alpha_layout)
 
         # Hatching (阴影线) 参数
         hatch_group = QGroupBox("阴影线 (Hatching)")
@@ -114,14 +122,14 @@ class EditVertexDialog(QDialog):
         hatch_layout.addWidget(self.custom_hatch_color_btn)
         self._set_button_color(self.custom_hatch_color_btn, self.vertex.custom_hatch_line_color)
 
-        self.custom_hatch_linewidth_input = self._create_spinbox_row("自定义线宽:", self.vertex.custom_hatch_line_width, min_val=0.1, max_val=5.0, step=0.1)
-        hatch_layout.addLayout(self.custom_hatch_linewidth_input)
+        self.custom_hatch_linewidth_layout, self.custom_hatch_linewidth_spinbox = self._create_spinbox_row("自定义线宽:", self.vertex.custom_hatch_line_width, min_val=0.1, max_val=5.0, step=0.1)
+        hatch_layout.addLayout(self.custom_hatch_linewidth_layout)
 
-        self.custom_hatch_angle_input = self._create_spinbox_row("自定义角度(度):", self.vertex.custom_hatch_line_angle_deg, min_val=0.0, max_val=360.0, step=1.0)
-        hatch_layout.addLayout(self.custom_hatch_angle_input)
+        self.custom_hatch_angle_layout, self.custom_hatch_angle_spinbox = self._create_spinbox_row("自定义角度(度):", self.vertex.custom_hatch_line_angle_deg, min_val=0.0, max_val=360.0, step=1.0)
+        hatch_layout.addLayout(self.custom_hatch_angle_layout)
 
-        self.custom_hatch_spacing_input = self._create_spinbox_row("自定义间距比例:", self.vertex.custom_hatch_spacing_ratio, min_val=0.01, max_val=1.0, step=0.01)
-        hatch_layout.addLayout(self.custom_hatch_spacing_input)
+        self.custom_hatch_spacing_layout, self.custom_hatch_spacing_spinbox = self._create_spinbox_row("自定义间距比例:", self.vertex.custom_hatch_spacing_ratio, min_val=0.01, max_val=1.0, step=0.01)
+        hatch_layout.addLayout(self.custom_hatch_spacing_layout)
 
         # OK/Cancel buttons
         button_layout = QHBoxLayout()
@@ -159,7 +167,10 @@ class EditVertexDialog(QDialog):
         color = QColorDialog.getColor(initial_qcolor, self)
         if color.isValid():
             self._set_button_color(button, color.name()) # Store hex string
-            setattr(self, f"_{color_attr_name}_picked_color", color.name()) # Store in temp var for retrieval
+            # IMPORTANT: Store the picked color directly into the vertex object
+            # or a temporary attribute that will be read by get_vertex_data.
+            # Using getattr(self, f"_{color_attr_name}_picked_color", ...) is good if you want to store in temp var
+            setattr(self.vertex, color_attr_name, color.name()) # Directly update vertex for real-time reflection or clearer data flow
 
     def _set_button_color(self, button, color_str):
         """Helper to set a button's background color."""
@@ -172,24 +183,27 @@ class EditVertexDialog(QDialog):
     def get_vertex_data(self):
         """Returns a dictionary of updated vertex properties."""
         updated_data = {
-            'x': self.x_input[1].value(),
-            'y': self.y_input[1].value(),
+            'x': self.x_input_spinbox.value(), # Access spinbox value through the stored spinbox instance
+            'y': self.y_input_spinbox.value(), # Access spinbox value through the stored spinbox instance
             'label': self.label_input.text(),
+            'label_size': self.label_size_spinbox.value(), # --- 新增：获取标签字体大小 ---
             'vertex_type': self.type_combo.currentData(), # Returns VertexType enum
-            'coupling_constant': self.coupling_input[1].value(),
-            'symmetry_factor': self.symmetry_input[1].value(),
-            'label_offset': np.array([self.label_offset_x_input[1].value(), self.label_offset_y_input[1].value()]),
+            'coupling_constant': self.coupling_input_spinbox.value(),
+            'symmetry_factor': self.symmetry_input_spinbox.value(),
+            'label_offset': np.array([self.label_offset_x_input_spinbox.value(), self.label_offset_y_input_spinbox.value()]),
             'is_structured': self.is_structured_checkbox.isChecked(),
-            'structured_radius': self.structured_radius_input[1].value(),
-            'structured_facecolor': getattr(self, '_structured_facecolor_picked_color', self.vertex.structured_facecolor),
-            'structured_edgecolor': getattr(self, '_structured_edgecolor_picked_color', self.vertex.structured_edgecolor),
-            'structured_linewidth': self.structured_linewidth_input[1].value(),
-            'structured_alpha': self.structured_alpha_input[1].value(),
+            'structured_radius': self.structured_radius_spinbox.value(),
+            # For colors, retrieve directly from vertex (if updated in _pick_color)
+            # Or from temp vars if you revert to that strategy.
+            'structured_facecolor': self.vertex.structured_facecolor, # Changed
+            'structured_edgecolor': self.vertex.structured_edgecolor, # Changed
+            'structured_linewidth': self.structured_linewidth_spinbox.value(),
+            'structured_alpha': self.structured_alpha_spinbox.value(),
             'use_custom_hatch': self.use_custom_hatch_checkbox.isChecked(),
             'hatch_pattern': self.hatch_pattern_input.text() if self.hatch_pattern_input.text() else None,
-            'custom_hatch_line_color': getattr(self, '_custom_hatch_line_color_picked_color', self.vertex.custom_hatch_line_color),
-            'custom_hatch_line_width': self.custom_hatch_linewidth_input[1].value(),
-            'custom_hatch_line_angle_deg': self.custom_hatch_angle_input[1].value(),
-            'custom_hatch_spacing_ratio': self.custom_hatch_spacing_input[1].value(),
+            'custom_hatch_line_color': self.vertex.custom_hatch_line_color, # Changed
+            'custom_hatch_line_width': self.custom_hatch_linewidth_spinbox.value(),
+            'custom_hatch_line_angle_deg': self.custom_hatch_angle_spinbox.value(),
+            'custom_hatch_spacing_ratio': self.custom_hatch_spacing_spinbox.value(),
         }
         return updated_data

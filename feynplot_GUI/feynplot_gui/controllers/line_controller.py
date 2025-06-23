@@ -1,11 +1,9 @@
-# feynplot_gui/controllers/line_controller.py
-
 from PySide6.QtWidgets import QListWidgetItem, QMessageBox, QDialog
 from PySide6.QtCore import Qt, QObject, Signal
 
 # Import core model classes
 from feynplot.core.line import Line, LineStyle, FermionLine, GluonLine, PhotonLine
-from feynplot.core.diagram import FeynmanDiagram 
+# from feynplot.core.diagram import FeynmanDiagram 
 
 # Import UI Widgets and Dialogs
 from feynplot_gui.widgets.line_list_widget import LineListWidget 
@@ -13,11 +11,11 @@ from feynplot_gui.widgets.line_list_widget import LineListWidget
 from feynplot_gui.controllers.line_dialogs.edit_line import open_edit_line_dialog 
 
 # Type hint for MainController to avoid circular imports
-class MainController: 
-    pass 
+# class MainController: 
+#     pass 
 
 class LineController(QObject):
-    def __init__(self, diagram_model: FeynmanDiagram, line_list_widget: LineListWidget, main_controller: 'MainController'):
+    def __init__(self, diagram_model: "FeynmanDiagram", line_list_widget: LineListWidget, main_controller: "MainController"):
         super().__init__()
 
         self.diagram_model = diagram_model
@@ -113,18 +111,28 @@ class LineController(QObject):
             # If dialog accepted, notify MainController to update everything
             self.main_controller.update_all_views() 
             self.main_controller.status_message.emit(f"Successfully edited line: {line.id}")
+            # Re-select the edited line
+            self.set_selected_item_in_list(line)
         else:
             self.main_controller.status_message.emit(f"Line edit for {line.id} cancelled.")
 
     def _on_request_delete_line(self, line: Line):
-        """
-        Handles the "Delete Line" request from the LineListWidget context menu.
-        Delegates deletion logic to MainController, which manages model changes.
-        """
-        self.main_controller.status_message.emit(f"Requesting deletion for line: {line.id}")
-        # Deletion is still a global model change, so it's appropriate for MainController to handle it.
-        self.main_controller.delete_item(line) 
+            """
+            处理来自 LineListWidget 右键菜单的“删除线条”请求。
+            将删除逻辑委托给 MainController，由其管理模型更改并弹出确认对话框。
+
+            Args:
+                line (Line): 从列表中右键点击并选择删除的线条实例。
+            """
+            self.main_controller.status_message.emit(f"列表接收到删除线条请求: {line.id} (转发中...)")
+            
+            # 调用 MainController 的 delete_selected_line 方法，并传入指定的线条
+            # 这样，删除对话框会预选并锁定这个线条，用户只需确认即可。
+            self.main_controller.delete_selected_line(line)
 
     def update(self):
         """A general update method, called by MainController if needed."""
         self.update_line_list()
+
+
+
