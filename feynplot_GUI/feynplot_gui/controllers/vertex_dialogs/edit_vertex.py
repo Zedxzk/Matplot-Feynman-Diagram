@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QDoubleSpinBox, QComboBox, QColorDialog, QCheckBox, QGroupBox, QSpinBox,
-    QMessageBox, QScrollArea, QWidget # <-- 添加 QScrollArea 和 QWidget
+    QMessageBox, QScrollArea, QWidget
 )
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtCore import Qt
@@ -44,25 +44,27 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             basic_layout = QVBoxLayout(basic_group)
             scroll_content_layout.addWidget(basic_group) # 添加到可滚动内容布局
 
-            # --- 新增：隐藏顶点和隐藏标签选项 ---
+            # --- 严格按照要求：隐藏顶点和隐藏标签选项放在最顶端且同一行 ---
             visibility_layout = QHBoxLayout()
+
             self.hide_vertex_checkbox = QCheckBox("隐藏顶点")
-            # 初始状态根据 vertex.visible 设置
-            self.hide_vertex_checkbox.setChecked(not self.vertex.visible) 
+            # 修正：根据 self.vertex.hidden_vertex 属性设置初始状态
+            self.hide_vertex_checkbox.setChecked(self.vertex.hidden_vertex)
             # 绑定信号槽
             self.hide_vertex_checkbox.toggled.connect(self._toggle_vertex_visibility)
             visibility_layout.addWidget(self.hide_vertex_checkbox)
 
             self.hide_label_checkbox = QCheckBox("隐藏标签")
-            # 初始状态根据 vertex.label_visible 设置 (假设有这个属性)
-            # 如果 Vertex 类没有 label_visible 属性，需要自行添加或调整判断逻辑
-            self.hide_label_checkbox.setChecked(not getattr(self.vertex, 'label_visible', True)) 
+            # 修正：根据 self.vertex.hidden_label 属性设置初始状态
+            self.hide_label_checkbox.setChecked(self.vertex.hidden_label)
             # 绑定信号槽
             self.hide_label_checkbox.toggled.connect(self._toggle_label_visibility)
             visibility_layout.addWidget(self.hide_label_checkbox)
-            basic_layout.addLayout(visibility_layout) # 将隐藏选项添加到基本属性组的顶部
+            
+            # Add this visibility layout to the top of the basic_layout
+            basic_layout.addLayout(visibility_layout) 
 
-            # --- 以下是原有的基本属性布局 ---
+            # --- 以下是原有的基本属性布局，保持不变 ---
             self.x_layout, self.x_input = self._create_spinbox_row("X 坐标:", self.vertex.x)
             self.y_layout, self.y_input = self._create_spinbox_row("Y 坐标:", self.vertex.y)
             basic_layout.addLayout(self.x_layout)
@@ -203,7 +205,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             # --- Structured Vertex Parameters ---
             self.structured_group = QGroupBox("结构化顶点")
             self.structured_layout = QVBoxLayout(self.structured_group)
-            scroll_content_layout.addWidget(self.structured_group) # 添加到可滚动内容布局
+            scroll_content_layout.addWidget(self.structured_group)
 
             self.is_structured_checkbox = QCheckBox("结构化顶点")
             self.is_structured_checkbox.setChecked(self.vertex.is_structured)
@@ -237,11 +239,11 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             # Hatching Parameters
             self.hatch_group = QGroupBox("阴影线 (Hatching)")
             self.hatch_layout = QVBoxLayout(self.hatch_group)
-            scroll_content_layout.addWidget(self.hatch_group) # 添加到可滚动内容布局
+            scroll_content_layout.addWidget(self.hatch_group)
 
             self.use_custom_hatch_checkbox = QCheckBox("使用自定义阴影线")
             self.use_custom_hatch_checkbox.setChecked(self.vertex.use_custom_hatch)
-            self.use_custom_hatch_checkbox.toggled.connect(self._toggle_hatch_visibility) # 更改连接函数
+            self.use_custom_hatch_checkbox.toggled.connect(self._toggle_hatch_visibility)
             self.hatch_layout.addWidget(self.use_custom_hatch_checkbox)
 
             hatch_pattern_layout = QHBoxLayout()
@@ -271,10 +273,10 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
 
             # --- 将所有内容添加到 QScrollArea 中 ---
             scroll_area = QScrollArea(self)
-            scroll_area.setWidgetResizable(True) # 允许 QScrollArea 调整其内部 widget 的大小
-            scroll_area.setWidget(scroll_content_widget) # 将所有 GroupBox 所在的 widget 设置为滚动区域的内容
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setWidget(scroll_content_widget)
 
-            self.main_dialog_layout.addWidget(scroll_area) # 将滚动区域添加到对话框的主布局
+            self.main_dialog_layout.addWidget(scroll_area)
 
             # Initialize structured vertex settings visibility
             self._toggle_structured_visibility(self.is_structured_checkbox.isChecked())
@@ -291,7 +293,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             button_layout.addStretch(1)
             button_layout.addWidget(ok_button)
             button_layout.addWidget(cancel_button)
-            self.main_dialog_layout.addLayout(button_layout) # 添加按钮到对话框的主布局
+            self.main_dialog_layout.addLayout(button_layout)
 
 
         def _create_spinbox_row(self, label_text, initial_value, min_val=-999.0, max_val=999.0, step=1.0, is_int=False):
@@ -335,7 +337,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             text_color = QColor(Qt.black) if luminance > 0.5 else QColor(Qt.white)
 
             palette.setColor(QPalette.Button, qcolor)
-            palette.setColor(QPalette.ButtonText, text_color) # Set button text color
+            palette.setColor(QPalette.ButtonText, text_color)
 
             button.setPalette(palette)
             button.setAutoFillBackground(True)
@@ -347,7 +349,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                 item = self.structured_layout.itemAt(i)
                 if item:
                     if item.widget() == self.is_structured_checkbox:
-                        continue # 跳过 checkbox 本身
+                        continue
 
                     if item.widget():
                         item.widget().setVisible(is_checked)
@@ -357,28 +359,24 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                             if sub_item.widget():
                                 sub_item.widget().setVisible(is_checked)
 
-            # 当结构化顶点勾选状态改变时，同步更新阴影线组的可见性
-            # 如果结构化顶点未勾选，那么无论自定义阴影线是否勾选，阴影线组都应该隐藏
             if not is_checked:
                 self.hatch_group.setVisible(False)
-            else: # 如果结构化顶点勾选，则根据自定义阴影线勾选状态显示/隐藏阴影线组
+            else:
                 self._toggle_hatch_visibility(self.use_custom_hatch_checkbox.isChecked())
 
 
         def _toggle_hatch_visibility(self, use_custom_hatch_checked):
             """Controls the visibility of custom hatch settings."""
-            # 如果结构化顶点未选中，则阴影线组应该完全隐藏
             if not self.is_structured_checkbox.isChecked():
                 self.hatch_group.setVisible(False)
                 return
 
-            # 如果结构化顶点选中，则根据 use_custom_hatch_checkbox 的状态控制阴影线子项的可见性
-            self.hatch_group.setVisible(True) # 确保组本身可见
+            self.hatch_group.setVisible(True)
             for i in range(self.hatch_layout.count()):
                 item = self.hatch_layout.itemAt(i)
                 if item:
                     if item.widget() == self.use_custom_hatch_checkbox:
-                        continue # 跳过 checkbox 本身
+                        continue
 
                     if item.widget():
                         item.widget().setVisible(use_custom_hatch_checked)
@@ -388,33 +386,28 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                             if sub_item.widget():
                                 sub_item.widget().setVisible(use_custom_hatch_checked)
 
-        def _toggle_vertex_visibility(self, hide_vertex_checked: bool):
+        # 修正：更新此方法以使用 self.vertex.hidden_vertex 属性
+        def _toggle_vertex_visibility(self, checked: bool):
             """
-            根据“隐藏顶点”复选框的状态，调用顶点对象的 hide() 或 show() 方法。
+            根据“隐藏顶点”复选框的状态，更新顶点对象的 hidden_vertex 属性。
             """
-            if hide_vertex_checked:
-                self.vertex.hide()
-            else:
-                self.vertex.show()
+            self.vertex.hidden_vertex = checked
+            # 通常，当你修改 hidden_vertex 属性时，需要一个机制来触发图的重新绘制，
+            # 这样 Matplotlib 才能反映出这个变化。这个通常在 diagram_model 中处理。
 
-        def _toggle_label_visibility(self, hide_label_checked: bool):
+        # 修正：更新此方法以使用 self.vertex.hidden_label 属性
+        def _toggle_label_visibility(self, checked: bool):
             """
-            根据“隐藏标签”复选框的状态，调用顶点标签对象的 hide_label() 或 show_label() 方法。
-            需要假设 Vertex 类有 hide_label() 和 show_label() 方法。
+            根据“隐藏标签”复选框的状态，更新顶点标签对象的 hidden_label 属性。
             """
-            # 确保你的 Vertex 类有 hide_label() 和 show_label() 方法
-            if hide_label_checked:
-                if hasattr(self.vertex, 'hide_label'):
-                    self.vertex.hide_label()
-            else:
-                if hasattr(self.vertex, 'show_label'):
-                    self.vertex.show_label()
+            self.vertex.hidden_label = checked
+            # 同上，这里也需要一个触发图重新绘制的机制。
 
 
         def accept(self):
             """Called when the OK button is clicked. Updates the properties of the passed Vertex object."""
-            # 注意：隐藏/显示操作在 _toggle_vertex_visibility 和 _toggle_label_visibility 中已经实时生效
-            # 这里只需确保其他属性被正确保存
+            # 属性的更新已在 _toggle_vertex_visibility 和 _toggle_label_visibility 中实时生效
+            # 这里只需确保其他属性被正确保存。
             self.vertex.x = self.x_input.value()
             self.vertex.y = self.y_input.value()
             self.vertex.label = self.label_input.text()
@@ -449,9 +442,6 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                 self.vertex.structured_edgecolor = self._structured_edgecolor_picked_color
                 self.vertex.structured_linewidth = self.structured_linewidth_input.value()
                 self.vertex.structured_alpha = self.structured_alpha_input.value()
-            # else 块被注释掉，因为即使取消选中，也保留上次设置的值，直到再次选中才改变
-            # self.vertex.structured_radius = None
-            # ...
 
             self.vertex.use_custom_hatch = self.use_custom_hatch_checkbox.isChecked()
             if self.vertex.use_custom_hatch:
@@ -461,9 +451,6 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                 self.vertex.custom_hatch_line_width = self.custom_hatch_linewidth_input.value()
                 self.vertex.custom_hatch_line_angle_deg = self.custom_hatch_angle_input.value()
                 self.vertex.custom_hatch_spacing_ratio = self.custom_hatch_spacing_input.value()
-            # else 块被注释掉，原因同上
-            # self.vertex.hatch_pattern = None
-            # ...
 
             super().accept()
 
@@ -471,10 +458,12 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
 
     if dialog.exec() == QDialog.Accepted:
         if diagram_model:
-            # 重新绘制整个图以反映所有属性的更改，包括隐藏/显示状态
-            diagram_model.diagram_changed.emit() # 假设 diagram_model 有一个 diagram_changed 信号
+            # Emit a signal to tell the model that the diagram has changed, so it can re-render
+            # This is crucial for the hide/show changes to be visible immediately
+            if hasattr(diagram_model, 'diagram_changed') and isinstance(diagram_model.diagram_changed, Qt.Signal):
+                diagram_model.diagram_changed.emit()
             
-            # 关联线条角度的调整仍然保留
+            # The logic for adjusting associated line angles remains unchanged
             associated_line_ids = diagram_model.get_associated_line_ids(vertex.id)
             for line_id in associated_line_ids:
                 line = diagram_model.get_line_by_id(line_id)
@@ -487,13 +476,8 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
         QMessageBox.information(parent_widget, "编辑成功", f"顶点 {vertex.id} 属性已更新，关联线条角度已调整。")
         return True
     else:
-        # 如果用户点击取消，需要确保恢复顶点和标签的原始可见状态
-        # 因为 _toggle_vertex_visibility 和 _toggle_label_visibility 会在对话框打开时实时改变状态
-        # 我们可以通过重新加载原始顶点状态或者在取消时明确设置它们
-        # 这里为了简化，我们假设在对话框打开时，会即时应用这些可见性更改。
-        # 如果需要严格“取消”后恢复，则需要在对话框的 reject 方法中保存原始状态并恢复。
-        # 对于当前实现，点击取消后，在对话框中做的可见性改变依然会生效。
-        # 如果需要严格恢复，你可以在 _InternalEditVertexDialog 中保存 vertex.visible 和 vertex.label_visible 的原始值，
-        # 并在 reject 方法中将它们设置回去。
+        # If the user cancels, the visibility changes made via the checkboxes will remain.
+        # If strict undo is required, the original visibility states of vertex and label
+        # would need to be stored upon dialog opening and restored here.
         QMessageBox.information(parent_widget, "编辑取消", f"顶点 {vertex.id} 属性编辑已取消。")
         return False
