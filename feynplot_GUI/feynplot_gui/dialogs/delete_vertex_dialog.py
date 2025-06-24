@@ -200,4 +200,4 @@ class DeleteVertexDialog(QDialog):
             selected_vertex = self.vertex_combobox.currentData()
             if selected_vertex:
                 return selected_vertex.id
-        return None
+        return self._pre_selected_vertex.id if self._pre_selected_vertex else None

@@ -505,6 +505,7 @@ class MainController(QObject):
                                                     默认为 None。
             """
             # 1. 检查图中是否有顶点可供删除。如果没有，直接提示并返回。
+            print(f"vertex_to_delete: {vertex_to_delete}") # 调试打印
             if not self.diagram_model.vertices:
                 QMessageBox.information(self.main_window, "没有顶点", "图中目前没有可供删除的顶点。")
                 self.status_message.emit("删除顶点失败：图中没有顶点。")
@@ -528,6 +529,7 @@ class MainController(QObject):
             if dialog.exec() == QDialog.Accepted:
                 # 4. 如果用户点击了“确定”，获取用户选择的顶点ID
                 selected_vertex_id = dialog.get_selected_vertex_id()
+                print(f"Selected vertex ID: {selected_vertex_id}") # 调试打印
                 
                 if selected_vertex_id:
                     # 5. 再次获取选中顶点的对象，用于在消息中显示其标签

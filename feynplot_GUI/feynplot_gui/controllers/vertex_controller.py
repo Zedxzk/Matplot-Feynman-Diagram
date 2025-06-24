@@ -142,6 +142,7 @@ class VertexController(QObject):
             vertex (Vertex): 从列表中右键点击并选择删除的顶点实例。
         """
         # Print status message to indicate the request has been received (optional, for debugging)
+        print(f"VertexController: 收到列表右键删除顶点请求: {vertex.id}。转发给 MainController。")
         self.main_controller.status_message.emit(f"列表接收到删除顶点请求: {vertex.id} (转发中...)")
 
         # Call MainController's delete_selected_vertex method, passing the specified vertex
