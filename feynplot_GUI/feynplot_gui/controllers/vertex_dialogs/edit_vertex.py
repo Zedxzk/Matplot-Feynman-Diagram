@@ -40,21 +40,21 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             scroll_content_layout = QVBoxLayout(scroll_content_widget) # 这是所有 GroupBox 的父布局
 
             # --- Basic Properties ---
-            basic_group = QGroupBox("基本属性")
+            basic_group = QGroupBox(self.tr("基本属性"))
             basic_layout = QVBoxLayout(basic_group)
             scroll_content_layout.addWidget(basic_group) # 添加到可滚动内容布局
 
             # --- 严格按照要求：隐藏顶点和隐藏标签选项放在最顶端且同一行 ---
             visibility_layout = QHBoxLayout()
 
-            self.hide_vertex_checkbox = QCheckBox("隐藏顶点")
+            self.hide_vertex_checkbox = QCheckBox(self.tr("隐藏顶点"))
             # 修正：根据 self.vertex.hidden_vertex 属性设置初始状态
             self.hide_vertex_checkbox.setChecked(self.vertex.hidden_vertex)
             # 绑定信号槽
             self.hide_vertex_checkbox.toggled.connect(self._toggle_vertex_visibility)
             visibility_layout.addWidget(self.hide_vertex_checkbox)
 
-            self.hide_label_checkbox = QCheckBox("隐藏标签")
+            self.hide_label_checkbox = QCheckBox(self.tr("隐藏标签"))
             # 修正：根据 self.vertex.hidden_label 属性设置初始状态
             self.hide_label_checkbox.setChecked(self.vertex.hidden_label)
             # 绑定信号槽
@@ -71,13 +71,13 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             basic_layout.addLayout(self.y_layout)
 
             label_layout = QHBoxLayout()
-            label_layout.addWidget(QLabel("标签:"))
+            label_layout.addWidget(QLabel(self.tr("标签:")))
             self.label_input = QLineEdit(self.vertex.label)
             label_layout.addWidget(self.label_input)
             basic_layout.addLayout(label_layout)
 
             # --- Vertex Color ---
-            self.vertex_color_btn = QPushButton("顶点颜色")
+            self.vertex_color_btn = QPushButton(self.tr("顶点颜色"))
             self._vertex_picked_color = getattr(self.vertex, 'color', 'blue')
             self.vertex_color_btn.clicked.connect(lambda: self._pick_color(self.vertex_color_btn, '_vertex_picked_color'))
             basic_layout.addWidget(self.vertex_color_btn)
@@ -92,9 +92,9 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
 
             # --- Vertex Marker ---
             marker_layout = QHBoxLayout()
-            marker_layout.addWidget(QLabel("顶点标记 (marker):"))
+            marker_layout.addWidget(QLabel(self.tr("顶点标记 (marker):")))
             self.marker_input = QLineEdit(getattr(self.vertex, 'marker', 'o'))
-            self.marker_input.setToolTip("支持的标记有: 'o', '.', ',', 'x', '+', 'v', '^', '<', '>', 's', 'p', '*', 'h', 'H', 'D', 'd', '|', '_'")
+            self.marker_input.setToolTip(self.tr("支持的标记有: 'o', '.', ',', 'x', '+', 'v', '^', '<', '>', 's', 'p', '*', 'h', 'H', 'D', 'd', '|', '_'"))
             marker_layout.addWidget(self.marker_input)
             basic_layout.addLayout(marker_layout)
 
@@ -106,7 +106,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             basic_layout.addLayout(self.vertex_alpha_layout)
 
             # --- Vertex Edgecolor ---
-            self.vertex_edgecolor_btn = QPushButton("顶点边框颜色")
+            self.vertex_edgecolor_btn = QPushButton(self.tr("顶点边框颜色"))
             self._vertex_edgecolor_picked_color = getattr(self.vertex, 'edgecolor', '#000000')
             self.vertex_edgecolor_btn.clicked.connect(lambda: self._pick_color(self.vertex_edgecolor_btn, '_vertex_edgecolor_picked_color'))
             basic_layout.addWidget(self.vertex_edgecolor_btn)
@@ -121,7 +121,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
 
             # --- Vertex Z-order (Read-only) ---
             zorder_layout = QHBoxLayout()
-            zorder_layout.addWidget(QLabel("顶点 Z 轴顺序 (zorder):"))
+            zorder_layout.addWidget(QLabel(self.tr("顶点 Z 轴顺序 (zorder):")))
             self.zorder_display = QLabel(str(getattr(self.vertex, 'zorder', 2)))
             zorder_layout.addWidget(self.zorder_display)
             basic_layout.addLayout(zorder_layout)
@@ -134,12 +134,12 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             basic_layout.addLayout(self.label_fontsize_layout)
 
             # --- Global Font Settings (Read-only from rcParams) ---
-            font_settings_group = QGroupBox("全局字体设置 (Matplotlib rcParams)")
+            font_settings_group = QGroupBox(self.tr("全局字体设置 (Matplotlib rcParams)"))
             font_settings_layout = QVBoxLayout(font_settings_group)
             scroll_content_layout.addWidget(font_settings_group) # 添加到可滚动内容布局
 
             font_family_layout = QHBoxLayout()
-            font_family_layout.addWidget(QLabel("字体家族:"))
+            font_family_layout.addWidget(QLabel(self.tr("字体家族:")))
             current_font_family = plt.rcParams.get("font.family", ["sans-serif"])
             if isinstance(current_font_family, list) and current_font_family:
                 current_font_family = current_font_family[0]
@@ -150,35 +150,35 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             font_settings_layout.addLayout(font_family_layout)
 
             font_weight_layout = QHBoxLayout()
-            font_weight_layout.addWidget(QLabel("字体粗细:"))
+            font_weight_layout.addWidget(QLabel(self.tr("字体粗细:")))
             current_font_weight = plt.rcParams.get("font.weight", "normal")
             self.label_fontweight_display = QLabel(str(current_font_weight))
             font_weight_layout.addWidget(self.label_fontweight_display)
             font_settings_layout.addLayout(font_weight_layout)
 
             font_style_layout = QHBoxLayout()
-            font_style_layout.addWidget(QLabel("字体样式:"))
+            font_style_layout.addWidget(QLabel(self.tr("字体样式:")))
             current_font_style = plt.rcParams.get("font.style", "normal")
             self.label_fontstyle_display = QLabel(str(current_font_style))
             font_style_layout.addWidget(self.label_fontstyle_display)
             font_settings_layout.addLayout(font_style_layout)
 
             mathtext_it_layout = QHBoxLayout()
-            mathtext_it_layout.addWidget(QLabel("数学文本斜体字体 (mathtext.it):"))
+            mathtext_it_layout.addWidget(QLabel(self.tr("数学文本斜体字体 (mathtext.it):")))
             current_mathtext_it = plt.rcParams.get("mathtext.it", "serif:italic")
             self.mathtext_it_display = QLabel(str(current_mathtext_it))
             mathtext_it_layout.addWidget(self.mathtext_it_display)
             font_settings_layout.addLayout(mathtext_it_layout)
 
             mathtext_bf_layout = QHBoxLayout()
-            mathtext_bf_layout.addWidget(QLabel("数学文本粗体字体 (mathtext.bf):"))
+            mathtext_bf_layout.addWidget(QLabel(self.tr("数学文本粗体字体 (mathtext.bf):")))
             current_mathtext_bf = plt.rcParams.get("mathtext.bf", "serif:bold")
             self.mathtext_bf_display = QLabel(str(current_mathtext_bf))
             mathtext_bf_layout.addWidget(self.mathtext_bf_display)
             font_settings_layout.addLayout(mathtext_bf_layout)
 
             type_layout = QHBoxLayout()
-            type_layout.addWidget(QLabel("类型:"))
+            type_layout.addWidget(QLabel(self.tr("类型:")))
             self.type_combo = QComboBox()
             for v_type in VertexType:
                 self.type_combo.addItem(v_type.name.replace('_', ' ').title(), v_type)
@@ -203,11 +203,11 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             basic_layout.addLayout(self.label_offset_y_layout)
 
             # --- Structured Vertex Parameters ---
-            self.structured_group = QGroupBox("结构化顶点")
+            self.structured_group = QGroupBox(self.tr("结构化顶点"))
             self.structured_layout = QVBoxLayout(self.structured_group)
             scroll_content_layout.addWidget(self.structured_group)
 
-            self.is_structured_checkbox = QCheckBox("结构化顶点")
+            self.is_structured_checkbox = QCheckBox(self.tr("结构化顶点"))
             self.is_structured_checkbox.setChecked(self.vertex.is_structured)
             self.is_structured_checkbox.toggled.connect(self._toggle_structured_visibility)
             self.structured_layout.addWidget(self.is_structured_checkbox)
@@ -216,13 +216,13 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             self.structured_radius_layout, self.structured_radius_input = self._create_spinbox_row("半径:", initial_structured_radius, min_val=0.1, max_val=5.0, step=0.1)
             self.structured_layout.addLayout(self.structured_radius_layout)
 
-            self.structured_facecolor_btn = QPushButton("填充颜色")
+            self.structured_facecolor_btn = QPushButton(self.tr("填充颜色"))
             self._structured_facecolor_picked_color = self.vertex.structured_facecolor if self.vertex.structured_facecolor is not None else '#FFFFFF'
             self.structured_facecolor_btn.clicked.connect(lambda: self._pick_color(self.structured_facecolor_btn, '_structured_facecolor_picked_color'))
             self.structured_layout.addWidget(self.structured_facecolor_btn)
             self._set_button_color(self.structured_facecolor_btn, self._structured_facecolor_picked_color)
 
-            self.structured_edgecolor_btn = QPushButton("边框颜色")
+            self.structured_edgecolor_btn = QPushButton(self.tr("边框颜色"))
             self._structured_edgecolor_picked_color = self.vertex.structured_edgecolor if self.vertex.structured_edgecolor is not None else '#000000'
             self.structured_edgecolor_btn.clicked.connect(lambda: self._pick_color(self.structured_edgecolor_btn, '_structured_edgecolor_picked_color'))
             self.structured_layout.addWidget(self.structured_edgecolor_btn)
@@ -237,23 +237,23 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             self.structured_layout.addLayout(self.structured_alpha_layout)
 
             # Hatching Parameters
-            self.hatch_group = QGroupBox("阴影线 (Hatching)")
+            self.hatch_group = QGroupBox(self.tr("阴影线 (Hatching)"))
             self.hatch_layout = QVBoxLayout(self.hatch_group)
             scroll_content_layout.addWidget(self.hatch_group)
 
-            self.use_custom_hatch_checkbox = QCheckBox("使用自定义阴影线")
+            self.use_custom_hatch_checkbox = QCheckBox(self.tr("使用自定义阴影线"))
             self.use_custom_hatch_checkbox.setChecked(self.vertex.use_custom_hatch)
             self.use_custom_hatch_checkbox.toggled.connect(self._toggle_hatch_visibility)
             self.hatch_layout.addWidget(self.use_custom_hatch_checkbox)
 
             hatch_pattern_layout = QHBoxLayout()
-            hatch_pattern_layout.addWidget(QLabel("图案:"))
+            hatch_pattern_layout.addWidget(QLabel(self.tr("图案:")))
             self.hatch_pattern_input = QLineEdit(self.vertex.hatch_pattern if self.vertex.hatch_pattern is not None else "")
             hatch_pattern_layout.addWidget(self.hatch_pattern_input)
             self.hatch_layout.addLayout(hatch_pattern_layout)
 
             # Custom Hatch Parameters
-            self.custom_hatch_color_btn = QPushButton("自定义阴影线颜色")
+            self.custom_hatch_color_btn = QPushButton(self.tr("自定义阴影线颜色"))
             self._custom_hatch_line_color_picked_color = self.vertex.custom_hatch_line_color if self.vertex.custom_hatch_line_color is not None else '#000000'
             self.custom_hatch_color_btn.clicked.connect(lambda: self._pick_color(self.custom_hatch_color_btn, '_custom_hatch_line_color_picked_color'))
             self.hatch_layout.addWidget(self.custom_hatch_color_btn)
@@ -286,9 +286,9 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
 
             # OK/Cancel buttons
             button_layout = QHBoxLayout()
-            ok_button = QPushButton("确定")
+            ok_button = QPushButton(self.tr("确定"))
             ok_button.clicked.connect(self.accept)
-            cancel_button = QPushButton("取消")
+            cancel_button = QPushButton(self.tr("取消"))
             cancel_button.clicked.connect(self.reject)
             button_layout.addStretch(1)
             button_layout.addWidget(ok_button)

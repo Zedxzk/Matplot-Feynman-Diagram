@@ -13,7 +13,7 @@ class LatexSettingsPanel(CollapsibleGroupBox):
     def __init__(self, parent: QWidget = None):
         super().__init__("LaTeX 设置", parent)
 
-        self.use_latex_checkbox = QCheckBox("使用 LaTeX 渲染文本")
+        self.use_latex_checkbox = QCheckBox(self.tr("使用 LaTeX 渲染文本"))
         self.content_layout().addRow("LaTeX 支持:", self.use_latex_checkbox)
 
         self.latex_font_family_combo = QComboBox()

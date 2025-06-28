@@ -13,7 +13,7 @@ class WZBosonLineEditor(LineEditBase):
         self.parent_form_layout = parent_layout
 
         # 初始化 GroupBox 并设置水平扩展策略
-        self.group_box = QGroupBox("W/Z 玻色子线属性")
+        self.group_box = QGroupBox(self.tr("W/Z 玻色子线属性"))
         self.group_box.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred

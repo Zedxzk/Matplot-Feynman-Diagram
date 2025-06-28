@@ -36,21 +36,6 @@ class VertexListWidget(QListWidget):
         self.itemDoubleClicked.connect(self._on_item_double_clicked)
         self.customContextMenuRequested.connect(self._on_context_menu_requested)
 
-    # ！！重要修改！！
-    # 移除 _on_selection_changed 方法，因为它不再被连接，并且其逻辑已移至 mousePressEvent。
-    # def _on_selection_changed(self):
-    #     """处理列表项选择变化的槽函数。"""
-    #     selected_items = self.selectedItems()
-    #     if selected_items:
-    #         vertex = selected_items[0].data(Qt.ItemDataRole.UserRole)
-    #         self.vertex_selected.emit(vertex)
-    #     else:
-    #         # 当列表选择被程序性清空 (例如 clearSelection()) 时，也会触发这个 else 分支
-    #         # 我们在这里发出 None 信号，通知 MainController 清除所有选中。
-    #         # 这与 _mouse_press_event 中的 list_blank_clicked 配合，
-    #         # 形成双重保险，确保选中状态能够被清除。
-    #         self.vertex_selected.emit(None) 
-
     def _on_item_double_clicked(self, item: QListWidgetItem):
         """处理列表项双击的槽函数。"""
         vertex = item.data(Qt.ItemDataRole.UserRole)
@@ -90,7 +75,7 @@ class VertexListWidget(QListWidget):
         # 先调用父类的 mousePressEvent，让 QListWidget 处理正常的UI选中逻辑（例如点击某个项就选中它）
         super().mousePressEvent(event) 
 
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
             # itemAt(pos) 返回给定位置的 QListWidgetItem，如果没有则返回 None
             item = self.itemAt(event.pos())
             

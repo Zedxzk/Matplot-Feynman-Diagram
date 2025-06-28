@@ -117,7 +117,7 @@ class MainController(QObject):
         # 双击列表项事件
         self.main_window.vertex_list_widget_instance.vertex_double_clicked.connect(self._handle_list_vertex_double_clicked)
         # 右键菜单操作
-        # self.main_window.vertex_list_widget_instance.edit_vertex_requested.connect(self.edit_selected_vertex_properties)
+        # self.main_window.vertex_list_widget_instance.edit_vertex_requested.connect(self.select_item)
         # self.main_window.vertex_list_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
         # self.main_window.vertex_list_widget_instance.search_vertex_requested.connect(self.search_vertex_by_keyword)
 

@@ -85,7 +85,7 @@ class LineListWidget(QListWidget):
         # 先调用父类的 mousePressEvent，让 QListWidget 处理正常的UI选中逻辑
         super().mousePressEvent(event) 
 
-        if event.button() == Qt.MouseButton.LeftButton:
+        if event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
             item = self.itemAt(event.pos())
             
             if item is None:

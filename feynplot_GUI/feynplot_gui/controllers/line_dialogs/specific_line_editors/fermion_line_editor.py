@@ -16,7 +16,7 @@ class FermionLineEditor(LineEditBase):
         self.parent_form_layout = parent_layout
 
         # 创建 GroupBox 并设置横向填充策略
-        self.group_box = QGroupBox("费米子/反费米子线属性")
+        self.group_box = QGroupBox(self.tr("费米子/反费米子线属性"))
         self.group_box.setSizePolicy(
             QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         )
@@ -25,15 +25,15 @@ class FermionLineEditor(LineEditBase):
         self.layout = QVBoxLayout(self.group_box)
 
         # 创建 UI 元素
-        self.fermion_arrow_checkbox = QCheckBox("显示箭头")
-        self.fermion_arrow_filled_checkbox = QCheckBox("箭头填充")
+        self.fermion_arrow_checkbox = QCheckBox(self.tr("显示箭头"))
+        self.fermion_arrow_filled_checkbox = QCheckBox(self.tr("箭头填充"))
         self.fermion_arrow_position_layout, self.fermion_arrow_position_input = \
             self._create_spinbox_row("箭头位置 (0-1):", 0.5, min_val=0.0, max_val=1.0, step=0.01)
         self.fermion_arrow_size_layout, self.fermion_arrow_size_input = \
             self._create_spinbox_row("箭头大小:", 10.0, min_val=1.0, max_val=50.0, step=1.0, is_int=True)
         self.fermion_arrow_line_width_layout, self.fermion_arrow_line_width_input = \
             self._create_spinbox_row("箭头线宽:", 1.0, min_val=0.1, max_val=10.0, step=0.1)
-        self.fermion_arrow_reversed_checkbox = QCheckBox("箭头反向")
+        self.fermion_arrow_reversed_checkbox = QCheckBox(self.tr("箭头反向"))
 
         # 添加组件到 GroupBox 内部布局
         self.layout.addWidget(self.fermion_arrow_checkbox)

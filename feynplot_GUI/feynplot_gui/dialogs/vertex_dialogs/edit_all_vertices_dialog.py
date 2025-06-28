@@ -48,9 +48,9 @@ class EditAllVerticesDialog(QDialog):
         main_layout.addWidget(scroll_area)
 
         # --- 通用标签前缀 ---
-        self.content_layout.addWidget(QLabel("<b>设置所有顶点名:</b> (空表示不修改，空格表示清空)"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>设置所有顶点名:</b> (空表示不修改，空格表示清空)")))
         label_prefix_layout = QHBoxLayout()
-        label_prefix_layout.addWidget(QLabel("前缀:"))
+        label_prefix_layout.addWidget(QLabel(self.tr("前缀:")))
         self.label_prefix_input = QLineEdit()
         self.label_prefix_input.setPlaceholderText("留空表示不修改，输入空格清空所有标签")
         label_prefix_layout.addWidget(self.label_prefix_input)
@@ -58,7 +58,7 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 标签偏移 (label_offset) ---
-        self.content_layout.addWidget(QLabel("<b>标签偏移 (Label Offset):</b> (X, Y)"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>标签偏移 (Label Offset):</b> (X, Y)")))
         offset_layout = QHBoxLayout()
         self.offset_x_spinbox = QDoubleSpinBox()
         self.offset_x_spinbox.setRange(-100.0, 100.0)
@@ -73,15 +73,15 @@ class EditAllVerticesDialog(QDialog):
         self.offset_y_spinbox.setDecimals(2)
         self.offset_y_spinbox.valueChanged.connect(lambda: setattr(self, '_offset_y_multiple_values', False))
 
-        offset_layout.addWidget(QLabel("X:"))
+        offset_layout.addWidget(QLabel(self.tr("X:")))
         offset_layout.addWidget(self.offset_x_spinbox)
-        offset_layout.addWidget(QLabel("Y:"))
+        offset_layout.addWidget(QLabel(self.tr("Y:")))
         offset_layout.addWidget(self.offset_y_spinbox)
         self.content_layout.addLayout(offset_layout)
         self.content_layout.addSpacing(10)
 
         # --- 顶点大小 (size) ---
-        self.content_layout.addWidget(QLabel("<b>顶点大小 (Size):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>顶点大小 (Size):</b>")))
         size_layout = QHBoxLayout()
         self.size_spinbox = QSpinBox()
         self.size_spinbox.setRange(1, 500)
@@ -91,9 +91,9 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 顶点颜色 (color) ---
-        self.content_layout.addWidget(QLabel("<b>顶点颜色 (Color):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>顶点颜色 (Color):</b>")))
         color_layout = QHBoxLayout()
-        self.color_preview_button = QPushButton("选择颜色")
+        self.color_preview_button = QPushButton(self.tr("选择颜色"))
         self.color_preview_button.clicked.connect(self._select_vertex_color)
         self.current_vertex_color = QColor(Qt.blue)
         self.color_preview_button.setStyleSheet(f"background-color: {self.current_vertex_color.name()}")
@@ -102,7 +102,7 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 顶点标记 (marker) ---
-        self.content_layout.addWidget(QLabel("<b>顶点标记 (Marker):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>顶点标记 (Marker):</b>")))
         marker_layout = QHBoxLayout()
         self.marker_combobox = QComboBox()
         self.marker_combobox.addItems(['o', 's', '^', 'v', '<', '>', 'p', '*', 'h', 'H', '+', 'x', 'D', 'd', '|', '_'])
@@ -111,7 +111,7 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 顶点透明度 (alpha) ---
-        self.content_layout.addWidget(QLabel("<b>顶点透明度 (Alpha):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>顶点透明度 (Alpha):</b>")))
         alpha_layout = QHBoxLayout()
         self.alpha_spinbox = QSpinBox()
         self.alpha_spinbox.setRange(0, 100)
@@ -121,9 +121,9 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 顶点边缘颜色 (edgecolor) ---
-        self.content_layout.addWidget(QLabel("<b>顶点边缘颜色 (Edgecolor):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>顶点边缘颜色 (Edgecolor):</b>")))
         edgecolor_layout = QHBoxLayout()
-        self.edgecolor_preview_button = QPushButton("选择边缘颜色")
+        self.edgecolor_preview_button = QPushButton(self.tr("选择边缘颜色"))
         self.edgecolor_preview_button.clicked.connect(self._select_edge_color)
         self.current_edge_color = QColor(Qt.blue)
         self.edgecolor_preview_button.setStyleSheet(f"background-color: {self.current_edge_color.name()}")
@@ -132,7 +132,7 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 顶点线宽 (linewidth) ---
-        self.content_layout.addWidget(QLabel("<b>顶点线宽 (Linewidth):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>顶点线宽 (Linewidth):</b>")))
         linewidth_layout = QHBoxLayout()
         self.linewidth_spinbox = QSpinBox()
         self.linewidth_spinbox.setRange(0, 10)
@@ -143,7 +143,7 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 标签大小 (label_size) ---
-        self.content_layout.addWidget(QLabel("<b>标签大小 (Label Size):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>标签大小 (Label Size):</b>")))
         label_size_layout = QHBoxLayout()
         self.label_size_spinbox = QSpinBox()
         self.label_size_spinbox.setRange(5, 72)
@@ -153,9 +153,9 @@ class EditAllVerticesDialog(QDialog):
         self.content_layout.addSpacing(10)
 
         # --- 标签颜色 (label_color) ---
-        self.content_layout.addWidget(QLabel("<b>标签颜色 (Label Color):</b>"))
+        self.content_layout.addWidget(QLabel(self.tr("<b>标签颜色 (Label Color):</b>")))
         label_color_layout = QHBoxLayout()
-        self.label_color_preview_button = QPushButton("选择标签颜色")
+        self.label_color_preview_button = QPushButton(self.tr("选择标签颜色"))
         self.label_color_preview_button.clicked.connect(self._select_label_color)
         self.current_label_color = QColor(Qt.black)
         self.label_color_preview_button.setStyleSheet(f"background-color: {self.current_label_color.name()}")
@@ -199,7 +199,7 @@ class EditAllVerticesDialog(QDialog):
             # We use an internal flag to track the "multiple values" state
             self._offset_x_multiple_values = True
             # Optionally, you can set a tooltip or a temporary label to indicate "multiple values"
-            # self.offset_x_spinbox.setToolTip("多个值")
+            # self.offset_x_spinbox.setToolTip(self.tr("多个值"))
 
         if all_y_same:
             self.offset_y_spinbox.setValue(initial_offset_y)
@@ -207,7 +207,7 @@ class EditAllVerticesDialog(QDialog):
         else:
             self.offset_y_spinbox.clear()
             self._offset_y_multiple_values = True
-            # self.offset_y_spinbox.setToolTip("多个值")
+            # self.offset_y_spinbox.setToolTip(self.tr("多个值"))
 
         # 顶点大小 (Size)
         initial_size = getattr(first_vertex, 'size', 100)
@@ -223,11 +223,11 @@ class EditAllVerticesDialog(QDialog):
         if all(getattr(v, 'color', 'blue') == initial_color for v in self.all_vertices):
             self.current_vertex_color.setNamedColor(initial_color)
             self.color_preview_button.setStyleSheet(f"background-color: {self.current_vertex_color.name()}")
-            self.color_preview_button.setText("选择颜色")
+            self.color_preview_button.setText(self.tr("选择颜色"))
         else:
             self.current_vertex_color.setNamedColor("lightgray")
             self.color_preview_button.setStyleSheet(f"background-color: lightgray;")
-            self.color_preview_button.setText("多个颜色")
+            self.color_preview_button.setText(self.tr("多个颜色"))
 
         # 顶点标记 (Marker)
         initial_marker = getattr(first_vertex, 'marker', 'o')
@@ -257,11 +257,11 @@ class EditAllVerticesDialog(QDialog):
         if all(getattr(v, 'edgecolor', v.color if hasattr(v, 'color') else 'blue') == initial_edgecolor for v in self.all_vertices):
             self.current_edge_color.setNamedColor(initial_edgecolor)
             self.edgecolor_preview_button.setStyleSheet(f"background-color: {self.current_edge_color.name()}")
-            self.edgecolor_preview_button.setText("选择边缘颜色")
+            self.edgecolor_preview_button.setText(self.tr("选择边缘颜色"))
         else:
             self.current_edge_color.setNamedColor("lightgray")
             self.edgecolor_preview_button.setStyleSheet(f"background-color: lightgray;")
-            self.edgecolor_preview_button.setText("多个颜色")
+            self.edgecolor_preview_button.setText(self.tr("多个颜色"))
 
         # 顶点线宽 (Linewidth)
         initial_linewidth = getattr(first_vertex, 'linewidth', 1.0)
@@ -286,11 +286,11 @@ class EditAllVerticesDialog(QDialog):
         if all(getattr(v, 'label_color', 'black') == initial_label_color for v in self.all_vertices):
             self.current_label_color.setNamedColor(initial_label_color)
             self.label_color_preview_button.setStyleSheet(f"background-color: {self.current_label_color.name()}")
-            self.label_color_preview_button.setText("选择标签颜色")
+            self.label_color_preview_button.setText(self.tr("选择标签颜色"))
         else:
             self.current_label_color.setNamedColor("lightgray")
             self.label_color_preview_button.setStyleSheet(f"background-color: lightgray;")
-            self.label_color_preview_button.setText("多个颜色")
+            self.label_color_preview_button.setText(self.tr("多个颜色"))
 
     def _select_vertex_color(self):
         """打开颜色选择器，选择顶点颜色。"""
@@ -299,7 +299,7 @@ class EditAllVerticesDialog(QDialog):
         if color.isValid():
             self.current_vertex_color = color
             self.color_preview_button.setStyleSheet(f"background-color: {color.name()}")
-            self.color_preview_button.setText("选择颜色")
+            self.color_preview_button.setText(self.tr("选择颜色"))
 
     def _select_edge_color(self):
         """打开颜色选择器，选择边缘颜色。"""
@@ -308,7 +308,7 @@ class EditAllVerticesDialog(QDialog):
         if color.isValid():
             self.current_edge_color = color
             self.edgecolor_preview_button.setStyleSheet(f"background-color: {color.name()}")
-            self.edgecolor_preview_button.setText("选择边缘颜色")
+            self.edgecolor_preview_button.setText(self.tr("选择边缘颜色"))
 
     def _select_label_color(self):
         """打开颜色选择器，选择标签颜色。"""
@@ -317,7 +317,7 @@ class EditAllVerticesDialog(QDialog):
         if color.isValid():
             self.current_label_color = color
             self.label_color_preview_button.setStyleSheet(f"background-color: {color.name()}")
-            self.label_color_preview_button.setText("选择标签颜色")
+            self.label_color_preview_button.setText(self.tr("选择标签颜色"))
 
     def _on_accepted(self):
         """处理OK按钮点击事件，应用设置并发出信号。"""

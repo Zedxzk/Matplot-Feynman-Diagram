@@ -28,7 +28,7 @@ class AxesTicksSettingsPanel(CollapsibleGroupBox):
         self.ytick_labelsize_combo.setEditable(True)
         self.content_layout().addRow("Y轴刻度标签大小:", self.ytick_labelsize_combo)
         
-        self.axes_grid_checkbox = QCheckBox("显示网格")
+        self.axes_grid_checkbox = QCheckBox(self.tr("显示网格"))
         self.content_layout().addRow("网格:", self.axes_grid_checkbox)
 
     def load_settings(self, settings: Dict[str, Any]):

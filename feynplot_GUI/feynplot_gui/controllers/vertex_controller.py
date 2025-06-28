@@ -34,9 +34,9 @@ class VertexController(QObject):
         # 将 VertexListWidget 的用户交互信号连接到此控制器的槽函数
         # !! 重要改动 !!
         # 在这些槽函数中，我们将直接调用 main_controller.select_item
-        self.vertex_list_widget.vertex_selected.connect(self._on_vertex_list_selected)
+        # self.vertex_list_widget.vertex_selected.connect(self._on_vertex_list_selected)
         # self.vertex_list_widget.list_blank_clicked.connect(self._on_list_blank_clicked)
-        self.vertex_list_widget.vertex_double_clicked.connect(self._on_vertex_list_double_clicked)
+        # self.vertex_list_widget.vertex_double_clicked.connect(self._on_vertex_list_double_clicked)
 
         # 连接 VertexListWidget 的右键菜单信号到对应的槽函数
         self.vertex_list_widget.edit_vertex_requested.connect(self._on_edit_vertex_requested_from_list)
@@ -170,6 +170,7 @@ class VertexController(QObject):
         通过调用外部函数来处理编辑对话框。
         """
         self.main_controller.status_message.emit(f"列表接收到编辑顶点请求: {vertex.id}")
+        # self.main_controller.select_item()
 
         parent_widget = self._get_parent_widget() # Get parent widget
 

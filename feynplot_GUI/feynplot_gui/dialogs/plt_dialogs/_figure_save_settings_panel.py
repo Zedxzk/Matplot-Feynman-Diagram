@@ -19,7 +19,7 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
         self.figure_width_edit.setPlaceholderText("例如: 6.4")
         self.figure_width_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_width_layout.addWidget(self.figure_width_edit)
-        figure_width_layout.addWidget(QLabel("英寸"))
+        figure_width_layout.addWidget(QLabel(self.tr("英寸")))
         self.content_layout().addRow("图像宽度:", figure_width_layout)
 
         figure_height_layout = QHBoxLayout()
@@ -27,7 +27,7 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
         self.figure_height_edit.setPlaceholderText("例如: 4.8")
         self.figure_height_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_height_layout.addWidget(self.figure_height_edit)
-        figure_height_layout.addWidget(QLabel("英寸"))
+        figure_height_layout.addWidget(QLabel(self.tr("英寸")))
         self.content_layout().addRow("图像高度:", figure_height_layout)
 
         self.savefig_dpi_edit = QLineEdit()
@@ -43,7 +43,7 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
         """从字典加载设置到UI。"""
         self.figure_width_edit.setText(str(settings.get("figure.figsize", [6.4, 4.8])[0]))
         self.figure_height_edit.setText(str(settings.get("figure.figsize", [6.4, 4.8])[1]))
-        self.savefig_dpi_edit.setText("300") 
+        self.savefig_dpi_edit.setText(self.tr("300")) 
         self._set_combobox_value(self.savefig_format_combo, settings.get("savefig.format", 'png'))
 
     def get_settings(self) -> Dict[str, Any]:

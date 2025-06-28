@@ -60,7 +60,7 @@ class AddLineDialog(QDialog):
         form_layout.addRow("粒子类型:", self.particle_type_combo)
 
         # 3. 额外属性（例如，箭头和标签）
-        self.add_arrow_checkbox = QCheckBox("添加箭头")
+        self.add_arrow_checkbox = QCheckBox(self.tr("添加箭头"))
         self.add_arrow_checkbox.setChecked(True) # 默认选中
 
         self.label_input = QLineEdit("") # 可选的标签

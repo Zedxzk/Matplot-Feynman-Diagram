@@ -18,7 +18,7 @@ class LegendSettingsPanel(CollapsibleGroupBox):
         self.legend_fontsize_combo.setEditable(True)
         self.content_layout().addRow("图例字体大小:", self.legend_fontsize_combo)
 
-        self.legend_frameon_checkbox = QCheckBox("显示图例边框")
+        self.legend_frameon_checkbox = QCheckBox(self.tr("显示图例边框"))
         self.content_layout().addRow("图例边框:", self.legend_frameon_checkbox)
 
         self.legend_loc_combo = QComboBox()

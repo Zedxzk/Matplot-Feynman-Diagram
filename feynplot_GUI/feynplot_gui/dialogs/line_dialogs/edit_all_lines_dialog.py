@@ -287,7 +287,7 @@ class EditAllLinesDialog(QDialog):
                     input_widget.addItem(option)
             elif widget_type == 'ColorButton':
                 # 自定义颜色选择按钮
-                color_button = QPushButton("选择颜色")
+                color_button = QPushButton(self.tr("选择颜色"))
                 color_display = QLineEdit() # 用于显示颜色值或颜色框
                 color_display.setReadOnly(True)
                 color_display.setFixedWidth(80) # 固定宽度
@@ -330,11 +330,11 @@ class EditAllLinesDialog(QDialog):
 
         # 按钮
         button_layout = QHBoxLayout()
-        self.apply_button = QPushButton("应用")
+        self.apply_button = QPushButton(self.tr("应用"))
         self.apply_button.clicked.connect(self._apply_changes)
         button_layout.addWidget(self.apply_button)
 
-        self.cancel_button = QPushButton("取消")
+        self.cancel_button = QPushButton(self.tr("取消"))
         self.cancel_button.clicked.connect(self.reject) # 关闭对话框并返回 QDialog.Rejected
         button_layout.addWidget(self.cancel_button)
 

@@ -3,14 +3,14 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QCheckBox, QGroupBox, QRadioButton, QButtonGroup,
-    QWidget # Important for base class if it manages a QWidget
+    QWidget, # Important for base class if it manages a QWidget
 )
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtCore import Qt
 import numpy as np
 
 # 基类，提供通用的辅助方法和 UI 结构
-class LineEditBase:
+class LineEditBase(QWidget):
     def __init__(self):
         # 这个类不直接是 QDialog，它是一个混合类 (mixin) 或者一个组件提供者
         # 它需要访问 QDialog 的一些属性，比如 self（dialog 实例）

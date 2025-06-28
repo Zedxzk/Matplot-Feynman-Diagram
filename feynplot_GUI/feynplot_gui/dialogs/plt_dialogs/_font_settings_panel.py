@@ -38,7 +38,7 @@ class FontSettingsPanel(CollapsibleGroupBox):
         self.font_size_edit.setPlaceholderText("例如: 12.0")
         self.font_size_edit.setValidator(QDoubleValidator(0.1, 100.0, 2, self))
         font_size_layout.addWidget(self.font_size_edit)
-        font_size_layout.addWidget(QLabel("pt"))
+        font_size_layout.addWidget(QLabel(self.tr("pt")))
         self.general_font_group.content_layout().addRow("字体大小:", font_size_layout)
 
         # --- MathText 字体设置 ---
@@ -73,7 +73,7 @@ class FontSettingsPanel(CollapsibleGroupBox):
         self.text_font_size_edit.setPlaceholderText("例如: 10.0")
         self.text_font_size_edit.setValidator(QDoubleValidator(0.1, 100.0, 2, self))
         text_font_size_layout.addWidget(self.text_font_size_edit)
-        text_font_size_layout.addWidget(QLabel("pt"))
+        text_font_size_layout.addWidget(QLabel(self.tr("pt")))
         self.text_font_group.content_layout().addRow("字体大小:", text_font_size_layout)
 
         self.text_font_weight_combo = QComboBox()
@@ -103,7 +103,7 @@ class FontSettingsPanel(CollapsibleGroupBox):
         self._set_font_combo_text(self.text_font_family_combo, "Times New Roman")
         # 您可能还想为 ax.text 的字体大小、粗细和样式设置默认值，这里假设您默认保持现有代码逻辑。
         # 如果需要，可以像下面这样设置：
-        # self.text_font_size_edit.setText("10.0") # 或者您想要的默认值
+        # self.text_font_size_edit.setText(self.tr("10.0")) # 或者您想要的默认值
         # self._set_combobox_value(self.text_font_weight_combo, "normal") # 或者您想要的默认值
         # self._set_combobox_value(self.text_font_style_combo, "normal") # 或者您想要的默认值
 

@@ -24,20 +24,20 @@ class EditLineDialog(QDialog):
         self.layout = QVBoxLayout(self)
 
         # --- 基本属性 ---
-        basic_group = QGroupBox("基本属性")
+        basic_group = QGroupBox(self.tr("基本属性"))
         basic_layout = QVBoxLayout(basic_group)
         self.layout.addWidget(basic_group)
 
         # Label
         label_layout = QHBoxLayout()
-        label_layout.addWidget(QLabel("标签:"))
+        label_layout.addWidget(QLabel(self.tr("标签:")))
         self.label_input = QLineEdit(self.line.label)
         label_layout.addWidget(self.label_input)
         basic_layout.addLayout(label_layout)
 
         # Line Style
         style_layout = QHBoxLayout()
-        style_layout.addWidget(QLabel("样式:"))
+        style_layout.addWidget(QLabel(self.tr("样式:")))
         self.style_combo = QComboBox()
         for l_style in LineStyle:
             self.style_combo.addItem(l_style.name.replace('_', ' ').title(), l_style)
@@ -73,7 +73,7 @@ class EditLineDialog(QDialog):
         self.arrow_checkbox = None
         if hasattr(line, 'arrow'):
             arrow_layout = QHBoxLayout()
-            self.arrow_checkbox = QCheckBox("显示箭头")
+            self.arrow_checkbox = QCheckBox(self.tr("显示箭头"))
             self.arrow_checkbox.setChecked(line.arrow)
             arrow_layout.addWidget(self.arrow_checkbox)
             arrow_layout.addStretch(1)
@@ -81,7 +81,7 @@ class EditLineDialog(QDialog):
 
 
         # --- 绘图配置 (linePlotConfig) ---
-        line_plot_group = QGroupBox("线条绘制配置")
+        line_plot_group = QGroupBox(self.tr("线条绘制配置"))
         line_plot_layout = QVBoxLayout(line_plot_group)
         self.layout.addWidget(line_plot_group)
 
@@ -90,14 +90,14 @@ class EditLineDialog(QDialog):
         line_plot_layout.addLayout(self.linewidth_input)
 
         # Line Color
-        self.line_color_btn = QPushButton("线条颜色")
+        self.line_color_btn = QPushButton(self.tr("线条颜色"))
         self.line_color_btn.clicked.connect(lambda: self._pick_color(self.line_color_btn, 'line_color_picked'))
         line_plot_layout.addWidget(self.line_color_btn)
         self._set_button_color(self.line_color_btn, self.line.linePlotConfig().get('color', 'black'))
 
         # Line Style (Matplotlib)
         line_style_mpl_layout = QHBoxLayout()
-        line_style_mpl_layout.addWidget(QLabel("线条样式(mpl):"))
+        line_style_mpl_layout.addWidget(QLabel(self.tr("线条样式(mpl):")))
         self.linestyle_input = QLineEdit(self.line.linePlotConfig().get('linestyle', 'solid')) # Default to solid
         line_style_mpl_layout.addWidget(self.linestyle_input)
         line_plot_layout.addLayout(line_style_mpl_layout)
@@ -112,7 +112,7 @@ class EditLineDialog(QDialog):
 
 
         # --- 标签绘图配置 (labelPlotConfig) ---
-        label_plot_group = QGroupBox("标签绘制配置")
+        label_plot_group = QGroupBox(self.tr("标签绘制配置"))
         label_plot_layout = QVBoxLayout(label_plot_group)
         self.layout.addWidget(label_plot_group)
 
@@ -121,14 +121,14 @@ class EditLineDialog(QDialog):
         label_plot_layout.addLayout(self.fontsize_input)
 
         # Label Color
-        self.label_color_btn = QPushButton("标签颜色")
+        self.label_color_btn = QPushButton(self.tr("标签颜色"))
         self.label_color_btn.clicked.connect(lambda: self._pick_color(self.label_color_btn, 'label_color_picked'))
         label_plot_layout.addWidget(self.label_color_btn)
         self._set_button_color(self.label_color_btn, self.line.labelPlotConfig().get('color', 'black'))
 
         # Horizontal Alignment
         ha_layout = QHBoxLayout()
-        ha_layout.addWidget(QLabel("水平对齐:"))
+        ha_layout.addWidget(QLabel(self.tr("水平对齐:")))
         self.ha_combo = QComboBox()
         self.ha_combo.addItems(['left', 'center', 'right'])
         self.ha_combo.setCurrentText(self.line.labelPlotConfig().get('ha', 'center'))
@@ -137,7 +137,7 @@ class EditLineDialog(QDialog):
 
         # Vertical Alignment
         va_layout = QHBoxLayout()
-        va_layout.addWidget(QLabel("垂直对齐:"))
+        va_layout.addWidget(QLabel(self.tr("垂直对齐:")))
         self.va_combo = QComboBox()
         self.va_combo.addItems(['top', 'center', 'bottom', 'baseline'])
         self.va_combo.setCurrentText(self.line.labelPlotConfig().get('va', 'center'))
@@ -147,9 +147,9 @@ class EditLineDialog(QDialog):
 
         # OK/Cancel buttons
         button_layout = QHBoxLayout()
-        ok_button = QPushButton("确定")
+        ok_button = QPushButton(self.tr("确定"))
         ok_button.clicked.connect(self.accept)
-        cancel_button = QPushButton("取消")
+        cancel_button = QPushButton(self.tr("取消"))
         cancel_button.clicked.connect(self.reject)
         button_layout.addStretch(1)
         button_layout.addWidget(ok_button)

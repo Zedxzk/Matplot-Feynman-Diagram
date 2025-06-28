@@ -64,10 +64,10 @@ class DeleteVertexDialog(QDialog):
 
         self.vertex_combobox.currentIndexChanged.connect(self._update_associated_lines_display)
 
-        self.associated_lines_label = QLabel("关联线条:")
+        self.associated_lines_label = QLabel(self.tr("关联线条:"))
         self.associated_lines_label.setWordWrap(True)
         
-        self.associated_lines_text_area = QLabel("请选择一个顶点以查看其关联的线条。")
+        self.associated_lines_text_area = QLabel(self.tr("请选择一个顶点以查看其关联的线条。"))
         self.associated_lines_text_area.setStyleSheet("background-color: #f0f0f0; padding: 5px; border: 1px solid lightgray;")
         self.associated_lines_text_area.setWordWrap(True)
         self.associated_lines_text_area.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
@@ -88,7 +88,7 @@ class DeleteVertexDialog(QDialog):
         main_layout.addWidget(self.associated_lines_label)
         main_layout.addWidget(self.scroll_area)
 
-        self.confirm_checkbox = QCheckBox("我确认删除此顶点及其所有关联的线条。")
+        self.confirm_checkbox = QCheckBox(self.tr("我确认删除此顶点及其所有关联的线条。"))
         self.confirm_checkbox.setEnabled(True) 
         self.confirm_checkbox.stateChanged.connect(self._update_ok_button_state)
         main_layout.addWidget(self.confirm_checkbox)
@@ -105,7 +105,7 @@ class DeleteVertexDialog(QDialog):
             self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
             self.vertex_combobox.setEnabled(False)
             self.confirm_checkbox.setEnabled(False)
-            self.associated_lines_text_area.setText("图中目前没有可供删除的顶点。")
+            self.associated_lines_text_area.setText(self.tr("图中目前没有可供删除的顶点。"))
             self.scroll_area.setFixedHeight(self.scroll_area.minimumHeight())
         else:
             self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
@@ -120,7 +120,7 @@ class DeleteVertexDialog(QDialog):
         self.selected_vertex = self.vertex_combobox.currentData()
         
         if not self.selected_vertex:
-            self.associated_lines_text_area.setText("请选择一个顶点以查看其关联的线条。")
+            self.associated_lines_text_area.setText(self.tr("请选择一个顶点以查看其关联的线条。"))
             self.confirm_checkbox.setEnabled(False)
             self.confirm_checkbox.setChecked(False)
             self._update_ok_button_state()

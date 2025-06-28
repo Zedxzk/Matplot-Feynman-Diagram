@@ -3,7 +3,7 @@ from feynplot.core.special_curves import *
 # from feynplot.core.line import Line, GluonLine  # 确保导入 GluonLine
 
 
-def generate_helix_curve_points_based_on_bezier_path(path_points, radius, n_cycles=15, v=2):
+def generate_helix_curve_points_based_on_bezier_path(path_points, radius, n_cycles=15, v=5):
     """
     根据给定的贝塞尔路径点，生成沿路径运动且绕路径旋转的点D轨迹。
     - path_points: ndarray，路径上点序列 (N,2)
@@ -47,7 +47,7 @@ def generate_helix_curve_points_based_on_bezier_path(path_points, radius, n_cycl
         dy = radius * np.sin(phase_D_rel_C)
         D_trajectory[i] = point_C + np.array([dx, dy])
 
-    return D_trajectory
+    return truncated_path, D_trajectory
 
 def generate_gluon_helix(line):
     from feynplot.core.line import GluonLine  # 函数内部导入
@@ -66,9 +66,9 @@ def generate_gluon_helix(line):
     bezier_path = generate_bezier_path(start_point, end_point, angle_out, angle_in, offset_ratio=bezier_offset)
 
     # 调用螺旋点生成函数，返回D轨迹点
-    D_trajectory = generate_helix_curve_points_based_on_bezier_path(bezier_path, radius=R, n_cycles=n_cycles, v=v)
+    truncated_path, D_trajectory = generate_helix_curve_points_based_on_bezier_path(bezier_path, radius=R, n_cycles=n_cycles, v=v)
 
-    return D_trajectory
+    return truncated_path, D_trajectory
 
 def generate_gluon_bezier(line):
     from feynplot.core.line import GluonLine  # 只在函数内部导入

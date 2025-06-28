@@ -22,7 +22,7 @@ class EditVertexDialog(QDialog):
         self.layout = QVBoxLayout(self)
 
         # --- 基本属性 ---
-        basic_group = QGroupBox("基本属性")
+        basic_group = QGroupBox(self.tr("基本属性"))
         basic_layout = QVBoxLayout(basic_group)
         self.layout.addWidget(basic_group)
 
@@ -35,7 +35,7 @@ class EditVertexDialog(QDialog):
 
         # Label
         label_layout = QHBoxLayout()
-        label_layout.addWidget(QLabel("标签:"))
+        label_layout.addWidget(QLabel(self.tr("标签:")))
         self.label_input = QLineEdit(self.vertex.label)
         label_layout.addWidget(self.label_input)
         basic_layout.addLayout(label_layout)
@@ -49,7 +49,7 @@ class EditVertexDialog(QDialog):
 
         # Vertex Type
         type_layout = QHBoxLayout()
-        type_layout.addWidget(QLabel("类型:"))
+        type_layout.addWidget(QLabel(self.tr("类型:")))
         self.type_combo = QComboBox()
         for v_type in VertexType:
             self.type_combo.addItem(v_type.name.replace('_', ' ').title(), v_type)
@@ -74,23 +74,23 @@ class EditVertexDialog(QDialog):
         basic_layout.addLayout(self.label_offset_y_input_layout)
 
         # --- 结构化顶点参数 ---
-        structured_group = QGroupBox("结构化顶点")
+        structured_group = QGroupBox(self.tr("结构化顶点"))
         structured_layout = QVBoxLayout(structured_group)
         self.layout.addWidget(structured_group)
 
-        self.is_structured_checkbox = QCheckBox("是结构化顶点")
+        self.is_structured_checkbox = QCheckBox(self.tr("是结构化顶点"))
         self.is_structured_checkbox.setChecked(self.vertex.is_structured)
         structured_layout.addWidget(self.is_structured_checkbox)
 
         self.structured_radius_layout, self.structured_radius_spinbox = self._create_spinbox_row("半径:", self.vertex.structured_radius, min_val=0.1, max_val=5.0, step=0.1)
         structured_layout.addLayout(self.structured_radius_layout)
 
-        self.structured_facecolor_btn = QPushButton("填充颜色")
+        self.structured_facecolor_btn = QPushButton(self.tr("填充颜色"))
         self.structured_facecolor_btn.clicked.connect(lambda: self._pick_color(self.structured_facecolor_btn, 'structured_facecolor'))
         structured_layout.addWidget(self.structured_facecolor_btn)
         self._set_button_color(self.structured_facecolor_btn, self.vertex.structured_facecolor)
 
-        self.structured_edgecolor_btn = QPushButton("边框颜色")
+        self.structured_edgecolor_btn = QPushButton(self.tr("边框颜色"))
         self.structured_edgecolor_btn.clicked.connect(lambda: self._pick_color(self.structured_edgecolor_btn, 'structured_edgecolor'))
         structured_layout.addWidget(self.structured_edgecolor_btn)
         self._set_button_color(self.structured_edgecolor_btn, self.vertex.structured_edgecolor)
@@ -102,22 +102,22 @@ class EditVertexDialog(QDialog):
         structured_layout.addLayout(self.structured_alpha_layout)
 
         # Hatching (阴影线) 参数
-        hatch_group = QGroupBox("阴影线 (Hatching)")
+        hatch_group = QGroupBox(self.tr("阴影线 (Hatching)"))
         hatch_layout = QVBoxLayout(hatch_group)
         self.layout.addWidget(hatch_group)
 
-        self.use_custom_hatch_checkbox = QCheckBox("使用自定义阴影线")
+        self.use_custom_hatch_checkbox = QCheckBox(self.tr("使用自定义阴影线"))
         self.use_custom_hatch_checkbox.setChecked(self.vertex.use_custom_hatch)
         hatch_layout.addWidget(self.use_custom_hatch_checkbox)
 
         hatch_pattern_layout = QHBoxLayout()
-        hatch_pattern_layout.addWidget(QLabel("图案:"))
+        hatch_pattern_layout.addWidget(QLabel(self.tr("图案:")))
         self.hatch_pattern_input = QLineEdit(self.vertex.hatch_pattern if self.vertex.hatch_pattern is not None else "")
         hatch_pattern_layout.addWidget(self.hatch_pattern_input)
         hatch_layout.addLayout(hatch_pattern_layout)
 
         # 自定义阴影线参数
-        self.custom_hatch_color_btn = QPushButton("自定义阴影线颜色")
+        self.custom_hatch_color_btn = QPushButton(self.tr("自定义阴影线颜色"))
         self.custom_hatch_color_btn.clicked.connect(lambda: self._pick_color(self.custom_hatch_color_btn, 'custom_hatch_line_color'))
         hatch_layout.addWidget(self.custom_hatch_color_btn)
         self._set_button_color(self.custom_hatch_color_btn, self.vertex.custom_hatch_line_color)
@@ -133,9 +133,9 @@ class EditVertexDialog(QDialog):
 
         # OK/Cancel buttons
         button_layout = QHBoxLayout()
-        ok_button = QPushButton("确定")
+        ok_button = QPushButton(self.tr("确定"))
         ok_button.clicked.connect(self.accept)
-        cancel_button = QPushButton("取消")
+        cancel_button = QPushButton(self.tr("取消"))
         cancel_button.clicked.connect(self.reject)
         button_layout.addStretch(1)
         button_layout.addWidget(ok_button)

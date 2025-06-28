@@ -47,7 +47,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.font_size_edit.setPlaceholderText("例如: 12.0")
         self.font_size_edit.setValidator(QDoubleValidator(0.1, 100.0, 2, self))
         font_size_layout.addWidget(self.font_size_edit)
-        font_size_layout.addWidget(QLabel("pt"))
+        font_size_layout.addWidget(QLabel(self.tr("pt")))
         font_layout.addRow("字体大小:", font_size_layout)
         
         main_layout.addWidget(self.font_group_box)
@@ -55,7 +55,7 @@ class MatplotlibSettingsDialog(QDialog):
         # --- 2. LaTeX 设置组 ---
         self.latex_group_box, latex_layout = self._create_collapsible_group_box("LaTeX 设置")
 
-        self.use_latex_checkbox = QCheckBox("使用 LaTeX 渲染文本")
+        self.use_latex_checkbox = QCheckBox(self.tr("使用 LaTeX 渲染文本"))
         self.use_latex_checkbox.stateChanged.connect(self._on_usetex_changed)
         latex_layout.addRow("LaTeX 支持:", self.use_latex_checkbox)
 
@@ -77,7 +77,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.lines_linewidth_edit.setPlaceholderText("例如: 1.5")
         self.lines_linewidth_edit.setValidator(QDoubleValidator(0.1, 10.0, 2, self))
         line_width_layout.addWidget(self.lines_linewidth_edit)
-        line_width_layout.addWidget(QLabel("pt"))
+        line_width_layout.addWidget(QLabel(self.tr("pt")))
         lines_layout.addRow("默认线条宽度:", line_width_layout)
 
         self.lines_linestyle_combo = QComboBox()
@@ -98,7 +98,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.lines_markersize_edit.setPlaceholderText("例如: 6.0")
         self.lines_markersize_edit.setValidator(QDoubleValidator(0.1, 50.0, 2, self))
         marker_size_layout.addWidget(self.lines_markersize_edit)
-        marker_size_layout.addWidget(QLabel("pt"))
+        marker_size_layout.addWidget(QLabel(self.tr("pt")))
         lines_layout.addRow("默认标记大小:", marker_size_layout)
 
         main_layout.addWidget(self.lines_group_box)
@@ -122,7 +122,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.ytick_labelsize_combo.setEditable(True)
         axes_ticks_layout.addRow("Y轴刻度标签大小:", self.ytick_labelsize_combo)
         
-        self.axes_grid_checkbox = QCheckBox("显示网格")
+        self.axes_grid_checkbox = QCheckBox(self.tr("显示网格"))
         axes_ticks_layout.addRow("网格:", self.axes_grid_checkbox)
 
         main_layout.addWidget(self.axes_ticks_group_box)
@@ -135,7 +135,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.legend_fontsize_combo.setEditable(True)
         legend_layout.addRow("图例字体大小:", self.legend_fontsize_combo)
 
-        self.legend_frameon_checkbox = QCheckBox("显示图例边框")
+        self.legend_frameon_checkbox = QCheckBox(self.tr("显示图例边框"))
         legend_layout.addRow("图例边框:", self.legend_frameon_checkbox)
 
         self.legend_loc_combo = QComboBox()
@@ -156,7 +156,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.figure_width_edit.setPlaceholderText("例如: 6.4")
         self.figure_width_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_width_layout.addWidget(self.figure_width_edit)
-        figure_width_layout.addWidget(QLabel("英寸"))
+        figure_width_layout.addWidget(QLabel(self.tr("英寸")))
         figure_save_layout.addRow("图像宽度:", figure_width_layout)
 
         figure_height_layout = QHBoxLayout()
@@ -164,7 +164,7 @@ class MatplotlibSettingsDialog(QDialog):
         self.figure_height_edit.setPlaceholderText("例如: 4.8")
         self.figure_height_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_height_layout.addWidget(self.figure_height_edit)
-        figure_height_layout.addWidget(QLabel("英寸"))
+        figure_height_layout.addWidget(QLabel(self.tr("英寸")))
         figure_save_layout.addRow("图像高度:", figure_height_layout)
 
         self.savefig_dpi_edit = QLineEdit()

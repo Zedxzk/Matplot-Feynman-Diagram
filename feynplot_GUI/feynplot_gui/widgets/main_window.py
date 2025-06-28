@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         left_panel_widget.setFixedWidth(220)
 
         # 顶点列表标题
-        vertex_list_label = QLabel("顶点列表") # 创建标签
+        vertex_list_label = QLabel(self.tr("顶点列表")) # 创建标签
         vertex_list_label.setAlignment(Qt.AlignCenter) # 居中对齐，可选
         left_panel_layout.addWidget(vertex_list_label) # 将标签添加到布局
 
@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         left_panel_layout.addWidget(self.vertex_list_widget)
 
         # 线条列表标题
-        line_list_label = QLabel("线条列表") # 创建标签
+        line_list_label = QLabel(self.tr("线条列表")) # 创建标签
         line_list_label.setAlignment(Qt.AlignCenter) # 居中对齐，可选
         left_panel_layout.addWidget(line_list_label) # 将标签添加到布局
 
@@ -60,7 +60,8 @@ class MainWindow(QMainWindow):
 
         # --- 右侧面板：工具箱 ---
         self.toolbox_widget = ToolboxWidget(controller_instance=None, parent=self)
-        self.toolbox_widget.setFixedWidth(120) # 保持工具箱的固定宽度
+        self.toolbox_widget.setMinimumWidth(120) # 保持工具箱的固定宽度
+        self.toolbox_widget.setMaximumWidth(180) # 保持工具箱的固定宽度
         main_horizontal_layout.addWidget(self.toolbox_widget)
 
 

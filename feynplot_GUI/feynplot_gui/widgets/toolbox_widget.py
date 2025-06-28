@@ -43,7 +43,7 @@ class ToolboxWidget(QFrame): # <-- 改为继承 QFrame
         self.ctrl = controller_instance # 假设这是 MainController 的实例
 
         self.setWindowTitle("工具箱")
-        self.setFixedWidth(180) # 设置固定宽度，适应按钮和文本
+        self.setFixedWidth(300) # 设置固定宽度，适应按钮和文本
 
         self.setFrameShape(QFrame.StyledPanel)
         self.setFrameShadow(QFrame.Raised)
@@ -63,65 +63,65 @@ class ToolboxWidget(QFrame): # <-- 改为继承 QFrame
         """
         创建操作按钮（保存、撤销、重做、添加、删除、清空）。
         """
-        self.layout.addWidget(QLabel("<b>操作:</b>")) # 加粗标题
+        self.layout.addWidget(QLabel(self.tr("<b>操作:</b>"))) # 加粗标题
 
         # 保存图按钮
-        self.save_button = QPushButton("保存图")
+        self.save_button = QPushButton(self.tr("保存图"))
         self.layout.addWidget(self.save_button)
 
         # 撤销按钮
-        self.undo_button = QPushButton("撤销")
+        self.undo_button = QPushButton(self.tr("撤销"))
         self.layout.addWidget(self.undo_button)
 
         # 重做按钮
-        self.redo_button = QPushButton("重做")
+        self.redo_button = QPushButton(self.tr("重做"))
         self.layout.addWidget(self.redo_button)
 
         self.layout.addWidget(self._create_separator()) # 分隔线
 
         # 直接添加顶点按钮
-        self.add_vertex_button = QPushButton("添加顶点")
+        self.add_vertex_button = QPushButton(self.tr("添加顶点"))
         self.layout.addWidget(self.add_vertex_button)
 
         # 直接添加线条按钮
-        self.add_line_button = QPushButton("添加线条")
+        self.add_line_button = QPushButton(self.tr("添加线条"))
         self.layout.addWidget(self.add_line_button)
 
         # 删除顶点按钮
-        self.delete_vertex_button = QPushButton("删除顶点")
+        self.delete_vertex_button = QPushButton(self.tr("删除顶点"))
         self.layout.addWidget(self.delete_vertex_button)
 
         # 删除线条按钮
-        self.delete_line_button = QPushButton("删除线条")
+        self.delete_line_button = QPushButton(self.tr("删除线条"))
         self.layout.addWidget(self.delete_line_button)
 
         # --- 顶点可见性按钮 ---
         self.layout.addWidget(self._create_separator()) # 分隔线
-        self.layout.addWidget(QLabel("<b>顶点:</b>"))
-        self.show_all_vertices_button = QPushButton("显示所有顶点")
+        self.layout.addWidget(QLabel(self.tr("<b>顶点:</b>")))
+        self.show_all_vertices_button = QPushButton(self.tr("显示所有顶点"))
         self.layout.addWidget(self.show_all_vertices_button)
-        self.hide_all_vertices_button = QPushButton("隐藏所有顶点")
+        self.hide_all_vertices_button = QPushButton(self.tr("隐藏所有顶点"))
         self.layout.addWidget(self.hide_all_vertices_button)
 
         # --- 顶点标签可见性按钮 ---
         self.layout.addWidget(self._create_separator()) # 分隔线
-        self.layout.addWidget(QLabel("<b>顶点标签:</b>"))
-        self.show_all_vertex_labels_button = QPushButton("显示所有标签")
+        self.layout.addWidget(QLabel(self.tr("<b>顶点标签:</b>")))
+        self.show_all_vertex_labels_button = QPushButton(self.tr("显示所有标签"))
         self.layout.addWidget(self.show_all_vertex_labels_button)
-        self.hide_all_vertex_labels_button = QPushButton("隐藏所有标签")
+        self.hide_all_vertex_labels_button = QPushButton(self.tr("隐藏所有标签"))
         self.layout.addWidget(self.hide_all_vertex_labels_button)
 
         # --- 【新增】线标签可见性按钮 ---
         self.layout.addWidget(self._create_separator()) # 分隔线
-        self.layout.addWidget(QLabel("<b>线标签:</b>"))
-        self.show_all_line_labels_button = QPushButton("显示所有标签")
+        self.layout.addWidget(QLabel(self.tr("<b>线标签:</b>")))
+        self.show_all_line_labels_button = QPushButton(self.tr("显示所有标签"))
         self.layout.addWidget(self.show_all_line_labels_button)
-        self.hide_all_line_labels_button = QPushButton("隐藏所有标签")
+        self.hide_all_line_labels_button = QPushButton(self.tr("隐藏所有标签"))
         self.layout.addWidget(self.hide_all_line_labels_button)
 
         # 清空图
         self.layout.addWidget(self._create_separator()) # 分隔线
-        self.clear_diagram_button = QPushButton("清空图")
+        self.clear_diagram_button = QPushButton(self.tr("清空图"))
         self.layout.addWidget(self.clear_diagram_button)
 
 

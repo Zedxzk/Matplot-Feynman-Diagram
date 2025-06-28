@@ -15,7 +15,7 @@ class PhotonLineEditor(LineEditBase):
         self.line = line_obj
         self.parent_form_layout = parent_layout # 存储父级 QFormLayout
 
-        self.group_box = QGroupBox("光子线属性")
+        self.group_box = QGroupBox(self.tr("光子线属性"))
         # --- 关键更改：设置 QGroupBox 的 sizePolicy 为水平 Expanding ---
         self.group_box.setSizePolicy(
             QSizePolicy.Policy.Expanding,   # 水平方向应扩展
@@ -32,23 +32,23 @@ class PhotonLineEditor(LineEditBase):
             self._create_spinbox_row("波长:", 0.5, min_val=0.1, max_val=2.0, step=0.05)
 
         self.photon_initial_phase_group = QButtonGroup(self.group_box) # Parent to group_box
-        self.photon_initial_phase_0 = QRadioButton("0°")
-        self.photon_initial_phase_180 = QRadioButton("180°")
+        self.photon_initial_phase_0 = QRadioButton(self.tr("0°"))
+        self.photon_initial_phase_180 = QRadioButton(self.tr("180°"))
         self.photon_initial_phase_group.addButton(self.photon_initial_phase_0, 0)
         self.photon_initial_phase_group.addButton(self.photon_initial_phase_180, 180)
         self.initial_phase_h_layout = QHBoxLayout()
-        self.initial_phase_h_layout.addWidget(QLabel("初相位:"))
+        self.initial_phase_h_layout.addWidget(QLabel(self.tr("初相位:")))
         self.initial_phase_h_layout.addWidget(self.photon_initial_phase_0)
         self.initial_phase_h_layout.addWidget(self.photon_initial_phase_180)
         self.initial_phase_h_layout.addStretch(1) # 添加伸缩器以使单选按钮靠左对齐
 
         self.photon_final_phase_group = QButtonGroup(self.group_box) # Parent to group_box
-        self.photon_final_phase_0 = QRadioButton("0°")
-        self.photon_final_phase_180 = QRadioButton("180°")
+        self.photon_final_phase_0 = QRadioButton(self.tr("0°"))
+        self.photon_final_phase_180 = QRadioButton(self.tr("180°"))
         self.photon_final_phase_group.addButton(self.photon_final_phase_0, 0)
         self.photon_final_phase_group.addButton(self.photon_final_phase_180, 180)
         self.final_phase_h_layout = QHBoxLayout()
-        self.final_phase_h_layout.addWidget(QLabel("末相位:"))
+        self.final_phase_h_layout.addWidget(QLabel(self.tr("末相位:")))
         self.final_phase_h_layout.addWidget(self.photon_final_phase_0)
         self.final_phase_h_layout.addWidget(self.photon_final_phase_180)
         self.final_phase_h_layout.addStretch(1) # 添加伸缩器以使单选按钮靠左对齐

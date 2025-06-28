@@ -91,8 +91,8 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             start_id = self._original_v_start.id if self._original_v_start else 'N/A'
             end_label = self._original_v_end.label if self._original_v_end else '无'
             end_id = self._original_v_end.id if self._original_v_end else 'N/A'
-            self.main_form_layout.addRow(QLabel("<b>起点:</b>"), QLabel(f"{start_label} (ID: {start_id})"))
-            self.main_form_layout.addRow(QLabel("<b>终点:</b>"), QLabel(f"{end_label} (ID: {end_id})"))
+            self.main_form_layout.addRow(QLabel(self.tr("<b>起点:</b>")), QLabel(f"{start_label} (ID: {start_id})"))
+            self.main_form_layout.addRow(QLabel(self.tr("<b>终点:</b>")), QLabel(f"{end_label} (ID: {end_id})"))
 
             # --- 4. 线条粒子类型选择 (Line Type Selection) ---
             self.particle_type_combo = QComboBox(self)
@@ -262,9 +262,9 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
 
             # --- 确定/取消按钮 ---
             button_layout = QHBoxLayout()
-            ok_button = QPushButton("确定")
+            ok_button = QPushButton(self.tr("确定"))
             ok_button.clicked.connect(self.accept)
-            cancel_button = QPushButton("取消")
+            cancel_button = QPushButton(self.tr("取消"))
             cancel_button.clicked.connect(self.reject)
             button_layout.addStretch(1)
             button_layout.addWidget(ok_button)

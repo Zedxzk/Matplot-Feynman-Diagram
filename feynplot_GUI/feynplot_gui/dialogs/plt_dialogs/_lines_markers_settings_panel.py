@@ -19,7 +19,7 @@ class LinesMarkersSettingsPanel(CollapsibleGroupBox):
         self.lines_linewidth_edit.setPlaceholderText("例如: 1.5")
         self.lines_linewidth_edit.setValidator(QDoubleValidator(0.1, 10.0, 2, self))
         line_width_layout.addWidget(self.lines_linewidth_edit)
-        line_width_layout.addWidget(QLabel("pt"))
+        line_width_layout.addWidget(QLabel(self.tr("pt")))
         self.content_layout().addRow("默认线条宽度:", line_width_layout)
 
         self.lines_linestyle_combo = QComboBox()
@@ -40,7 +40,7 @@ class LinesMarkersSettingsPanel(CollapsibleGroupBox):
         self.lines_markersize_edit.setPlaceholderText("例如: 6.0")
         self.lines_markersize_edit.setValidator(QDoubleValidator(0.1, 50.0, 2, self))
         marker_size_layout.addWidget(self.lines_markersize_edit)
-        marker_size_layout.addWidget(QLabel("pt"))
+        marker_size_layout.addWidget(QLabel(self.tr("pt")))
         self.content_layout().addRow("默认标记大小:", marker_size_layout)
 
     def load_settings(self, settings: Dict[str, Any]):

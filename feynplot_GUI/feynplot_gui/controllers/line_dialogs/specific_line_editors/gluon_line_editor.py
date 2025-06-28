@@ -13,7 +13,7 @@ class GluonLineEditor(LineEditBase):
         self.line = line_obj
         self.parent_form_layout = parent_layout
 
-        self.group_box = QGroupBox("胶子线属性")
+        self.group_box = QGroupBox(self.tr("胶子线属性"))
         self.group_box.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Preferred

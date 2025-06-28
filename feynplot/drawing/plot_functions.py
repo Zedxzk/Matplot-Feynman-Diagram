@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
+from pygments import highlight
 from debug_utils import cout
 from feynplot.shared.common_functions import str2latex
 
@@ -20,6 +21,8 @@ import mplhep as hep
 from feynplot.drawing.fontSettings import *
 
 
+highlight_color = 'red'
+
 def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict):
     # 复制字典以避免修改原始对象内部的配置
     current_line_plot_options = line_plot_options.copy()
@@ -31,12 +34,12 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
 
     # 如果线被选中，调整绘图属性
     if line.is_selected:
-        current_line_plot_options['color'] = 'gold' # 高亮颜色
-        current_line_plot_options['linewidth'] = original_linewidth * 1.5 # 增加线宽
+        current_line_plot_options['color'] = highlight_color # 高亮颜色
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5 + 3 # 增加线宽
         current_line_plot_options['zorder'] = original_zorder + 10 # 提高 Z-order
 
         # 标签也可能需要调整，例如颜色或 Z-order
-        current_label_text_options['color'] = 'gold'
+        current_label_text_options['color'] = highlight_color
         current_label_text_options['zorder'] = original_zorder + 11
 
     # 获取光子波的路径点
@@ -68,20 +71,21 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
 
     # 如果线被选中，调整绘图属性
     if line.is_selected:
-        current_line_plot_options['color'] = 'gold'
-        current_line_plot_options['linewidth'] = original_linewidth * 1.5
+        current_line_plot_options['color'] = highlight_color
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5 + 3
         current_line_plot_options['zorder'] = original_zorder + 10
 
-        current_label_text_options['color'] = 'gold'
+        current_label_text_options['color'] = highlight_color
         current_label_text_options['zorder'] = original_zorder + 11
 
     # 获取胶子线的路径点
     # 假设 line.get_plot_path() 会返回正确的路径
-    helix_path = line.get_plot_path()
+    bezire_path, helix_path = line.get_plot_path()
     x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
 
     # 绘制胶子线的路径
     ax.plot(x_helix, y_helix, **current_line_plot_options)
+    # ax.plot(bezire_path[:, 0], bezire_path[:, 1], **current_line_plot_options)
 
     # 绘制胶子线的标签
     if line.label:
@@ -116,11 +120,11 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
 
     # 如果线被选中，调整主要锯齿线的绘图属性
     if line.is_selected:
-        current_line_plot_options['color'] = 'gold'
-        current_line_plot_options['linewidth'] = original_linewidth * 1.5
+        current_line_plot_options['color'] = highlight_color
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5 + 3
         current_line_plot_options['zorder'] = original_zorder + 10 # 锯齿线的高亮 Z-order
 
-        current_label_text_options['color'] = 'gold'
+        current_label_text_options['color'] = highlight_color
         current_label_text_options['zorder'] = original_zorder + 11 # 标签的高亮 Z-order
 
     # --- 绘制锯齿路径 (主要线条) ---
@@ -156,11 +160,11 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
     # 如果线被选中，调整绘图属性
     if line.is_selected:
-        current_line_plot_options['color'] = 'gold'
-        current_line_plot_options['linewidth'] = original_linewidth * 1.5
+        current_line_plot_options['color'] = highlight_color
+        current_line_plot_options['linewidth'] = original_linewidth * 1.5 + 3
         current_line_plot_options['zorder'] = original_zorder + 10
 
-        current_label_text_options['color'] = 'gold'
+        current_label_text_options['color'] = highlight_color
         current_label_text_options['zorder'] = original_zorder + 11
 
     # 获取费米子线路径
@@ -274,13 +278,13 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
     # 如果顶点被选中，调整绘图属性
     if vertex.is_selected:
         current_scatter_props['s'] = original_size * 1.5 # 放大
-        current_scatter_props['c'] = 'yellow' # 变色
-        current_scatter_props['edgecolor'] = 'yellow'
+        current_scatter_props['c'] = highlight_color # 变色
+        current_scatter_props['edgecolor'] = highlight_color
         current_scatter_props['linewidth'] = original_linewidth + 1.0
         current_scatter_props['zorder'] = original_zorder + 10 # 提高 Z-order
 
         # 标签也可能需要调整
-        current_label_props['color'] = 'gold'
+        current_label_props['color'] = highlight_color
         current_label_props['zorder'] = original_zorder + 11
 
     # --- 修改这里：只绘制一次点状顶点 ---
@@ -318,10 +322,10 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
         current_circle_props['zorder'] = original_zorder + 10 # 提高 Z-order
 
         # 如果有自定义阴影线，也可能需要调整其颜色或线宽
-        current_custom_hatch_props['hatch_line_color'] = 'gold' # 阴影线颜色
+        current_custom_hatch_props['hatch_line_color'] = highlight_color # 阴影线颜色
         # current_custom_hatch_props['hatch_line_width'] = current_custom_hatch_props.get('hatch_line_width', 0.5) + 0.5
 
-        current_label_props['color'] = 'gold'
+        current_label_props['color'] = highlight_color
         current_label_props['zorder'] = original_zorder + 11
 
 

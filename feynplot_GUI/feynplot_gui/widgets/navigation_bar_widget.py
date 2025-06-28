@@ -154,11 +154,11 @@ class NavigationBarWidget(QWidget):
         self.tool_bar.setMovable(False)
 
         # 直接引用按钮，方便后续控制其 enabled 状态
-        self.add_line_button = QPushButton("添加线条")
+        self.add_line_button = QPushButton(self.tr("添加线条"))
         self.add_line_button.clicked.connect(self.add_line_button_clicked.emit)
         self.tool_bar.addWidget(self.add_line_button)
 
-        self.add_vertex_button = QPushButton("添加顶点")
+        self.add_vertex_button = QPushButton(self.tr("添加顶点"))
         self.add_vertex_button.clicked.connect(self.add_vertex_button_clicked.emit)
         self.tool_bar.addWidget(self.add_vertex_button)
 
