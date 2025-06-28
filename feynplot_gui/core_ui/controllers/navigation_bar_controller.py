@@ -2,15 +2,15 @@
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QMessageBox, QFileDialog
-from feynplot_gui.widgets.navigation_bar_widget import NavigationBarWidget
+from feynplot_gui.core_ui.widgets.navigation_bar_widget import NavigationBarWidget
 from feynplot.core.vertex import Vertex # 用于类型提示
 from feynplot.core.line import Line # 用于类型提示
 
 # 导入 Matplotlib 设置对话框
-from feynplot_gui.dialogs.plt_dialogs.matplotlib_settings_dialog import MatplotlibSettingsDialog
+from feynplot_gui.core_ui.dialogs.plt_dialogs.matplotlib_settings_dialog import MatplotlibSettingsDialog
 # 导入编辑所有顶点的对话框
-from feynplot_gui.dialogs.vertex_dialogs.edit_all_vertices_dialog import EditAllVerticesDialog
-from feynplot_gui.dialogs.line_dialogs.edit_all_lines_dialog import EditAllLinesDialog
+from feynplot_gui.core_ui.dialogs.vertex_dialogs.edit_all_vertices_dialog import EditAllVerticesDialog
+from feynplot_gui.core_ui.dialogs.line_dialogs.edit_all_lines_dialog import EditAllLinesDialog
 
 
 import matplotlib.pyplot as plt # 导入 matplotlib 用于应用 rcParams

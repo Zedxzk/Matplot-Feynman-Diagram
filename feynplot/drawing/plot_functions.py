@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 from pygments import highlight
-from debug_utils import cout
+from feynplot_gui.debug_utils import cout
 from feynplot.shared.common_functions import str2latex
 
 

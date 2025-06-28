@@ -6,9 +6,9 @@ from feynplot.core.line import Line, LineStyle, FermionLine, GluonLine, PhotonLi
 # from feynplot.core.diagram import FeynmanDiagram 
 
 # Import UI Widgets and Dialogs
-from feynplot_gui.widgets.line_list_widget import LineListWidget 
+from feynplot_gui.core_ui.widgets.line_list_widget import LineListWidget 
 # Import the line-specific edit dialog function directly
-from feynplot_gui.controllers.line_dialogs.edit_line import open_edit_line_dialog 
+from feynplot_gui.core_ui.controllers.line_dialogs.edit_line import open_edit_line_dialog 
 
 # Type hint for MainController to avoid circular imports
 # class MainController: 

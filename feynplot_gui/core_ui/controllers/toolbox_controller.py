@@ -3,12 +3,12 @@
 from PySide6.QtCore import QObject, Signal 
 
 # 导入 UI Widget
-from feynplot_gui.widgets.toolbox_widget import ToolboxWidget 
+from feynplot_gui.core_ui.widgets.toolbox_widget import ToolboxWidget 
 
 # 【重要】使用类型提示的字符串引用 'MainController' 避免循环导入
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from feynplot_gui.controllers.main_controller import MainController
+    from core_ui.controllers.main_controller import MainController
 
 class ToolboxController(QObject): # 继承自 QObject
     def __init__(self, toolbox_widget: ToolboxWidget, main_controller: 'MainController', parent=None): 

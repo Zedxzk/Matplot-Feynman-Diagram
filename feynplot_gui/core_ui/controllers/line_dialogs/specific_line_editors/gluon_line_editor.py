@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from feynplot.core.line import GluonLine
-from feynplot_gui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
 
 class GluonLineEditor(LineEditBase):
     def __init__(self, parent_layout: QFormLayout, line_obj: GluonLine):

@@ -6,8 +6,8 @@ import time # 导入 time 模块
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtCore import Qt, QTranslator, QLocale, QLibraryInfo
 
-from feynplot_gui.widgets.main_window import MainWindow
-from feynplot_gui.controllers.main_controller import MainController
+from core_ui.widgets.main_window import MainWindow
+from core_ui.controllers.main_controller import MainController
 
 pause_time = 0
 
@@ -33,7 +33,9 @@ def main():
     window = None
 
     try:
+        print("正在启动...")
         app = QApplication(sys.argv)
+        print("正在加载翻译文件...")
 
         # --- 国际化（多语言支持）相关代码开始 ---
         # translator_app 用于加载应用程序自定义的翻译文件
@@ -113,4 +115,5 @@ def main():
         sys.exit(pause_time)
 
 if __name__ == "__main__":
+    print("程序入口")
     main()

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QGroupBox, QVBoxLayout, QSizePolicy, QFormLayout
 )
 from feynplot.core.line import WPlusLine, WMinusLine, ZBosonLine
-from feynplot_gui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
 
 class WZBosonLineEditor(LineEditBase):
     def __init__(self, parent_layout: QFormLayout, line_obj: (WPlusLine, WMinusLine, ZBosonLine)):

@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt # 导入 Qt
 from feynplot.core.line import PhotonLine
-from feynplot_gui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
 
 class PhotonLineEditor(LineEditBase):
     # 将 parent_layout 类型提示更改为 QFormLayout，与 edit_line.py 传递的类型一致

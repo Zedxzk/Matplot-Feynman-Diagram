@@ -2,7 +2,7 @@
 from operator import is_
 from typing import Optional
 
-from debug_utils import cout, cout3
+from feynplot_gui.debug_utils import cout, cout3
 from PySide6.QtCore import QObject, Signal, QPointF
 from PySide6.QtWidgets import QMessageBox, QDialog, QFileDialog
 import os
@@ -20,14 +20,14 @@ from feynplot.core.vertex import Vertex, VertexType
 from feynplot.core.line import Line, FermionLine, PhotonLine, GluonLine, LineStyle # 确保所有需要的线条类和样式被导入
 
 # 导入主窗口 (方便类型提示和访问其子组件实例)
-from feynplot_gui.widgets.main_window import MainWindow
+from feynplot_gui.core_ui.widgets.main_window import MainWindow
 # 导入对话框，因为 MainController 现在负责它们的创建和数据显示
-from feynplot_gui.dialogs.add_vertex_dialog import AddVertexDialog
-from feynplot_gui.dialogs.edit_vertex_dialog import EditVertexDialog
-from feynplot_gui.dialogs.add_line_dialog import AddLineDialog
-from feynplot_gui.dialogs.edit_line_dialog import EditLineDialog
-from feynplot_gui.dialogs.delete_vertex_dialog import DeleteVertexDialog
-from feynplot_gui.dialogs.delete_line_dialog import DeleteLineDialog
+from feynplot_gui.core_ui.dialogs.add_vertex_dialog import AddVertexDialog
+from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
+from feynplot_gui.core_ui.dialogs.add_line_dialog import AddLineDialog
+from feynplot_gui.core_ui.dialogs.edit_line_dialog import EditLineDialog
+from feynplot_gui.core_ui.dialogs.delete_vertex_dialog import DeleteVertexDialog
+from feynplot_gui.core_ui.dialogs.delete_line_dialog import DeleteLineDialog
 
 class MainController(QObject):
     # 定义 MainController 自身发出的信号

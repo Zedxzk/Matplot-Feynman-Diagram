@@ -9,17 +9,17 @@ setup(
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main",
-    packages=find_packages(),  # 从当前目录开始找所有包，默认即可
+    packages=find_packages(include=["feynplot_gui", "feynplot_gui.*"]),  # 确保包含子包
+    # package_dir={"": "."},  # 可以不设置，默认就是当前目录
     include_package_data=True,
     install_requires=[
-        "matplotlib==3.7.2",
-        "mplhep==0.3.59",
-        "numpy==1.23.5",
-        "Pygments==2.19.2",
-        "PySide6==6.9.1",
-        "PySide6-Addons==6.9.1",
-        "PySide6-Essentials==6.9.1",
-        "setuptools==69.2.0",
+        "matplotlib>=3.7.2",
+        "mplhep>=0.3.59",
+        "numpy>=1.23",
+        "Pygments>=2.19",
+        "PySide6>=6.9",
+        "PySide6-Addons>=6.9",
+        "PySide6-Essentials>=6.9",
     ],
     python_requires=">=3.8",
     entry_points={

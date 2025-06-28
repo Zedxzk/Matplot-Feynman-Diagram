@@ -1,0 +1,33 @@
+{
+    "vertices": [
+      { "id": "v_in_e-", "x": 0, "y": 2, "vertex_type": "electromagnetic", "label": "e^-", "hidden_label": false },
+      { "id": "v_in_e+", "x": 0, "y": -2, "vertex_type": "electromagnetic", "label": "e^+", "hidden_label": false },
+      { "id": "v_mid", "x": 4, "y": 0, "vertex_type": "electromagnetic", "label": "γ", "hidden_label": false },
+      { "id": "v_out_e-", "x": 8, "y": 2, "vertex_type": "electromagnetic", "label": "e^-", "hidden_label": false },
+      { "id": "v_out_e+", "x": 8, "y": -2, "vertex_type": "electromagnetic", "label": "e^+", "hidden_label": false }
+    ],
+    "lines": [
+      {
+        "__type__": "FermionLine", "id": "l_e-_in",
+        "v_start_id": "v_in_e-", "v_end_id": "v_out_e-",
+        "label": "e^-", "style": "fermion", "arrow": true
+      },
+      {
+        "__type__": "FermionLine", "id": "l_e+_in",
+        "v_start_id": "v_in_e+", "v_end_id": "v_mid",
+        "label": "e^+", "style": "fermion", "arrow": true
+      },
+      {
+        "__type__": "FermionLine", "id": "l_e+_out",
+        "v_start_id": "v_mid", "v_end_id": "v_out_e+",
+        "label": "e^+", "style": "fermion", "arrow": true
+      },
+      {
+        "__type__": "PhotonLine", "id": "l_photon",
+        "v_start_id": "v_out_e-", "v_end_id": "v_mid",
+        "label": "γ", "style": "photon", "amplitude": 0.1, "wavelength": 0.5
+      }
+    ],
+    "metadata": {}
+  }
+  

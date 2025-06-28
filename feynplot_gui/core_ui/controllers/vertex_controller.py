@@ -6,11 +6,11 @@ from feynplot.core.vertex import Vertex, VertexType
 from feynplot.core.line import Line
 
 # 导入 UI Widget
-from feynplot_gui.widgets.vertex_list_widget import VertexListWidget
+from feynplot_gui.core_ui.widgets.vertex_list_widget import VertexListWidget
 
 # 导入对话框 (这里保留你的结构，尽管对话框的协调通常由 MainController 或专门的 DialogController 负责)
-from feynplot_gui.dialogs.add_vertex_dialog import AddVertexDialog
-from feynplot_gui.dialogs.edit_vertex_dialog import EditVertexDialog
+from feynplot_gui.core_ui.dialogs.add_vertex_dialog import AddVertexDialog
+from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
 
 # 导入你的功能函数
 from .vertex_dialogs.edit_vertex import open_edit_vertex_dialog

@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from feynplot.core.line import FermionLine, AntiFermionLine
-from feynplot_gui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
 
 
 class FermionLineEditor(LineEditBase):

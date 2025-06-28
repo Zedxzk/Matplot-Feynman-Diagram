@@ -4,7 +4,7 @@ from PySide6.QtCore import QObject, Signal, QPointF, Qt
 from typing import Optional, Callable # <-- Ensure these are imported
 
 # Import CanvasWidget, which is the "view" part of the canvas
-from feynplot_gui.widgets.canvas_widget import CanvasWidget
+from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
 
 # Import your MatplotlibBackend (renderer, don't modify it directly)
 from feynplot.drawing.renderer import MatplotlibBackend

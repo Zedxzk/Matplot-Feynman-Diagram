@@ -20,11 +20,11 @@ from feynplot.core.vertex import Vertex
 import numpy as np
 
 # 导入新的模块化编辑器
-from feynplot_gui.controllers.line_dialogs.line_edit_base import LineEditBase
-from feynplot_gui.controllers.line_dialogs.specific_line_editors.fermion_line_editor import FermionLineEditor
-from feynplot_gui.controllers.line_dialogs.specific_line_editors.photon_line_editor import PhotonLineEditor
-from feynplot_gui.controllers.line_dialogs.specific_line_editors.gluon_line_editor import GluonLineEditor
-from feynplot_gui.controllers.line_dialogs.specific_line_editors.wz_boson_line_editor import WZBosonLineEditor
+from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.fermion_line_editor import FermionLineEditor
+from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.photon_line_editor import PhotonLineEditor
+from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.gluon_line_editor import GluonLineEditor
+from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.wz_boson_line_editor import WZBosonLineEditor
 
 
 def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widget=None) -> bool:

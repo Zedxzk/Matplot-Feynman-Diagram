@@ -2,9 +2,8 @@ import math
 from matplotlib.pyplot import get_plot_commands
 import numpy as np
 from typing import Dict, Any, Optional
-from debug_utils import cout
+from feynplot_gui.debug_utils import cout
 
-import debug_utils
 import enum 
 
 # --- LineStyle Enum ---

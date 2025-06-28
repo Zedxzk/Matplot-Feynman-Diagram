@@ -3,11 +3,11 @@
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QLabel
 from PySide6.QtCore import Qt
 
-from feynplot_gui.widgets.canvas_widget import CanvasWidget
-from feynplot_gui.widgets.navigation_bar_widget import NavigationBarWidget
-from feynplot_gui.widgets.toolbox_widget import ToolboxWidget
-from feynplot_gui.widgets.vertex_list_widget import VertexListWidget
-from feynplot_gui.widgets.line_list_widget import LineListWidget
+from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
+from feynplot_gui.core_ui.widgets.navigation_bar_widget import NavigationBarWidget
+from feynplot_gui.core_ui.widgets.toolbox_widget import ToolboxWidget
+from feynplot_gui.core_ui.widgets.vertex_list_widget import VertexListWidget
+from feynplot_gui.core_ui.widgets.line_list_widget import LineListWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
