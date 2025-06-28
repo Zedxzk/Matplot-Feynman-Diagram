@@ -5,7 +5,7 @@ __pycache__/
 *.pkl
 *.so
 *.ipynb_checkpoints
-*.sh
+gitpush.sh
 
 # Python Build/Distribution Folders
 # 忽略由打包工具（如PyInstaller）生成的编译和分发文件夹
