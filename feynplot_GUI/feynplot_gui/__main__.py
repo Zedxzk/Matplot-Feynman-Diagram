@@ -27,7 +27,8 @@ def show_error_dialog(title, message, parent=None):
     
     msg_box.exec()
 
-if __name__ == "__main__":
+
+def main():
     app = None
     window = None
 
@@ -110,3 +111,6 @@ if __name__ == "__main__":
         print(f"致命错误 (QApplication 未初始化): {e}\n{tb_info}", file=sys.stderr)
         
         sys.exit(pause_time)
+
+if __name__ == "__main__":
+    main()

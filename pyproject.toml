@@ -1,3 +1,29 @@
 [build-system]
-requires = ["setuptools>=42"]
+requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyfeynplot"
+version = "0.1.0"
+authors = [{name = "Zedxzk", email = "Zedxzk@gmail.com"}]
+description = "Matplot-Feynman-Diagram"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+
+dependencies = [
+  "matplotlib==3.7.2",
+  "mplhep==0.3.59",
+  "numpy==1.23.5",
+  "Pygments==2.19.2",
+  "PySide6==6.9.1",
+  "PySide6-Addons==6.9.1",
+  "PySide6-Essentials==6.9.1",
+  "setuptools==69.2.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main"
+
+[project.scripts]
+feynplot-gui = "feynplot_gui.__main__:main"
