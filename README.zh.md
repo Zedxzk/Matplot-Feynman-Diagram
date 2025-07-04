@@ -24,4 +24,4 @@ feynplot-gui
 ```
 即可显示GUI界面，如下图所示：
 
-![alt text](README.assets\zh_CN\UI_example.png)
+![alt text](README.assets/zh_CN/UI_example.png)

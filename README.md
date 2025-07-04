@@ -30,4 +30,4 @@ feynplot-gui
 ```
 This will display the GUI interface, as shown in the image below:
 
-![alt text](README.assets\zh_CN\UI_example.png)
+![alt text](README.assets/zh_CN/UI_example.png)
