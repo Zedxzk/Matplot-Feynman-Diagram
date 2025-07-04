@@ -1,4 +1,4 @@
-# feynplot_gui/widgets/main_window.py (更新)
+# feynplot_gui/widgets/main_window.py
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QLabel
 from PySide6.QtCore import Qt
@@ -8,6 +8,7 @@ from feynplot_gui.core_ui.widgets.navigation_bar_widget import NavigationBarWidg
 from feynplot_gui.core_ui.widgets.toolbox_widget import ToolboxWidget
 from feynplot_gui.core_ui.widgets.vertex_list_widget import VertexListWidget
 from feynplot_gui.core_ui.widgets.line_list_widget import LineListWidget
+from feynplot_gui.core_ui.widgets.other_texts_widget import OtherTextsWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -38,8 +39,7 @@ class MainWindow(QMainWindow):
         left_panel_layout.addWidget(vertex_list_label) # 将标签添加到布局
 
         self.vertex_list_widget = VertexListWidget(self)
-        # self.vertex_list_widget.setWindowTitle("顶点列表") # 这行可以删掉，因为它不起作用
-        left_panel_layout.addWidget(self.vertex_list_widget)
+        left_panel_layout.addWidget(self.vertex_list_widget, 3)
 
         # 线条列表标题
         line_list_label = QLabel(self.tr("线条列表")) # 创建标签
@@ -47,10 +47,17 @@ class MainWindow(QMainWindow):
         left_panel_layout.addWidget(line_list_label) # 将标签添加到布局
 
         self.line_list_widget = LineListWidget(self)
-        # self.line_list_widget.setWindowTitle("线条列表") # 这行也可以删掉
-        left_panel_layout.addWidget(self.line_list_widget)
+        left_panel_layout.addWidget(self.line_list_widget, 2)
 
-        left_panel_layout.addStretch(1)
+        # 线条列表标题
+        line_list_label = QLabel(self.tr("其余文本列表")) # 创建标签
+        line_list_label.setAlignment(Qt.AlignCenter) # 居中对齐，可选
+        left_panel_layout.addWidget(line_list_label) # 将标签添加到布局
+
+        self.other_texts_widget = OtherTextsWidget(self)
+        left_panel_layout.addWidget(self.other_texts_widget, 1)
+
+        # left_panel_layout.addStretch(1)
 
         main_horizontal_layout.addWidget(left_panel_widget)
 
@@ -60,8 +67,8 @@ class MainWindow(QMainWindow):
 
         # --- 右侧面板：工具箱 ---
         self.toolbox_widget = ToolboxWidget(controller_instance=None, parent=self)
-        self.toolbox_widget.setMinimumWidth(120) # 保持工具箱的固定宽度
-        self.toolbox_widget.setMaximumWidth(180) # 保持工具箱的固定宽度
+        self.toolbox_widget.setMinimumWidth(120) 
+        self.toolbox_widget.setMaximumWidth(180) 
         main_horizontal_layout.addWidget(self.toolbox_widget)
 
 

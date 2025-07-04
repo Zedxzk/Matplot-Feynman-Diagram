@@ -1,12 +1,11 @@
 # feynplot_gui/widgets/canvas_widget.py
 
-from PySide6.QtCore import QPointF, Signal, Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+from PySide6.QtCore import QPointF, Signal, Qt, QTime, QLineF # Import QLineF
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QMenu
+from PySide6.QtGui import QAction
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-# --- 导入 Axes 类型 ---
 from matplotlib.axes import Axes
-# --------------------
 from typing import Optional, Callable
 
 class CanvasWidget(QWidget):
@@ -19,13 +18,20 @@ class CanvasWidget(QWidget):
     key_delete_pressed = Signal()
 
     # Pan and zoom signals
-    canvas_panned = Signal(QPointF)
+    canvas_panned = Signal(QPointF, QPointF) # 更改：现在平移信号传递起始和结束数据点
     canvas_zoomed = Signal(QPointF, float)
+    
+    # --- 新增的信号，用于通知视图需要更新，并传递新的轴限制 ---
+    view_updated = Signal(dict) # 传递一个字典，包含 target_xlim 和 target_ylim
+    # --- 为右键菜单添加信号 ---
+    object_edited = Signal(str, str)
+    object_deleted = Signal(str, str)
+
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.figure = Figure(figsize=(5, 4), dpi=100)
-        self.axes = self.figure.add_subplot(111) # self.axes 是一个 Axes 对象
+        self.figure = Figure(figsize=(10, 10), dpi=150)
+        self.axes = self.figure.add_subplot(111)
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.canvas.setParent(self)
 
@@ -38,18 +44,22 @@ class CanvasWidget(QWidget):
         self.canvas.mpl_connect('button_release_event', self._on_mouse_release)
         self.canvas.mpl_connect('motion_notify_event', self._on_mouse_move)
         self.canvas.mpl_connect('scroll_event', self._on_mouse_scroll)
-        self.canvas.mpl_connect('button_press_event', self._on_double_click_check)
 
         # Internal state variables
         self._is_panning = False
         self._is_dragging_object = False
         self._dragged_object_id: Optional[str] = None
         self._dragged_object_type: Optional[str] = None
-        self._mouse_press_pos: Optional[QPointF] = None
-        self._last_click_time = 0
-
+        self._mouse_press_data_pos: Optional[QPointF] = None # 记录鼠标按下时的**数据坐标**
+        self._mouse_press_pixel_pos: Optional[QPointF] = None # 记录鼠标按下时的**像素坐标**
+        self._is_drag_event = False # 用于标记当前操作是否被识别为拖动
+        
+        self._last_click_time = QTime.currentTime().msecsSinceStartOfDay()
         self._current_mode = "select"
         self._hit_test_callback: Optional[Callable[[float, float], tuple[Optional[str], Optional[str]]]] = None
+
+        # Configurable drag threshold (in pixels)
+        self.DRAG_THRESHOLD_PIXELS = 5 # 鼠标移动超过5像素就认为是拖动
 
         # Axes initial setup
         self.axes.set_aspect('equal', adjustable='box')
@@ -60,11 +70,9 @@ class CanvasWidget(QWidget):
         """返回 Matplotlib Figure 对象。"""
         return self.figure
 
-    # --- 关键修正：将返回类型从 Figure 改为 Axes ---
     def get_axes(self) -> Axes:
         """返回 Matplotlib Axes 对象。"""
-        return self.axes # 确保这里返回的是 Axes 对象
-    # ----------------------------------------------
+        return self.axes
 
     def set_mode(self, mode: str):
         """
@@ -86,14 +94,30 @@ class CanvasWidget(QWidget):
         """触发 Matplotlib 画布的空闲重绘。"""
         self.canvas.draw_idle()
 
-    # --- 以下鼠标事件处理函数和 _on_mouse_scroll 保持不变 ---
+    # --- 鼠标事件处理函数 ---
     def _on_mouse_press(self, event):
-        # ... (与之前提供的代码相同)
         if event.inaxes != self.axes or event.xdata is None or event.ydata is None:
             return
 
-        self._mouse_press_pos = QPointF(event.xdata, event.ydata)
+        self._mouse_press_data_pos = QPointF(event.xdata, event.ydata)
+        self._mouse_press_pixel_pos = QPointF(event.x, event.y) # 记录像素坐标
+        self._is_drag_event = False # 假定开始不是拖动，直到移动距离超过阈值
 
+        current_time = QTime.currentTime().msecsSinceStartOfDay()
+        double_click_interval = 250 # 毫秒
+
+        # 双击检查 (使用 QTime)
+        if event.button == 1 and (current_time - self._last_click_time) < double_click_interval:
+            if self._hit_test_callback:
+                item_id, item_type = self._hit_test_callback(event.xdata, event.ydata)
+                if item_id:
+                    self.object_double_clicked.emit(item_id, item_type)
+            self._last_click_time = 0 # 双击后重置时间，避免三次点击误判为双击
+            return # 双击事件处理完毕，直接返回，不触发单击/拖拽逻辑
+        else:
+            self._last_click_time = current_time # 更新上次单击时间
+
+        # 以下逻辑在鼠标释放时根据 _is_drag_event 决定是否发出点击信号
         if event.button == 1:  # 左键
             if self._current_mode == "select":
                 if self._hit_test_callback:
@@ -102,18 +126,20 @@ class CanvasWidget(QWidget):
                         self._is_dragging_object = True
                         self._dragged_object_id = item_id
                         self._dragged_object_type = item_type
-                        self.object_selected.emit(item_id, item_type)
+                        self.object_selected.emit(item_id, item_type) # 单击选中 (此处仍可发出，拖动后不会再发)
                         self.setCursor(Qt.SizeAllCursor)
                     else:
                         self.selection_cleared.emit()
                         self._is_panning = True
-                        self.canvas_panned.emit(self._mouse_press_pos)
+                        # 不在此处立即发出 canvas_panned，留待 mouse_move 处理
                         self.setCursor(Qt.ClosedHandCursor)
-                else:
+                else: # 没有点击测试回调，直接进入平移模式
                     self._is_panning = True
-                    self.canvas_panned.emit(self._mouse_press_pos)
+                    # 不在此处立即发出 canvas_panned，留待 mouse_move 处理
                     self.setCursor(Qt.ClosedHandCursor)
             elif self._current_mode == "add_vertex":
+                # 在 add_vertex 模式下，左键按下不立即发出 canvas_clicked
+                # 而是在 mouse_release 时发出
                 pass
             elif self._current_mode == "add_line":
                 if self._hit_test_callback:
@@ -121,59 +147,134 @@ class CanvasWidget(QWidget):
                     if item_id and item_type == "vertex":
                         self.object_selected.emit(item_id, item_type)
                     else:
-                        self.canvas_clicked.emit(self._mouse_press_pos)
+                        # 延迟 canvas_clicked 的发出，如果后续是拖动就不发
+                        pass 
                 else:
-                    self.canvas_clicked.emit(self._mouse_press_pos)
+                    # 延迟 canvas_clicked 的发出，如果后续是拖动就不发
+                    pass
+        
         elif event.button == 3:  # 右键
             if self._current_mode == "select":
                 if self._hit_test_callback:
                     item_id, item_type = self._hit_test_callback(event.xdata, event.ydata)
                     if item_id:
-                        self.object_selected.emit(item_id, item_type)
+                        self.object_selected.emit(item_id, item_type) # 右键也选中对象
+                        self._show_context_menu(event, item_id, item_type)
                     else:
                         self.selection_cleared.emit()
                 else:
                     self.selection_cleared.emit()
 
+
     def _on_mouse_release(self, event):
-        # ... (与之前提供的代码相同)
+        if event.inaxes != self.axes or self._mouse_press_data_pos is None:
+            # 如果不是在 Axes 内部释放，或者没有记录按下时的位置（例如双击后立即返回）
+            self._is_panning = False
+            self._is_dragging_object = False
+            self._dragged_object_id = None
+            self._dragged_object_type = None
+            self._mouse_press_data_pos = None
+            self._mouse_press_pixel_pos = None
+            self._is_drag_event = False
+            self.set_mode(self._current_mode) # 恢复光标
+            return
+
+        current_mouse_data_pos = QPointF(event.xdata, event.ydata) if event.xdata is not None and event.ydata is not None else self._mouse_press_data_pos
+        current_mouse_pixel_pos = QPointF(event.x, event.y) if event.x is not None and event.y is not None else self._mouse_press_pixel_pos
+
+        # 计算像素距离，判断是否是拖动
+        if self._mouse_press_pixel_pos and current_mouse_pixel_pos: # Add check for current_mouse_pixel_pos
+            # Create a QLineF from the two QPointF objects and get its length
+            pixel_distance = QLineF(self._mouse_press_pixel_pos, current_mouse_pixel_pos).length()
+            if pixel_distance > self.DRAG_THRESHOLD_PIXELS:
+                self._is_drag_event = True
+
+        # 如果是拖动事件，则不触发单击信号
+        if self._is_drag_event:
+            # 拖动结束，重置所有拖动状态
+            self._is_panning = False
+            self._is_dragging_object = False
+            self._dragged_object_id = None
+            self._dragged_object_type = None
+            self._mouse_press_data_pos = None
+            self._mouse_press_pixel_pos = None
+            self._is_drag_event = False # 重置拖动标记
+            self.set_mode(self._current_mode) # 恢复光标
+            return # 拖动事件，不视为点击
+
+        # 以下是点击事件处理逻辑
+        if event.button == 1:  # 左键点击
+            if self._current_mode == "select":
+                if self._hit_test_callback:
+                    item_id, item_type = self._hit_test_callback(event.xdata, event.ydata)
+                    if item_id:
+                        # 确保单击对象时，如果之前未选中，现在可以选中。
+                        # 如果在press时已发出object_selected，这里无需重复。
+                        # self.object_selected.emit(item_id, item_type) # 已在press时发出
+                        pass
+                    else:
+                        # 点击空白区域，发出 canvas_clicked
+                        self.canvas_clicked.emit(current_mouse_data_pos)
+                else:
+                    self.canvas_clicked.emit(current_mouse_data_pos) # 没有 hit test 回调，直接认为点击了画布
+
+            elif self._current_mode == "add_vertex":
+                if event.xdata is not None and event.ydata is not None:
+                    self.canvas_clicked.emit(QPointF(event.xdata, event.ydata))
+            elif self._current_mode == "add_line":
+                if self._hit_test_callback:
+                    item_id, item_type = self._hit_test_callback(event.xdata, event.ydata)
+                    if item_id and item_type == "vertex":
+                        # 顶点被选中，无需在此发出 canvas_clicked
+                        pass
+                    else:
+                        # 点击了空白或非顶点区域，发出 canvas_clicked
+                        self.canvas_clicked.emit(current_mouse_data_pos)
+                else:
+                    self.canvas_clicked.emit(current_mouse_data_pos)
+
+        # 重置所有拖动相关的内部状态，无论是否是拖动事件
         self._is_panning = False
         self._is_dragging_object = False
         self._dragged_object_id = None
         self._dragged_object_type = None
-        self._mouse_press_pos = None
-
-        self.set_mode(self._current_mode)
-
-        if event.button == 1 and event.inaxes == self.axes and self._current_mode == "add_vertex":
-             if event.xdata is not None and event.ydata is not None:
-                self.canvas_clicked.emit(QPointF(event.xdata, event.ydata))
+        self._mouse_press_data_pos = None
+        self._mouse_press_pixel_pos = None
+        self._is_drag_event = False # 确保每次释放后重置
+        self.set_mode(self._current_mode) # 恢复光标
 
     def _on_mouse_move(self, event):
-        # ... (与之前提供的代码相同)
         if event.inaxes != self.axes or event.xdata is None or event.ydata is None:
             return
 
-        if self._is_dragging_object and self._dragged_object_id:
-            self.object_moved.emit(self._dragged_object_id, QPointF(event.xdata, event.ydata))
-            self.draw_idle_canvas()
-            
-    def _on_double_click_check(self, event):
-        # ... (与之前提供的代码相同)
-        if event.button == 1:
-            current_time = self.canvas.manager.timer.time()
-            double_click_interval = 250
-            
-            if (current_time - self._last_click_time) < double_click_interval:
-                if event.inaxes == self.axes and event.xdata is not None and event.ydata is not None:
-                    if self._hit_test_callback:
-                        item_id, item_type = self._hit_test_callback(event.xdata, event.ydata)
-                        if item_id:
-                            self.object_double_clicked.emit(item_id, item_type)
-                self._last_click_time = 0
-            else:
-                self._last_click_time = current_time
+        current_mouse_data_pos = QPointF(event.xdata, event.ydata)
+        current_mouse_pixel_pos = QPointF(event.x, event.y)
 
+        # 如果鼠标按下位置已记录，且当前是拖动模式（_is_dragging_object 或 _is_panning）
+        # 并且移动距离超过阈值，则标记为拖动事件
+        if self._mouse_press_pixel_pos and current_mouse_pixel_pos: # Add check for current_mouse_pixel_pos
+            # Create a QLineF from the two QPointF objects and get its length
+            pixel_distance = QLineF(self._mouse_press_pixel_pos, current_mouse_pixel_pos).length()
+            if pixel_distance > self.DRAG_THRESHOLD_PIXELS:
+                self._is_drag_event = True # 标记为拖动事件
+                # 一旦达到拖动阈值，即使是点击对象，也可能转化为拖动其父级（画布平移）
+                # 因此，如果最初没有拖动对象，但进入了平移模式，此处应开始发出平移信号
+                if self._is_panning and not self._dragged_object_id: # 确认是空白区域平移
+                     # 持续发出平移信号，通知控制器平移
+                     self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
+
+
+        if self._is_dragging_object and self._dragged_object_id:
+            # 发出 object_moved 信号，通知 CanvasController 更新模型中的对象位置
+            self.object_moved.emit(self._dragged_object_id, current_mouse_data_pos)
+            self.draw_idle_canvas() 
+        elif self._is_panning and self._is_drag_event: # 确保只有在被识别为拖动事件时才发出平移信号
+            # 持续发出平移信号，通知控制器平移
+            # 这里的 emit 放在前面 if _is_drag_event 内部更合适
+            # self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
+            pass # 已在 _is_drag_event 内部处理了
+
+            
     def _on_mouse_scroll(self, event):
         """
         处理鼠标滚轮事件，用于缩放。
@@ -199,3 +300,27 @@ class CanvasWidget(QWidget):
             scale_factor = zoom_factor
 
         self.canvas_zoomed.emit(QPointF(mouse_x, mouse_y), scale_factor)
+
+    # --- 右键菜单相关方法 ---
+    def _show_context_menu(self, event, item_id: str, item_type: str):
+        menu = QMenu(self)
+
+        edit_action = QAction("编辑", self)
+        edit_action.triggered.connect(lambda: self._on_edit_object_action(item_id, item_type))
+        menu.addAction(edit_action)
+
+        delete_action = QAction("删除", self)
+        delete_action.triggered.connect(lambda: self._on_delete_object_action(item_id, item_type))
+        menu.addAction(delete_action)
+
+        menu.exec(event.guiEvent.globalPos())
+
+    def _on_edit_object_action(self, item_id: str, item_type: str):
+        """响应 '编辑' 菜单项点击的槽函数。"""
+        print(f"请求编辑 {item_type} ID: {item_id}")
+        self.object_edited.emit(item_id, item_type)
+
+    def _on_delete_object_action(self, item_id: str, item_type: str):
+        """响应 '删除' 菜单项点击的槽函数。"""
+        print(f"请求删除 {item_type} ID: {item_id}")
+        self.object_deleted.emit(item_id, item_type)

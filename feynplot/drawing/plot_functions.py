@@ -52,10 +52,20 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
     # 绘制光子线的标签
     if line.label:
         mid_idx = len(x_wave) // 2
-        # --- 修改这里：使用 str2latex ---
+        label_x = x_wave[mid_idx] + line.label_offset[0]
+        label_y = y_wave[mid_idx] + line.label_offset[1]
+
+        # --- 新增的可见性检查 ---
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            # 如果标签位置不在当前视图范围内，则跳过绘制
+            return
+        # ------------------------
+        
         label_in_latex = str2latex(line.label)
-        ax.text(x_wave[mid_idx] + line.label_offset[0],
-                y_wave[mid_idx] + line.label_offset[1],
+        ax.text(label_x,
+                label_y,
                 label_in_latex,
                 **current_label_text_options)
 
@@ -79,21 +89,29 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
         current_label_text_options['zorder'] = original_zorder + 11
 
     # 获取胶子线的路径点
-    # 假设 line.get_plot_path() 会返回正确的路径
     bezire_path, helix_path = line.get_plot_path()
     x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
 
     # 绘制胶子线的路径
     ax.plot(x_helix, y_helix, **current_line_plot_options)
-    # ax.plot(bezire_path[:, 0], bezire_path[:, 1], **current_line_plot_options)
 
     # 绘制胶子线的标签
     if line.label:
         mid_idx = len(x_helix) // 2
-        # --- 修改这里：使用 str2latex ---
+        label_x = x_helix[mid_idx] + line.label_offset[0]
+        label_y = y_helix[mid_idx] + line.label_offset[1]
+
+        # --- 新增的可见性检查 ---
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            # 如果标签位置不在当前视图范围内，则跳过绘制
+            return
+        # ------------------------
+
         label_in_latex = str2latex(line.label)
-        ax.text(x_helix[mid_idx] + line.label_offset[0],
-                y_helix[mid_idx] + line.label_offset[1],
+        ax.text(label_x,
+                label_y,
                 label_in_latex,
                 **current_label_text_options)
 
@@ -137,7 +155,14 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
         label_x = bezier_base_path_for_zigzag[mid_idx, 0] + line.label_offset[0]
         label_y = bezier_base_path_for_zigzag[mid_idx, 1] + line.label_offset[1]
 
-        # --- 修改这里：使用 str2latex ---
+        # --- 新增的可见性检查 ---
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            # 如果标签位置不在当前视图范围内，则跳过绘制
+            return
+        # ------------------------
+
         label_in_latex = str2latex(line.label)
         ax.text(label_x,
                 label_y,
@@ -148,12 +173,10 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
 def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
-    # print(line)
-    # from pprint import pprint
 
     cout(f"current_line_plot_options: {current_line_plot_options}")
     cout(f"current_label_text_options: {current_label_text_options}")
-    # input()
+
     original_linewidth = current_line_plot_options.get('linewidth', 1.5)
     original_color = current_line_plot_options.get('color', 'black')
     original_zorder = current_line_plot_options.get('zorder', 1)
@@ -185,59 +208,39 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
         if len(x) < 2:
             return
 
-        # 核心修正：根据 arrow_reversed 调整 arrow_position 的计算基准
-        # 这里 arrow_position 通常是 0.0 到 1.0，表示从起点到终点的位置
-        # 如果是 reversed，我们想让箭头朝向起点，但位置仍按从起点算
-        # 比如 arrow_position = 0.53, arrow_reversed = True 意味着从终点往回 0.53 的位置指向起点
-        # 但我们这里的 target_idx 是从 x 数组中取，x 是从起点到终点的顺序
-        # 所以我们需要调整的是 `xy` 和 `xytext` 的顺序，而不是 `arrow_position` 本身
-
-        # 计算箭头的目标索引（尖端应该指向的位置）
-        # 使用 line.arrow_position 来确定点
         idx_tip = int(round(arrow_position * (len(x) - 1)))
 
-        # 确保 idx_tip 和 idx_base 在有效范围内
-        # idx_base 应该是构成箭头的 "尾巴" 部分
-        # 如果箭头正向，p_base 在前，p_tip 在后
-        # 如果箭头反向，p_tip 在前，p_base 在后
         if idx_tip == 0:
-            idx_base = 1 # 确保能找到前一个点来确定方向
+            idx_base = 1
         elif idx_tip >= len(x) - 1:
-            idx_base = len(x) - 2 # 确保能找到后一个点
+            idx_base = len(x) - 2
         else:
-            # 默认情况下，p_base 是 p_tip 的前一个点，用于确定方向
             idx_base = idx_tip - 1
 
 
         p_tip = (x[idx_tip], y[idx_tip])
         p_base = (x[idx_base], y[idx_base])
 
-        # 根据 arrow_reversed 调整 annotate 的 xy 和 xytext
-        # annotate 的箭头从 xytext 指向 xy
         if arrow_reversed:
-            # 如果反转，箭头尖端在 p_base，箭头从 p_tip 指向 p_base
             xy = p_base
             xytext = p_tip
         else:
-            # 正常方向，箭头尖端在 p_tip，箭头从 p_base 指向 p_tip
             xy = p_tip
             xytext = p_base
 
-        # 根据 arrow_filled 设置 arrowstyle
         if arrow_filled:
-            arrowstyle_str = f'-|>,head_width={0.06*arrow_size},head_length={0.1*arrow_size}' # 实心箭头
+            arrowstyle_str = f'-|>,head_width={0.06*arrow_size},head_length={0.1*arrow_size}'
         else:
             arrowstyle_str = f'->,head_width={0.04*arrow_size},head_length={0.08*arrow_size}'
 
-        # 设置箭头的线宽，如果未指定则使用线条的线宽
         arrow_lw = arrow_line_width if arrow_line_width is not None else \
                            current_line_plot_options.get('linewidth', 1.5)
 
         arrow_props = dict(
             arrowstyle=arrowstyle_str,
             linewidth=arrow_lw,
-            color=current_line_plot_options.get('color', 'black'), # 箭头颜色与线颜色一致
-            zorder=current_line_plot_options.get('zorder', 1) + 1 # 箭头比线高一层
+            color=current_line_plot_options.get('color', 'black'),
+            zorder=current_line_plot_options.get('zorder', 1) + 1
         )
 
         ax.annotate(
@@ -249,7 +252,15 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
         mid_idx = len(fermion_path) // 2
         label_x = fermion_path[mid_idx, 0] + line.label_offset[0]
         label_y = fermion_path[mid_idx, 1] + line.label_offset[1]
-        # --- 修改这里：使用 str2latex ---
+
+        # --- 新增的可见性检查 ---
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            # 如果标签位置不在当前视图范围内，则跳过绘制
+            return
+        # ------------------------
+
         label_in_latex = str2latex(line.label)
         ax.text(label_x, label_y, label_in_latex, **current_label_text_options)
 
@@ -263,7 +274,7 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
 
     # 移除冲突的参数
     if 'c' in current_scatter_props and 'color' in current_scatter_props:
-        current_scatter_props.pop('c')  # 或者 pop('color')
+        current_scatter_props.pop('c')
     # 如果有 size 参数，替换成 s
     if 'size' in current_scatter_props:
         current_scatter_props['s'] = current_scatter_props.pop('size')
@@ -287,20 +298,30 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         current_label_props['color'] = highlight_color
         current_label_props['zorder'] = original_zorder + 11
 
-    # --- 修改这里：只绘制一次点状顶点 ---
+    # --- 绘制点状顶点 ---
     if not vertex.hidden_vertex:
         cout(current_scatter_props)
         ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
     # 绘制标签
     if vertex.label and not vertex.hidden_vertex and not vertex.hidden_label:
-        # --- 修改这里：使用 str2latex ---
+        label_x = vertex.x + vertex.label_offset[0]
+        label_y = vertex.y + vertex.label_offset[1]
+
+        # --- 新增的可见性检查 ---
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        print(f"xlim: {xlim}")
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            # 如果标签位置不在当前视图范围内，则跳过绘制
+            return
+        # ------------------------
+
         label_in_latex = str2latex(vertex.label)
         ax.text(
-            vertex.x + vertex.label_offset[0],
-            vertex.y + vertex.label_offset[1],
+            label_x,
+            label_y,
             label_in_latex ,
-            # fontdict={'weight': "bold", 'style': "italic"},
             **current_label_props # 使用调整后的标签属性
         )
 
@@ -330,15 +351,34 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
 
 
     # 1. 绘制圆圈主体
-    circle = Circle(
-        (vertex.x, vertex.y),
-        **current_circle_props
+    # --- 新增圆圈可见性检查 ---
+    circle_center_x = vertex.x
+    circle_center_y = vertex.y
+    circle_radius = current_circle_props.get('radius', 0.1) # 获取圆的半径
+    
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+
+    # 简单检查：圆心在视图内，或圆的任何一部分与视图边界重叠
+    # 这是一个比较粗略的检查，但对于性能优化来说通常足够
+    is_circle_visible = (
+        (circle_center_x + circle_radius > xlim[0] and circle_center_x - circle_radius < xlim[1]) and
+        (circle_center_y + circle_radius > ylim[0] and circle_center_y - circle_radius < ylim[1])
     )
-    ax.add_patch(circle)
+
+    if is_circle_visible:
+        circle = Circle(
+            (vertex.x, vertex.y),
+            **current_circle_props
+        )
+        ax.add_patch(circle)
+    else:
+        # 如果圆圈不可见，则其阴影线和标签也不需要绘制
+        return
+
 
     # 2. 绘制阴影线 (如果使用自定义模式)
-    if vertex.use_custom_hatch:
-        # 使用调整后的 custom_hatch_props
+    if vertex.use_custom_hatch and is_circle_visible: # 只有当圆圈可见时才绘制阴影线
         hatch_line_color = current_custom_hatch_props['hatch_line_color']
         hatch_line_width = current_custom_hatch_props['hatch_line_width']
         hatch_line_angle_deg = current_custom_hatch_props['hatch_line_angle_deg']
@@ -347,7 +387,6 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
         radius = vertex.structured_radius
         center_x = vertex.x
         center_y = vertex.y
-        # 使用调整后的 zorder
         zorder_hatch = current_circle_props['zorder'] + 0.5 # 阴影线在圆圈之上，但仍低于标签
 
         angle_rad = np.deg2rad(hatch_line_angle_deg)
@@ -372,17 +411,27 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
                 [rotated_p1_y, rotated_p2_y],
                 color=hatch_line_color,
                 linewidth=hatch_line_width,
-                zorder=zorder_hatch # 使用调整后的阴影线 zorder
+                zorder=zorder_hatch
             )
-            line_artist.set_clip_path(circle)
+            line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
     # 3. 绘制标签
-    if vertex.label:
-        # --- 修改这里：使用 str2latex ---
+    if vertex.label and is_circle_visible: # 只有当圆圈可见时才绘制标签
+        label_x = vertex.x + vertex.label_offset[0]
+        label_y = vertex.y + vertex.label_offset[1]
+
+        # --- 新增的可见性检查 (针对标签) ---
+        # 即使圆圈可见，标签自身也可能超出视图，所以这里再检查一次更精确
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            return # 如果标签位置不在当前视图范围内，则跳过绘制
+        # ------------------------
+        
         label_in_latex = str2latex(vertex.label)
         ax.text(
-            vertex.x + vertex.label_offset[0],
-            vertex.y + vertex.label_offset[1],
+            label_x,
+            label_y,
             label_in_latex,
-            **current_label_props # 使用调整后的标签属性
+            **current_label_props
         )

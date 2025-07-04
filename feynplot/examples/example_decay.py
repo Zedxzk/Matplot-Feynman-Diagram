@@ -7,7 +7,7 @@ from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.line import GluonLine, PhotonLine, WPlusLine, WMinusLine, ZBosonLine, FermionLine, AntiFermionLine 
 from feynplot.core.vertex import Vertex, VertexType 
 from feynplot.core.style import set_style_from_dict
-from feynplot.drawing.renderer import MatplotlibBackend
+from feynplot.drawing.renderer import FeynmanDiagramCanvas
 
 plt.style.use(hep.style.CMS)
 # plt.rcParams['figure.figsize'] = (12, 8) 
@@ -264,7 +264,7 @@ line_from_struct3_2 = FermionLine(label=r'$\tau$', color='darkmagenta', arrow=Tr
 diagram.add_line(v_struct3, v7, line_from_struct3_2)
 
 
-backend = MatplotlibBackend()
+backend = FeynmanDiagramCanvas()
 backend.render(diagram.vertices, diagram.lines)
 
 # 调整X和Y轴范围以更好地显示所有顶点

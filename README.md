@@ -22,6 +22,8 @@ pip install -e .
 ```
 Then, confirm if the installation was successful. If it was, you will see the following message:
 ```bash
+    <......>
+    <Other Messages>
 Successfully installed pyfeynplot-0.1.0
 ```
 After that, enter the following command:

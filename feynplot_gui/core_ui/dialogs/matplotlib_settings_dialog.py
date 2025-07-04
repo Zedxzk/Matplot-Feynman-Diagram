@@ -243,7 +243,7 @@ class MatplotlibSettingsDialog(QDialog):
             "axes.labelsize": plt.rcParams.get("axes.labelsize", 'medium'),
             "xtick.labelsize": plt.rcParams.get("xtick.labelsize", 'medium'),
             "ytick.labelsize": plt.rcParams.get("ytick.labelsize", 'medium'),
-            "axes.grid": plt.rcParams.get("axes.grid", False),
+            "axes.grid": plt.rcParams.get("axes.grid", True),
 
             "legend.fontsize": plt.rcParams.get("legend.fontsize", 'medium'),
             "legend.frameon": plt.rcParams.get("legend.frameon", True),
@@ -302,7 +302,7 @@ class MatplotlibSettingsDialog(QDialog):
         self._set_combobox_value(self.axes_labelsize_combo, settings.get("axes.labelsize", 'medium'))
         self._set_combobox_value(self.xtick_labelsize_combo, settings.get("xtick.labelsize", 'medium'))
         self._set_combobox_value(self.ytick_labelsize_combo, settings.get("ytick.labelsize", 'medium'))
-        self.axes_grid_checkbox.setChecked(settings.get("axes.grid", False))
+        self.axes_grid_checkbox.setChecked(settings.get("axes.grid", True))
 
         self._set_combobox_value(self.legend_fontsize_combo, settings.get("legend.fontsize", 'medium'))
         self.legend_frameon_checkbox.setChecked(settings.get("legend.frameon", True))

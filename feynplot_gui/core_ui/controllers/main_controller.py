@@ -1,6 +1,5 @@
 # feynplot_GUI/feynplot_gui/controllers/main_controller.py
-from operator import is_
-from typing import Optional
+from typing import Optional, Tuple, Dict, Any
 
 from feynplot_gui.debug_utils import cout, cout3
 from PySide6.QtCore import QObject, Signal, QPointF
@@ -13,6 +12,7 @@ from .navigation_bar_controller import NavigationBarController
 from .toolbox_controller import ToolboxController
 from .vertex_controller import VertexController
 from .line_controller import LineController
+from feynplot_gui.core_ui.controllers.other_texts_controller import OtherTextsController
 
 # 导入核心模型类和其组成部分
 from feynplot.core.diagram import FeynmanDiagram
@@ -70,6 +70,11 @@ class MainController(QObject):
         self.navigation_bar_controller = NavigationBarController(
             navigation_bar_widget=self.main_window.navigation_bar_widget_instance,
             main_controller=self
+        )
+                # --- 新增 OtherTextsController 的初始化 ---
+        self.other_texts_controller = OtherTextsController(
+            other_texts_widget=self.main_window.other_texts_widget, # 传入 OtherTextsWidget 实例
+            main_controller=self,                       # 传入 MainController 自身
         )
 
         # 初始加载或设置一些默认数据
@@ -205,16 +210,28 @@ class MainController(QObject):
         
         # 这里不需要 update_all_views()，因为 __init__ 的最后会调用
 
-    def update_all_views(self):
+    def update_all_views(self, 
+                         canvas_options: Optional[Dict[str, Any]] = None, 
+                         vertex_options: Optional[Dict[str, Any]] = None, 
+                         line_options: Optional[Dict[str, Any]] = None
+                        ):
         """
         强制所有视图重新绘制，并更新列表。
         当模型数据发生改变时，由 MainController 主动调用。
         """
-        self.canvas_controller.update_canvas()
-        self.vertex_controller.update_vertex_list()
-        self.line_controller.update_line_list()
+        # 确保传入的字典不为 None，如果为 None 则使用空字典
+        canvas_opts = canvas_options if canvas_options is not None else {}
+        vertex_opts = vertex_options if vertex_options is not None else {}
+        line_opts = line_options if line_options is not None else {}
+        
+        # 将这些字典解包为关键字参数，传递给对应的控制器方法
+        self.canvas_controller.update_canvas(**canvas_opts)
+        self.vertex_controller.update_vertex_list(**vertex_opts)
+        self.line_controller.update_line_list(**line_opts)
+        
         # 更新其他可能需要刷新的 UI 元素，例如属性面板等
         self.status_message.emit("视图已更新。")
+
 
     def _handle_list_blank_clicked(self):
         """
