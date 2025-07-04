@@ -196,9 +196,9 @@ class MainController(QObject):
         初始化一些示例图数据或从文件加载。
         """
         # 示例：添加一些初始顶点和线条
-        v1 = self.diagram_model.add_vertex(x=0, y=0, label="v^1\_")
-        v2 = self.diagram_model.add_vertex(x=5, y=5, label="v^2", vertex_type=VertexType.HIGHER_ORDER)
-        v3 = self.diagram_model.add_vertex(x=5, y=0, label="J/\psi")
+        v1 = self.diagram_model.add_vertex(x=0, y=0, label=r"v^1\_")
+        v2 = self.diagram_model.add_vertex(x=5, y=5, label=r"v^2", vertex_type=VertexType.HIGHER_ORDER)
+        v3 = self.diagram_model.add_vertex(x=5, y=0, label=r"J/\psi")
         
         self.diagram_model.add_line(v_start=v1, v_end=v2, label="l1", line_type=FermionLine)
         self.diagram_model.add_line(v_start=v2, v_end=v3, label="l2", line_type=PhotonLine)

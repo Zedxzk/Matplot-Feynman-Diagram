@@ -1,6 +1,5 @@
 # /home/zed/pyfeynmandiagram/feynplot/drawing/renderer.py
 # from cout import cout
-from cProfile import label
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
@@ -8,6 +7,11 @@ from matplotlib.axes import Axes
 from typing import Optional, List
 from feynplot.shared.common_functions import str2latex
 import os
+
+def cout(*args, **kwargs):
+    # print(*args, **kwargs)
+    pass
+
 
 # 导入你的核心模型类
 from feynplot.core.vertex import Vertex, VertexType
@@ -50,19 +54,19 @@ class MatplotlibBackend:
 
     def render(self, vertices: List[Vertex], lines: List[Line]):
         MatplotlibBackend._render_call_count += 1
-        print(f"\n--- Render Call #{MatplotlibBackend._render_call_count} ---")
-        print(f"Current Axes ID in render: {id(self.ax)}")
+        cout(f"\n--- Render Call #{MatplotlibBackend._render_call_count} ---")
+        cout(f"Current Axes ID in render: {id(self.ax)}")
         
         # --- 重要的修改：重新创建 Axes 对象 ---
         # 1. 从 Figure 中移除旧的 Axes
         if self.ax in self.fig.axes: # 确保 self.ax 还在 Figure 的 Axes 列表中
             self.fig.delaxes(self.ax)
-            print(f"已移除旧的 Axes。当前 Figure 上的 Axes 数量: {len(self.fig.axes)}")
+            cout(f"已移除旧的 Axes。当前 Figure 上的 Axes 数量: {len(self.fig.axes)}")
         
         # 2. 创建一个全新的 Axes 对象
         self.ax = self.fig.add_subplot(111)
-        print(f"已创建新的 Axes。新 Axes ID: {id(self.ax)}")
-        print(f"当前 Figure 上的 Axes 数量: {len(self.fig.axes)}")
+        cout(f"已创建新的 Axes。新 Axes ID: {id(self.ax)}")
+        cout(f"当前 Figure 上的 Axes 数量: {len(self.fig.axes)}")
         # --- 重新创建 Axes 结束 ---
 
         # 重新应用 Axes 的初始设置到新的 Axes 对象上
@@ -86,17 +90,17 @@ class MatplotlibBackend:
         self.fig.canvas.update() # 告诉 Qt 这个 widget 需要重绘
         # --- 新增结束 ---
 
-        print(f"新 Axes 绘制后的 Artist 数量: {len(self.ax.get_children())}")
-        print(f"--- Render Call #{MatplotlibBackend._render_call_count} 结束 ---\n")
+        cout(f"新 Axes 绘制后的 Artist 数量: {len(self.ax.get_children())}")
+        cout(f"--- Render Call #{MatplotlibBackend._render_call_count} 结束 ---\n")
 
 
 
     def _draw_line(self, line: Line):
         line_plot_options = line.get_plot_properties()
         label_text_options = line.get_label_properties()
-        # print(f'plot options: {line_plot_options}    ')
-        # print(f"label options: {label_text_options}")
-        # print(f"Plot Line: {line}")
+        # cout(f'plot options: {line_plot_options}    ')
+        # cout(f"label options: {label_text_options}")
+        # cout(f"Plot Line: {line}")
         # input()
         # 直接将 is_selected 状态传递给绘图函数
         # 绘图函数会根据此状态自行调整样式（包括高亮）
@@ -114,7 +118,7 @@ class MatplotlibBackend:
             # 对于通用直线，如果需要箭头或标签，也需要在_draw_line中处理
             if line.label:
                 label_in_latex = str2latex(line.label)
-                print(f"Label in Latex: {label_in_latex}")
+                cout(f"Label in Latex: {label_in_latex}")
                 input()
                 label_x = (x1 + x2) / 2 + line.label_offset[0]
                 label_y = (y1 + y2) / 2 + line.label_offset[1]
@@ -122,7 +126,7 @@ class MatplotlibBackend:
                              zorder=line_plot_options.get('zorder', 1) + 1)
             else:
                 input()
-                print(f"No label for line: {line}")
+                cout(f"No label for line: {line}")
             # 通用直线的箭头绘制也需要在这里处理，可以考虑提取成辅助函数
             # ... (如果需要，添加通用直线的箭头绘制逻辑)
 
@@ -141,8 +145,8 @@ class MatplotlibBackend:
             # 标签的 zorder 应该比顶点更高
             vertex_zorder = vertex.get_scatter_properties().get('zorder', 2)
             label_in_latex = str2latex(vertex.label)
-            # print(label_in_latex)
-            print(f"Currently drawing:{vertex.label}, {label_x}, {label_y}, {label_in_latex}")
+            # cout(label_in_latex)
+            cout(f"Currently drawing:{vertex.label}, {label_x}, {label_y}, {label_in_latex}")
             # self.ax.text(label_x, label_y, label_in_latex,
             #              **label_text_options, zorder=vertex_zorder + 1)
 

@@ -148,7 +148,7 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
 def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
-    print(line)
+    # print(line)
     # from pprint import pprint
 
     cout(f"current_line_plot_options: {current_line_plot_options}")
@@ -258,8 +258,8 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
     # 复制字典以避免修改原始对象内部的配置
     current_scatter_props = vertex.get_scatter_properties().copy()
     current_label_props = vertex.get_label_properties().copy()
-    print(f"current_scatter_props: {current_scatter_props}")
-    print(f"current_label_props: {current_label_props}")
+    cout(f"current_scatter_props: {current_scatter_props}")
+    cout(f"current_label_props: {current_label_props}")
 
     # 移除冲突的参数
     if 'c' in current_scatter_props and 'color' in current_scatter_props:
@@ -289,7 +289,7 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
 
     # --- 修改这里：只绘制一次点状顶点 ---
     if not vertex.hidden_vertex:
-        print(current_scatter_props)
+        cout(current_scatter_props)
         ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
     # 绘制标签

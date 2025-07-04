@@ -9,7 +9,7 @@ setup(
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main",
-    packages=find_packages(include=["feynplot_gui", "feynplot_gui.*"]),  # 确保包含子包
+    packages=find_packages(include=["feynplot", "feynplot_gui", "feynplot_gui.*"]),  # 确保包含子包
     # package_dir={"": "."},  # 可以不设置，默认就是当前目录
     include_package_data=True,
     install_requires=[

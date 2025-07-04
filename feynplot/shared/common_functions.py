@@ -1,5 +1,9 @@
 import re
 
+# from sympy import im
+from feynplot_gui.debug_utils import cout
+
+
 def str2latex(label: str) -> str:
     """
     将原始标签字符串转换为 LaTeX 格式。
@@ -12,8 +16,8 @@ def str2latex(label: str) -> str:
     Returns:
         str: 转换为 LaTeX 格式的标签字符串。
     """
-    print("Calling str2latex()")
-    print("label:", label)
+    cout("Calling str2latex()")
+    cout("label:", label)
     if not isinstance(label, str):
         # 如果不是字符串，直接返回其字符串表示，或者抛出错误，取决于你的需求
         # 这里为了兼容性，直接返回字符串形式
@@ -31,7 +35,7 @@ def str2latex(label: str) -> str:
     # 如果标签不是行内或显示数学模式，则自动用 $ 包裹
     if not is_inline_latex and not is_display_latex:
         res = f"${label}$"
-        print(res)
+        cout(res)
         return res
     else:
         # 如果已经符合 LaTeX 数学模式，则原样返回

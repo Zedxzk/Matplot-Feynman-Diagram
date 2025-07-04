@@ -10,6 +10,18 @@
 
 ## 使用方法
 
-```python
-from feynplot import Diagram
-...
+打开一个终端(terminal)，进入根目录(也就是这个 README 文件所在的目录)，输入以下命令：
+``` bash    
+pip install -e .
+```
+然后确认是否安装成功，如果安装成功，会显示以下信息：
+``` bash
+Successfully installed pyfeynplot-0.1.0
+```
+然后输入以下命令：
+``` bash
+feynplot-gui
+```
+即可显示GUI界面，如下图所示：
+
+![alt text](README.assets\zh_CN\UI_example.png)
