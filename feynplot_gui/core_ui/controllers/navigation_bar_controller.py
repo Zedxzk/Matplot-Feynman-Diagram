@@ -61,9 +61,10 @@ class NavigationBarController(QObject):
     def setup_connections(self):
         """连接导航栏部件的信号到控制器槽函数，并发出请求信号给MainController。"""
         # 文件菜单动作 - 直接连接到控制器内的处理函数
+        self.navigation_bar_widget.canvas_update_interval_changed_ui.connect(self._on_canvas_update_interval_changed_ui)
         self.navigation_bar_widget.save_project_action_triggered.connect(self._on_save_project_ui_triggered)
         self.navigation_bar_widget.load_project_action_triggered.connect(self._on_load_project_ui_triggered)
-
+        
         # 编辑菜单动作
         self.navigation_bar_widget.add_vertex_button_clicked.connect(self._on_add_vertex_ui_triggered)
         self.navigation_bar_widget.add_line_button_clicked.connect(self._on_add_line_ui_triggered)
@@ -364,3 +365,6 @@ class NavigationBarController(QObject):
     def _on_set_auto_scale_checked_ui_triggered(self):
         # print("触发设置自动缩放的UI事件。")
         self.main_controller.update_all_views(canvas_options={'auto_scale': True})
+
+    def _on_canvas_update_interval_changed_ui(self, interval: int):
+        self.main_controller.canvas_controller.set_update_interval(interval)

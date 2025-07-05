@@ -1,6 +1,8 @@
 # feynplot_GUI/feynplot_gui/controllers/main_controller.py
 from typing import Optional, Tuple, Dict, Any
 
+from sympy import re
+
 from feynplot_gui.debug_utils import cout, cout3
 from PySide6.QtCore import QObject, Signal, QPointF
 from PySide6.QtWidgets import QMessageBox, QDialog, QFileDialog
@@ -591,14 +593,15 @@ class MainController(QObject):
             self.main_window, # Parent widget for the dialog
             "保存费曼图图像",  # Dialog title
             "",               # Default directory (empty means current)
-            "PDF Files (*.pdf);;PNG Images (*.png);;JPEG Images (*.jpg);;All Files (*)" # <-- 移除了 JSON 选项
+            "PDF Files (*.pdf);;PNG Images (*.png);;JPEG Images (*.jpg);;All Files (*)" 
         )
-
+        
         if not file_path:
             self.status_message.emit("保存操作已取消。")
             return
-
+        # return
         try:
+            print(f"文件路径: {file_path}")
             # 根据选择的过滤器确定扩展名
             extension_mapping = {
                 "PDF Files (*.pdf)": ".pdf",
@@ -621,16 +624,19 @@ class MainController(QObject):
                     file_path = f"{file_path}{extension}"
             
             # 确保目录存在
-            os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
-
+            # os.makedirs(os.path.dirname(file_path) or ".", exist_ok=True)
+            # return
             # 获取画布后端并保存图像
             backend = self.canvas_controller.get_backend()
             if backend is None:
                 raise ValueError("画布后端未初始化，无法保存图像。")
-            
+            # return
             # Matplotlib 的 savefig 方法会根据文件扩展名自动处理图像格式
-            backend.savefig(file_path, bbox_inches='tight', dpi=300)
-            self.status_message.emit(f"图像已成功保存到: {file_path}")
+            backend.savefig(file_path,
+                            #  bbox_inches='tight', dpi=300
+                             )
+            print(f"图像已成功保存到: {file_path}")
+            # self.status_message.emit(f"图像已成功保存到: {file_path}")
 
         except Exception as e:
             QMessageBox.critical(

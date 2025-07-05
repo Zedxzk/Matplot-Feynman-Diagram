@@ -1,14 +1,11 @@
-# feynplot_gui/widgets/canvas_widget.py
-
-from PySide6.QtCore import QPointF, Signal, Qt, QTime, QLineF # Import QLineF
+from PySide6.QtCore import QPointF, Signal, Qt, QTime, QLineF
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QMenu
 from PySide6.QtGui import QAction
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, Callable
-
-# from numpy import blackman # This import seems misplaced, usually numpy is imported as np
+from feynplot_gui.default.default_settings import canvas_widget_default_settings as default_settings
 
 class CanvasWidget(QWidget):
     # Various user interaction signals
@@ -63,7 +60,12 @@ class CanvasWidget(QWidget):
         self._hit_test_callback: Optional[Callable[[float, float], tuple[Optional[str], Optional[str]]]] = None
 
         # Configurable drag threshold (in pixels)
-        self.DRAG_THRESHOLD_PIXELS = 5 # 鼠标移动超过5像素就认为是拖动
+        self.DRAG_THRESHOLD_PIXELS = default_settings['DRAG_THRESHOLD_PIXELS'] # 鼠标移动超过5像素就认为是拖动
+
+        # --- 新增：用于限制 _on_mouse_move 信号发出频率的变量 ---
+        self._last_signal_time = 0  # 记录上次发出 object_moved 或 canvas_panned 信号的时间 (毫秒)
+        self.SIGNAL_INTERVAL_MS = default_settings['SIGNAL_INTERVAL_MS'] # 信号发出的最小时间间隔 (毫秒)
+        # --- 结束新增 ---
 
         # Axes initial setup
         self.axes.set_aspect('equal', adjustable='box')
@@ -108,7 +110,7 @@ class CanvasWidget(QWidget):
         self._is_drag_event = False # 假定开始不是拖动，直到移动距离超过阈值
 
         current_time = QTime.currentTime().msecsSinceStartOfDay()
-        double_click_interval = 200 # 毫秒
+        double_click_interval = default_settings['DOUBLE_CLICK_INTERVAL_MS']# 毫秒
 
         # 双击检查 (使用 QTime)
         if event.button == 1 and (current_time - self._last_click_time) < double_click_interval:
@@ -265,19 +267,24 @@ class CanvasWidget(QWidget):
             pixel_distance = QLineF(self._mouse_press_pixel_pos, current_mouse_pixel_pos).length()
             if pixel_distance > self.DRAG_THRESHOLD_PIXELS:
                 self._is_drag_event = True # 标记为拖动事件
-                # 一旦达到拖动阈值，即使是点击对象，也可能转化为拖动其父级（画布平移）
-                # 因此，如果最初没有拖动对象，但进入了平移模式，此处应开始发出平移信号
-                if self._is_panning and not self._dragged_object_id: # 确认是空白区域平移
-                    # 持续发出平移信号，通知控制器平移
-                    self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
 
+        current_time = QTime.currentTime().msecsSinceStartOfDay()
+
+        # 检查是否满足发送信号的最小时间间隔
+        if (current_time - self._last_signal_time) < self.SIGNAL_INTERVAL_MS:
+            return # 如果间隔不足，则不发送信号，直接返回
+
+        # 更新上次发送信号的时间
+        self._last_signal_time = current_time
 
         if self._is_dragging_object and self._dragged_object_id:
             # 发出 object_moved 信号，通知 CanvasController 更新模型中的对象位置
             self.object_moved.emit(self._dragged_object_id, current_mouse_data_pos)
             self.draw_idle_canvas() 
         elif self._is_panning and self._is_drag_event:
-            pass # 已在 _is_drag_event 内部处理了
+            # 确认是空白区域平移，并且达到拖动阈值
+            # 持续发出平移信号，通知控制器平移
+            self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
 
             
     def _on_mouse_scroll(self, event):
@@ -345,3 +352,7 @@ class CanvasWidget(QWidget):
         print(f"请求从顶点 {vertex_id} 添加线条")
         # 发出信号，通知控制器从这个顶点开始添加线条
         self.add_line_from_vertex_requested.emit(vertex_id)
+
+    def set_update_interval(self, interval_ms: int):
+        """设置更新视图的最小时间间隔 (毫秒)。"""
+        self.SIGNAL_INTERVAL_MS = interval_ms

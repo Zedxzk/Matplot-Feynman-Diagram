@@ -6,9 +6,9 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, List, Any, Tuple 
-
+from feynplot.drawing.fontSettings import *
 from feynplot.shared.common_functions import str2latex
-import os
+from feynplot.core.line_support import update_line_plot_points
 
 # 导入你的核心模型类
 from feynplot.core.vertex import Vertex, VertexType
@@ -129,6 +129,8 @@ class FeynmanDiagramCanvas:
     def _draw_line(self, line: Line):
         line_plot_options = line.get_plot_properties()
         label_text_options = line.get_label_properties()
+        # update_line_plot_points(line)
+        # self.ax.plot(line.get_line_plot_points(), line_plot_options, label_text_options)
         if isinstance(line, GluonLine):
             draw_gluon_line(self.ax, line, line_plot_options, label_text_options)
         elif isinstance(line, PhotonLine):
@@ -148,10 +150,15 @@ class FeynmanDiagramCanvas:
             draw_point_vertex(self.ax, vertex)
 
     def savefig(self, filename, **kwargs):
+        print(f"Saving diagram to {filename}, kwargs: {kwargs}")
+        # return
         self.fig.savefig(filename, **kwargs)
+        self.fig.canvas.draw() 
+
 
     def show(self):
         plt.show()
 
     def switch_grid_state(self):
         self.grid_on = not self.grid_on
+

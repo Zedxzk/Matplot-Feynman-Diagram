@@ -1,8 +1,8 @@
+from ast import List
 import math
-from re import S
 from matplotlib.pyplot import get_plot_commands
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 from feynplot_gui.debug_utils import cout
 
 import enum 
@@ -48,6 +48,9 @@ class Line:
         
         self.v_start = v_start
         self.v_end = v_end
+
+        self.plot_points: List[Tuple[float, float]] = []
+
 
         # Line style (now a direct attribute)
         # Handle style conversion from string to enum if passed via kwargs
@@ -172,6 +175,13 @@ class Line:
         if self.v_start is not None and self.v_end is not None:
             self._angleOut = self._calc_angle(self.v_start, self.v_end) + angle_bias
             self._angleIn = self._calc_angle(self.v_end, self.v_start) - angle_bias
+    
+    def get_line_plot_points(self):
+        if self.plot_points:
+            return self.plot_points
+    
+    def set_plot_points(self, xs, ys):
+        self.plot_points = [(x, y) for x, y in zip(xs, ys)]
         
 
 

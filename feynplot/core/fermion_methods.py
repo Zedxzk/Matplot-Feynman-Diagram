@@ -36,7 +36,7 @@ def generate_fermion_line(line):
     angle_out = line.angleOut
     angle_in = line.angleIn
     bezier_offset = getattr(line, 'bezier_offset', 0.0) # 获取 bezier_offset，默认为0.0
-    print(f"angle_out: {angle_out}, angle_in: {angle_in}, bezier_offset: {bezier_offset}")
+    # print(f"angle_out: {angle_out}, angle_in: {angle_in}, bezier_offset: {bezier_offset}")
     # input()
     # 费米子线只需要高分辨率的平滑曲线，所以我们直接定义点数
     num_points = 2000 # 可以根据需要调整平滑度

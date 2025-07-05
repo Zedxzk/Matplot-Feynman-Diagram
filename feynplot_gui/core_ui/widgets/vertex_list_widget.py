@@ -131,7 +131,7 @@ class VertexListWidget(QListWidget):
         # ！！重要！！
         # 确保这里继续阻塞信号，防止 itemSelectionChanged 信号被触发，导致循环
         # self.blockSignals(True) 
-        print("VertexListWidget: 设置选中项")
+        # print("VertexListWidget: 设置选中项")
         self.clearSelection() # 首先清除所有选中
 
         if item_to_select is not None: 

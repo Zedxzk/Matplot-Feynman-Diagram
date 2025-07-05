@@ -1,8 +1,10 @@
 # 确保导入了必要的类和模块
+from sympy import im
 from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line, FermionLine, AntiFermionLine, PhotonLine, GluonLine, WPlusLine, WMinusLine, ZBosonLine
+from feynplot.core.line_support import update_line_plot_points
 
-# Import the new I/O functions (assuming they are in feynplot.io.diagram_io)
+
 # from feynplot.io.diagram_io import export_diagram_to_json, import_diagram_from_json
 
 class FeynmanDiagram:
@@ -364,12 +366,3 @@ class FeynmanDiagram:
         for line in self.lines:
             line.show_label()
 
-    # --- JSON Export/Import Methods (delegating to diagram_io) ---
-    # These methods would be present if you followed the previous refactoring advice.
-    # def save(self, filename: str):
-    #     from feynplot.io.diagram_io import export_diagram_to_json
-    #     export_diagram_to_json(self, filename)
-
-    # def load(self, filename: str):
-    #     from feynplot.io.diagram_io import import_diagram_from_json
-    #     import_diagram_from_json(filename, diagram_instance=self)

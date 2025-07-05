@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, QPointF, Qt
+from PySide6.QtCore import QObject, Signal, QPointF, Qt, QTimer 
 from typing import Optional, Callable, Tuple, Dict, Any
 
 from regex import F # <-- Ensure these are imported
@@ -17,6 +17,8 @@ from feynplot_gui.core_ui.controllers.other_texts_controller import TextElement
 # from debug_utils import cout3 # Uncomment if you have this utility for debugging
 
 import numpy as np # <-- Ensure numpy is imported for hit testing
+
+last_move_time = QTimer
 
 class CanvasController(QObject):
     # CanvasController's own signals, mainly to notify MainController of completed actions
@@ -350,39 +352,68 @@ class CanvasController(QObject):
             # Trigger full update via MainController to clear selection/highlight
             self.main_controller.clear_selection() 
 
-    ### Hit Test Implementation ###
-    def _perform_hit_test(self, x: float, y: float) -> tuple[Optional[str], Optional[str]]:
+
+    def _perform_hit_test(self, x: float, y: float) -> Tuple[Optional[str], Optional[str]]:
         """
-        Performs hit testing to determine if a click is on an object (vertex or line).
-        This method needs to be accurate based on how Matplotlib draws.
+        执行点击测试，判断点击是否落在对象（顶点或线条）上。
+        此方法需要根据 Matplotlib 的绘制方式准确判断，特别是考虑到存储在 plot_points 中的复杂线条路径。
         """
-        # Iterate over vertices for hit detection
+        # 遍历顶点进行点击检测
         for vertex in self.diagram_model.vertices:
-            # Simple distance check, 0.5 is an empirical value, adjust based on visual size of your vertices
+            # 简单的距离检查，0.5 是经验值，根据顶点视觉大小调整
             dist_sq = (x - vertex.x)**2 + (y - vertex.y)**2
-            if dist_sq < 0.5**2: # Assuming a click radius of 0.5 data units
+            if dist_sq < 0.5**2: # 假设点击半径为 0.5 数据单位
                 return vertex.id, "vertex"
 
-        # Iterate over lines for hit detection
+        # 遍历线条进行点击检测
         for line in self.diagram_model.lines:
-            start_v = self._get_item_by_id(self.diagram_model.vertices, line.v_start.id)
-            end_v = self._get_item_by_id(self.diagram_model.vertices, line.v_end.id)
-            if start_v and end_v:
-                # This is a simplified point-to-line segment distance check
-                line_vec = np.array([end_v.x - start_v.x, end_v.y - start_v.y])
-                mouse_vec = np.array([x - start_v.x, y - start_v.y])
+            # 确保线条有 plot_points 且至少包含两个点以构成线段
+            if not hasattr(line, 'plot_points') or not line.plot_points or len(line.plot_points) < 2:
+                continue # 跳过没有有效绘制路径的线条
+
+            num_plot_points = len(line.plot_points)
+            
+            # --- 优化开始：根据点数均分采样，最多遍历 30 个点 ---
+            # 如果点的数量小于等于 30，则遍历所有点
+            if num_plot_points <= 30:
+                indices_to_check = range(num_plot_points - 1)
+            else:
+                # 否则，从总点数中均匀选择 30 个点（或更少，取决于 num_plot_points - 1 是否大于 0）
+                # 确保步长至少为 1，避免无限循环
+                step = max(1, (num_plot_points - 1) // 30) 
+                indices_to_check = range(0, num_plot_points - 1, step)
+            # --- 优化结束 ---
+
+            # 现在，遍历由 plot_points 定义的各个线段
+            for i in indices_to_check:
+                # 确保 i+1 不超出范围
+                if i + 1 >= num_plot_points:
+                    continue 
+                    
+                p1_coords = np.array(line.plot_points[i])
+                p2_coords = np.array(line.plot_points[i+1])
+
+                line_vec = p2_coords - p1_coords
+                mouse_vec = np.array([x, y]) - p1_coords
 
                 line_len_sq = np.dot(line_vec, line_vec)
-                if line_len_sq == 0: # Avoid division by zero if it's a point
+
+                # 如果线段是一个点（p1 == p2），跳过它
+                if line_len_sq == 0:
                     continue
 
+                # 将鼠标点投影到线段上
                 t = np.dot(mouse_vec, line_vec) / line_len_sq
-                t = max(0, min(1, t)) # Ensure projection is within line segment [0, 1]
+                t = max(0, min(1, t)) # 将 t 钳制在 [0, 1] 之间，确保投影在线段上
 
-                closest_point = np.array([start_v.x, start_v.y]) + t * line_vec
+                # 找到线段上离鼠标点击最近的点
+                closest_point = p1_coords + t * line_vec
+
+                # 计算鼠标点击到这个最近点的距离平方
                 dist_to_line_sq = (x - closest_point[0])**2 + (y - closest_point[1])**2
 
-                if dist_to_line_sq < 0.2**2: # Assuming a line click tolerance of 0.2 data units
+                # 如果距离在容忍范围内，则命中
+                if dist_to_line_sq < 0.2**2: # 假设线条点击容差为 0.2 数据单位
                     return line.id, "line"
 
         return None, None
@@ -408,7 +439,8 @@ class CanvasController(QObject):
         直接被 _handle_canvas_panned_start 调用，或者你也可以将其直接连接到 canvas_panned 信号。
         """
         if not self._is_panning_active:
-            return
+            # return
+            pass
 
         start_x, start_y = pan_start_data_pos.x(), pan_start_data_pos.y()
         current_x, current_y = current_pan_data_pos.x(), current_pan_data_pos.y()
@@ -517,3 +549,9 @@ class CanvasController(QObject):
         # Optional: Update status message
         # status_msg = "网格已显示" if self._grid_visible else "网格已隐藏"
         # self.main_controller.status_message.emit(status_msg)
+
+    def set_update_interval(self, interval: int):
+        """
+        槽函数：设置画布更新间隔。
+        """
+        self.canvas_widget.set_update_interval(interval)

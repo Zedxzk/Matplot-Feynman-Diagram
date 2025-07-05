@@ -1,8 +1,8 @@
-from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu
+from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu, QSpinBox, QLabel # Import QSpinBox and QLabel
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, Signal
 from typing import Optional
-
+from feynplot_gui.default.default_settings import canvas_widget_default_settings as cw_default_settings
 
 class NavigationBarWidget(QWidget):
     # 定义信号，这些信号将被 MainController 或 NavigationBarController 监听
@@ -34,6 +34,10 @@ class NavigationBarWidget(QWidget):
     # 【修改】自动缩放信号，现在只在点击时触发，不携带状态
     toggle_auto_scale_requested = Signal() 
 
+    # --- 【新增】画布更新间隔调整信号 ---
+    # 当用户通过UI（QSpinBox）改变间隔时，NavigationBarWidget发出此信号
+    canvas_update_interval_changed_ui = Signal(int) # 发送新的间隔值 (ms)
+
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -54,6 +58,10 @@ class NavigationBarWidget(QWidget):
         self.show_all_vertex_labels_action: Optional[QAction] = None
         # --- 【修改】自动缩放动作的属性，现在是一个普通 Action ---
         self.auto_scale_action: Optional[QAction] = None
+        
+        # --- 【新增】画布更新间隔的QSpinBox属性 ---
+        self.canvas_update_interval_spinbox: Optional[QSpinBox] = None
+
 
         self.init_ui()
 
@@ -65,7 +73,7 @@ class NavigationBarWidget(QWidget):
         self.menu_bar = QMenuBar(self)
         file_menu    = self.menu_bar.addMenu("文件")
         edit_menu    = self.menu_bar.addMenu("编辑") # 获取编辑菜单的引用
-        self.view_menu    = self.menu_bar.addMenu("视图") # Assign to self for external control
+        self.view_menu      = self.menu_bar.addMenu("视图") # Assign to self for external control
 
         # === Backend Settings 菜单 ===
         self.backend_settings_menu = self.menu_bar.addMenu("后端设置")
@@ -141,7 +149,6 @@ class NavigationBarWidget(QWidget):
 
         # --- 【修改】自动缩放作为一个普通 QAction ---
         self.auto_scale_action = QAction("自动调整画布", self) # 文本可以更明确
-        # 移除 setCheckable 和 setChecked
         self.auto_scale_action.triggered.connect(self.toggle_auto_scale_requested.emit) # 连接到 triggered 信号
         self.view_menu.addAction(self.auto_scale_action)
         # --- 修改结束 ---
@@ -169,6 +176,19 @@ class NavigationBarWidget(QWidget):
         self.add_vertex_button = QPushButton(self.tr("添加顶点"))
         self.add_vertex_button.clicked.connect(self.add_vertex_button_clicked.emit)
         self.tool_bar.addWidget(self.add_vertex_button)
+        
+        # --- 【新增】画布更新间隔的QSpinBox ---
+        self.tool_bar.addSeparator() # 添加分隔符，使UI更整洁
+        self.tool_bar.addWidget(QLabel("画布拖动更新间隔:", self)) # 添加标签
+        self.canvas_update_interval_spinbox = QSpinBox(self)
+        self.canvas_update_interval_spinbox.setRange(0, 1000) # 间隔范围 0ms 到 1000ms
+        self.canvas_update_interval_spinbox.setSingleStep(1) # 步长 1ms
+        self.canvas_update_interval_spinbox.setSuffix(" ms") # 单位后缀
+        self.canvas_update_interval_spinbox.setValue(cw_default_settings['SIGNAL_INTERVAL_MS'])
+        # 连接 spinbox 的 valueChanged 信号到我们自定义的 signal
+        self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
+        self.tool_bar.addWidget(self.canvas_update_interval_spinbox)
+        # --- 新增结束 ---
 
         main_layout.addWidget(self.tool_bar)
 
@@ -177,7 +197,10 @@ class NavigationBarWidget(QWidget):
     # --- 槽函数和控制方法 ---
     def _on_edit_object_triggered(self):
         """内部槽函数，用于根据当前选中类型发出特定编辑信号 (此信号将被 NavigationBarController 监听)"""
-        pass # 这里的逻辑现在由 NavigationBarController 负责
+        # 这个方法现在由 NavigationBarController 处理，此处只需触发通用信号
+        # 如果需要，可以根据选中的对象类型在这里发射不同的信号，但目前设计是控制器判断
+        self.edit_selected_vertex_triggered.emit() # 假设会由控制器根据选中类型转发
+        self.edit_selected_line_triggered.emit()   # 假设会由控制器根据选中类型转发
 
     def set_object_menu_enabled(self, enabled: bool):
         """
@@ -278,17 +301,35 @@ class NavigationBarWidget(QWidget):
         # --- 【修改】控制“切换自动调整画布”动作的启用状态 ---
         if self.auto_scale_action:
             self.auto_scale_action.setEnabled(enabled)
+        # --- 新增：启用/禁用画布更新间隔QSpinBox ---
+        if self.canvas_update_interval_spinbox:
+            self.canvas_update_interval_spinbox.setEnabled(enabled)
         # --- 修改结束 ---
 
-    # 【移除】这个方法不再需要，因为 auto_scale_action 不再是 checkable
-    # def set_auto_scale_checked(self, checked: bool):
-    #     """
-    #     设置“自动调整画布”复选框的选中状态。
-    #     这个方法会被 NavigationBarController 调用，以同步 UI 状态和后端状态。
-    #     """
-    #     if self.auto_scale_action:
-    #         print("setChecked", checked)
-    #         self.auto_scale_action.setChecked(checked)
+    # --- 【新增】设置 Canvas Update Interval SpinBox 的值 ---
+    def set_canvas_update_interval_value(self, value: int):
+        """
+        程序化地设置画布更新间隔QSpinBox的值。
+        这用于在控制器初始化或状态同步时更新UI。
+        Args:
+            value: 要设置的毫秒值。
+        """
+        if self.canvas_update_interval_spinbox:
+            # 避免触发valueChanged信号循环，断开再连接
+            self.canvas_update_interval_spinbox.valueChanged.disconnect(self.canvas_update_interval_changed_ui)
+            self.canvas_update_interval_spinbox.setValue(value)
+            self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
+
+    # --- 【新增】获取 Canvas Update Interval SpinBox 的值 ---
+    def get_canvas_update_interval_value(self) -> int:
+        """
+        获取当前画布更新间隔QSpinBox的值。
+        Returns:
+            当前设置的毫秒值。
+        """
+        if self.canvas_update_interval_spinbox:
+            return self.canvas_update_interval_spinbox.value()
+        return 0 # 默认值
 
     def _show_about_dialog(self):
         """

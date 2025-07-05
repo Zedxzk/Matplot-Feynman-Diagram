@@ -48,6 +48,7 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
 
     # 绘制光子波的路径，使用调整后的属性
     ax.plot(x_wave, y_wave, **current_line_plot_options)
+    line.set_plot_points(x_wave, y_wave)
 
     # 绘制光子线的标签
     if line.label and not line.hidden_label:
@@ -71,7 +72,7 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
 
 
 def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict):
-    print('Detected GluonLine') # 可以保留用于调试
+    # print('Detected GluonLine') # 可以保留用于调试
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
@@ -94,6 +95,7 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
 
     # 绘制胶子线的路径
     ax.plot(x_helix, y_helix, **current_line_plot_options)
+    line.set_plot_points(x_helix, y_helix)
 
     # 绘制胶子线的标签
     if line.label and not line.hidden_label:
@@ -148,6 +150,8 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
     # --- 绘制锯齿路径 (主要线条) ---
     x_zig, y_zig = zigzag_path[:, 0], zigzag_path[:, 1]
     ax.plot(x_zig, y_zig, **current_line_plot_options)
+    line.set_plot_points(x_zig, y_zig)
+    
 
     # --- 绘制标签（居中位置）---
     if line.label and not line.hidden_label:
@@ -196,6 +200,11 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
     # 绘制费米子线本身
     ax.plot(x, y, **current_line_plot_options)
+    line.set_plot_points(x, y)
+    # from pprint import pprint
+    # points = line.get_line_plot_points()[:10]
+    # formatted_points = [f"({x:.3f}, {y:.3f})" for (x, y) in points]
+    # pprint(f"fermion_path: {formatted_points}")
 
     # --- 绘制箭头 ---
     if line.arrow and len(x) > 1:
@@ -311,7 +320,7 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         # --- 新增的可见性检查 ---
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
-        print(f"xlim: {xlim}")
+        # print(f"xlim: {xlim}")
         if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
             # 如果标签位置不在当前视图范围内，则跳过绘制
             return
@@ -464,7 +473,7 @@ def get_diagram_view_limits(
             all_y.extend([v.y - radius, v.y + radius])
         size2pix = 0.002
         if not v.hidden_vertex:
-            print("v.size", v.size)
+            # print("v.size", v.size)
             all_x.extend([v.x + float(v.size) * size2pix, v.x - float(v.size) * size2pix])
             all_y.extend([v.y + float(v.size) * size2pix, v.y - float(v.size) * size2pix])
 

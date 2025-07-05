@@ -79,7 +79,7 @@ class VertexController(QObject):
         此方法由 MainController 调用。
         """
         # 此方法直接调用 QListWidget 的方法，该方法内部已处理信号阻塞。
-        print(f"VertexController: 设置列表选中项 {item_to_select}。")
+        # print(f"VertexController: 设置列表选中项 {item_to_select}。")
         self.vertex_list_widget.set_selected_item_in_list(item_to_select)
 
 
