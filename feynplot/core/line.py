@@ -1,4 +1,5 @@
 import math
+from re import S
 from matplotlib.pyplot import get_plot_commands
 import numpy as np
 from typing import Dict, Any, Optional
@@ -21,19 +22,20 @@ class Line:
 
     def __init__(self, v_start, v_end,
                  label: str = '',
-                 label_offset=(0.5, 0.0),
+                 label_offset=(0.3, -0.3),
                  angleIn=None, angleOut=None, bezier_offset=0.3,
                  # Direct line plotting attributes (formerly in linePlotConfig)
                  linewidth: float = 1.0,
                  color: str = 'black',
                  linestyle: Optional[str] = '-', # Default for STRAIGHT line style
                  alpha: float = 1.0,
-                 zorder: int = 1,
+                 zorder: int = 5,
                  # Direct label plotting attributes (formerly in labelPlotConfig)
                  label_fontsize: int = 30, # Renamed to avoid clash with `fontsize` kwarg
                  label_color: str = 'black', # Renamed to avoid clash with `color` kwarg
-                 label_ha: str = 'center',
-                 label_va: str = 'center',
+                 label_ha: str = 'left',
+                 label_va: str = 'bottom',
+                 hidden_label: bool = False,
                  # Style is now an internal property, not directly passed to super in subclasses
                  style: LineStyle = LineStyle.STRAIGHT, 
                  **kwargs):
@@ -59,6 +61,7 @@ class Line:
             self.style = style
 
         self.label = label
+        self.hidden_label = hidden_label
         self.label_offset = np.array(label_offset)
         
         self._angleOut = angleOut 
@@ -124,7 +127,11 @@ class Line:
             self.set_vertices(v_start, v_end)
         
         cout(f"DEBUG(Line_init): ID='{self.id}', Color='{self.color}', Linewidth='{self.linewidth}', Style='{self.style.name}'")
+    def hide_label(self):
+        self.hidden_label = True
 
+    def show_label(self):
+        self.hidden_label = False
 
     def set_vertices(self, v_start, v_end):
         # IMPORTANT: v_start and v_end must be Vertex-like objects, not their IDs.
@@ -160,6 +167,12 @@ class Line:
             self._angleIn = angleIn
         elif v_start is not None and v_end is not None: # Recalculate if vertices changed and angleIn not given
             self._angleIn = self._calc_angle(self.v_end, self.v_start)
+
+    def reset_angles(self, angle_bias = 0):
+        if self.v_start is not None and self.v_end is not None:
+            self._angleOut = self._calc_angle(self.v_start, self.v_end) + angle_bias
+            self._angleIn = self._calc_angle(self.v_end, self.v_start) - angle_bias
+        
 
 
     @staticmethod
@@ -197,17 +210,17 @@ class Line:
         """
         # Default styles based on LineStyle
         style_properties_defaults = {
-            LineStyle.STRAIGHT: {'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1},
-            LineStyle.FERMION: {'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1},
-            LineStyle.PHOTON: {'linestyle': '-', 'color': 'blue', 'linewidth': 1.0, 'zorder': 1},
-            LineStyle.GLUON:   {'linestyle': '-', 'color': 'red', 'linewidth': 1.0, 'zorder': 1},
-            LineStyle.WZ:      {'linestyle': '-.', 'color': 'green', 'linewidth': 1.0, 'zorder': 1},
+            LineStyle.STRAIGHT: {'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 5},
+            LineStyle.FERMION: {'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 5},
+            LineStyle.PHOTON: {'linestyle': '-', 'color': 'blue', 'linewidth': 1.0, 'zorder': 5},
+            LineStyle.GLUON:   {'linestyle': '-', 'color': 'red', 'linewidth': 1.0, 'zorder': 5},
+            LineStyle.WZ:      {'linestyle': '-.', 'color': 'green', 'linewidth': 1.0, 'zorder': 5},
         }
         
         # Start with properties based on the line's style
         # Use a copy to ensure we don't modify the default dicts directly
         final_properties = style_properties_defaults.get(self.style, {
-            'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 1
+            'linestyle': '-', 'color': 'black', 'linewidth': 1.0, 'zorder': 5
         }).copy()
 
         # Override with instance's direct attributes if they are not None
@@ -242,8 +255,8 @@ class Line:
         default_label_properties = {
             'fontsize': 10,
             'color': 'black',
-            'ha': 'center',
-            'va': 'center'
+            'ha': 'left',   # <--- 修改这里
+            'va': 'bottom'  # <--- 修改这里
         }
         
         # Start with defaults and then override with instance's direct attributes

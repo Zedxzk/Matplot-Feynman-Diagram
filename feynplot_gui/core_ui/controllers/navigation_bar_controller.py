@@ -68,12 +68,9 @@ class NavigationBarController(QObject):
         self.navigation_bar_widget.add_vertex_button_clicked.connect(self._on_add_vertex_ui_triggered)
         self.navigation_bar_widget.add_line_button_clicked.connect(self._on_add_line_ui_triggered)
 
-        # 连接“编辑所有顶点”信号
         self.navigation_bar_widget.edit_all_vertices_triggered.connect(self._on_edit_all_vertices_ui_triggered)
-        
-        # 【新增】连接“编辑所有线条”信号
         self.navigation_bar_widget.edit_all_lines_triggered.connect(self._on_edit_all_lines_ui_triggered)
-
+        self.navigation_bar_widget.toggle_auto_scale_requested.connect(self._on_set_auto_scale_checked_ui_triggered)
 
         # “对象”菜单的“编辑属性”和“删除对象”动作
         self.navigation_bar_widget.edit_obj_action.triggered.connect(self._on_edit_object_ui_triggered)
@@ -180,7 +177,7 @@ class NavigationBarController(QObject):
             except Exception as e:
                 QMessageBox.critical(self.navigation_bar_widget, "加载失败", f"加载项目时发生错误：\n{e}")
                 self.status_message.emit(f"加载失败：{e}")
-        self.main_controller.update_all_views() # 调用 MainController 更新视图，这也可能触发 _on_main_controller_diagram_updated
+        self.main_controller.update_all_views(canvas_options={'auto_scale': True}) # 调用 MainController 更新视图，这也可能触发 _on_main_controller_diagram_updated
 
     def _on_add_vertex_ui_triggered(self):
         """处理UI的添加顶点触发，并发出业务请求信号。"""
@@ -362,3 +359,8 @@ class NavigationBarController(QObject):
         """
         self.navigation_bar_widget.set_add_vertex_enabled(enabled)
         self.navigation_bar_widget.set_add_line_enabled(enabled)
+
+
+    def _on_set_auto_scale_checked_ui_triggered(self):
+        # print("触发设置自动缩放的UI事件。")
+        self.main_controller.update_all_views(canvas_options={'auto_scale': True})

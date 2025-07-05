@@ -36,7 +36,7 @@ class VertexController(QObject):
         # 在这些槽函数中，我们将直接调用 main_controller.select_item
         # self.vertex_list_widget.vertex_selected.connect(self._on_vertex_list_selected)
         # self.vertex_list_widget.list_blank_clicked.connect(self._on_list_blank_clicked)
-        # self.vertex_list_widget.vertex_double_clicked.connect(self._on_vertex_list_double_clicked)
+        self.vertex_list_widget.vertex_double_clicked.connect(self._on_vertex_list_double_clicked)
 
         # 连接 VertexListWidget 的右键菜单信号到对应的槽函数
         self.vertex_list_widget.edit_vertex_requested.connect(self._on_edit_vertex_requested_from_list)
@@ -120,6 +120,7 @@ class VertexController(QObject):
         """
         print(f"VertexController: 收到列表双击顶点 {vertex.id}。发出 request_edit_vertex 信号。")
         # 对于编辑这种复杂操作，仍然通过信号转发，因为 MainController 可能有额外的逻辑或专门的对话框控制器。
+        self._on_edit_vertex_requested_from_list(vertex)
         self.request_edit_vertex.emit(vertex)
 
 

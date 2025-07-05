@@ -427,5 +427,6 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
         return True
     else:
         # 对话框取消
-        QMessageBox.information(parent_widget, "编辑取消", f"线条 {line.id} 属性编辑已取消。")
+        # QMessageBox.information(parent_widget, "编辑取消", f"线条 {line.id} 属性编辑已取消。")
+        
         return False

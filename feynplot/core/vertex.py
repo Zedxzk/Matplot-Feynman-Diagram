@@ -22,7 +22,7 @@ class Vertex:
 
     def __init__(self, x, y, vertex_type=VertexType.ELECTROMAGNETIC, label="",
                  coupling_constant=1.0, symmetry_factor=1,
-                 label_offset=(0.5, 0.0),
+                 label_offset=(0.1, -0.2),
                  is_structured: bool = False,
                  structured_radius: float = 0.5,
                  structured_facecolor: str = 'lightgray',
@@ -75,7 +75,7 @@ class Vertex:
         self.structured_edgecolor = structured_edgecolor
         self.structured_linewidth = structured_linewidth
         self.structured_alpha = structured_alpha
-        self.zorder_structured = self.zorder
+        self.zorder_structured = self.zorder + 10
 
         self.use_custom_hatch = use_custom_hatch
         self.hatch_pattern = hatch_pattern
@@ -133,8 +133,8 @@ class Vertex:
         return {
             'fontsize': self.label_size,
             'color': self.label_color,
-            'ha': 'center',
-            'va': 'center'
+            'ha': 'left',   # <--- 修改这里
+            'va': 'bottom'  # <--- 修改这里
         }
 
     def update_properties(self, **kwargs):

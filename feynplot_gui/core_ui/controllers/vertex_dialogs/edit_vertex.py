@@ -473,11 +473,11 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                     if v_start_updated and v_end_updated:
                         line.set_angles(v_start_updated, v_end_updated)
 
-        QMessageBox.information(parent_widget, "编辑成功", f"顶点 {vertex.id} 属性已更新，关联线条角度已调整。")
+        # QMessageBox.information(parent_widget, "编辑成功", f"顶点 {vertex.id} 属性已更新，关联线条角度已调整。")
         return True
     else:
         # If the user cancels, the visibility changes made via the checkboxes will remain.
         # If strict undo is required, the original visibility states of vertex and label
         # would need to be stored upon dialog opening and restored here.
-        QMessageBox.information(parent_widget, "编辑取消", f"顶点 {vertex.id} 属性编辑已取消。")
+        # QMessageBox.information(parent_widget, "编辑取消", f"顶点 {vertex.id} 属性编辑已取消。")
         return False

@@ -48,11 +48,7 @@ class MainController(QObject):
 
         # 实例化所有子控制器，并传递必要的依赖（模型、UI组件实例、MainController自身）
         # 注意：这里我们使用 main_window 暴露的 'xxx_instance' 属性
-        self.canvas_controller = CanvasController(
-            diagram_model=self.diagram_model,
-            canvas_widget=self.main_window.canvas_widget_instance,
-            main_controller=self
-        )
+
         self.vertex_controller = VertexController(
             diagram_model=self.diagram_model,
             vertex_list_widget=self.main_window.vertex_list_widget_instance,
@@ -76,7 +72,11 @@ class MainController(QObject):
             other_texts_widget=self.main_window.other_texts_widget, # 传入 OtherTextsWidget 实例
             main_controller=self,                       # 传入 MainController 自身
         )
-
+        self.canvas_controller = CanvasController(
+            diagram_model=self.diagram_model,
+            canvas_widget=self.main_window.canvas_widget_instance,
+            main_controller=self
+        )
         # 初始加载或设置一些默认数据
         self._initialize_diagram_data()
 
@@ -120,7 +120,7 @@ class MainController(QObject):
         # 用户点击列表空白处事件 (现在只在 mousePressEvent 中发出)
         self.main_window.vertex_list_widget_instance.list_blank_clicked.connect(lambda: self.select_item(None))
         # 双击列表项事件
-        self.main_window.vertex_list_widget_instance.vertex_double_clicked.connect(self._handle_list_vertex_double_clicked)
+        # self.main_window.vertex_list_widget_instance.vertex_double_clicked.connect(self._handle_list_vertex_double_clicked)
         # 右键菜单操作
         # self.main_window.vertex_list_widget_instance.edit_vertex_requested.connect(self.select_item)
         # self.main_window.vertex_list_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
@@ -188,7 +188,7 @@ class MainController(QObject):
         # 3. 通知所有相关组件模型已更新并重新绘制
         # self.diagram_updated.emit()
         # self.selection_changed.emit(self.selected_item)
-        self.update_all_views()
+        self.update_all_views(canvas_options={'auto_scale': True})
 
     def _on_tool_mode_changed(self, mode: str):
         """当工具模式改变时，更新 MainController 内部状态。"""
@@ -325,69 +325,7 @@ class MainController(QObject):
     def get_selected_item(self) -> [Vertex, Line, None]:
         """获取当前选中项。"""
         return self._current_selected_item
-    
-    # def update_diagram_elements(self):
-    #     """
-    #     更新所有受图模型变化影响的UI元素。
-    #     这包括重新绘制画布、刷新顶点列表和线条列表等。
-    #     """
-    #     # 1. 通知 CanvasController 重新绘制画布
-    #     self.update_all_views() # 删除后刷新视图
-    #     if False:
-    #         pass
-    #     else:
-    #         self.status_message.emit("错误: CanvasController 未初始化。")
 
-    #     # 2. 通知顶点列表刷新
-    #     if self.vertex_controller:
-    #         self.vertex_controller.update_vertex_list()
-
-    #     # 3. 通知线条列表刷新 (如果你有 LineController)
-    #     if self.line_controller:
-    #         self.line_controller.update_line_list() # 假设 LineController 也有类似的方法
-
-        self.status_message.emit("图元素已刷新。")
-    # --- CanvasWidget 报告的交互事件处理 ---
-    def _handle_canvas_click(self, pos: QPointF):
-        """处理画布点击事件，根据当前模式添加对象或进行选择。"""
-        if self._current_tool_mode == "add_vertex":
-            self.add_vertex_at_coords(pos.x(), pos.y())
-        elif self._current_tool_mode == "add_line":
-            # 如果是添加线条模式，将点击事件转发给 CanvasController 处理
-            # CanvasController 会负责收集两个顶点，然后通过 line_creation_completed 信号通知 MainController
-            self.canvas_controller.handle_add_line_click(pos)
-        elif self._current_tool_mode == "select":
-            # 选择模式下，CanvasWidget 应该已经处理了对象选择，
-            # 并发出了 object_selected 或 selection_cleared 信号，这里不需要重复逻辑。
-            pass # 已经被 canvas_widget.object_selected 信号处理
-
-    def _handle_object_selected_on_canvas(self, item_id: str, item_type: str):
-        """
-        处理画布上对象被选中信号。
-        item_id: 选中的对象ID
-        item_type: "vertex" 或 "line"
-        """
-        if item_type == "vertex":
-            obj = self.diagram_model.get_vertex_by_id(item_id)
-        elif item_type == "line":
-            obj = self.diagram_model.get_line_by_id(item_id)
-        else:
-            obj = None
-        self.select_item(obj) # 统一通过 select_item 方法设置选中项
-
-    def _handle_object_double_clicked_on_canvas(self, item_id: str, item_type: str):
-        """处理画布上对象双击事件，通常用于编辑属性。"""
-        self.status_message.emit(f"双击了 {item_type} ID: {item_id}")
-        # 获取双击的对象
-        if item_type == "vertex":
-            obj = self.diagram_model.get_vertex_by_id(item_id)
-        elif item_type == "line":
-            obj = self.diagram_model.get_line_by_id(item_id)
-        else:
-            obj = None
-        
-        if obj:
-            self.edit_item_properties(obj) # 调用编辑方法
         
     def _handle_object_moved_on_canvas(self, item_id: str, new_pos: QPointF):
         """处理画布上对象被拖动移动的事件。"""
@@ -397,17 +335,6 @@ class MainController(QObject):
             self.status_message.emit(f"移动了顶点 {obj.id} 到 ({new_pos.x():.2f}, {new_pos.y():.2f})")
             self.update_all_views() # 移动后强制更新视图
 
-    # --- 列表视图信号处理 ---
-    def _handle_list_vertex_selection(self, vertex_id: str):
-        """处理顶点列表中的选择事件。"""
-        vertex = self.diagram_model.get_vertex_by_id(vertex_id)
-        self.select_item(vertex)
-
-    def _handle_list_vertex_double_clicked(self, vertex_id: str):
-        """处理顶点列表中的双击事件。"""
-        vertex = self.diagram_model.get_vertex_by_id(vertex_id)
-        if vertex:
-            self.edit_item_properties(vertex)
 
     def _handle_list_line_selection(self, line_id: str):
         """处理线条列表中的选择事件。"""
@@ -453,7 +380,7 @@ class MainController(QObject):
                     )
                     cout3(f"已添加顶点: {new_vertex.id} 在 ({new_vertex.x:.2f}, {new_vertex.y:.2f})")
                     self.status_message.emit(f"已添加顶点: {new_vertex.id} 在 ({new_vertex.x:.2f}, {new_vertex.y:.2f})")
-                    self.update_all_views()  # 添加后更新所有视图
+                    self.update_all_views(canvas_options={'auto_scale': True}) # 添加后更新所有视图
                     self.select_item(new_vertex)  # 添加后选中新顶点
                 except ValueError as e:
                     self.status_message.emit(f"添加顶点失败: {e}")
@@ -472,29 +399,40 @@ class MainController(QObject):
         self.add_line_between_vertices()
         # CanvasController 会收集点击的顶点，然后通过 line_creation_completed 信号调用 MainController 的 add_line_between_vertices
 
-    def add_line_between_vertices(self):
-        dialog = AddLineDialog(self.diagram_model.vertices, parent=self.main_window)
+    def add_line_between_vertices(self, initial_start_vertex_id: str = None):
+        """
+        弹出对话框，允许用户选择两个顶点并添加一条线条。
+        Args:
+            initial_start_vertex_id (str, optional): 如果提供，将预设对话框中的起始顶点。
+        """
+        # Pass the initial_start_vertex_id to the dialog
+        # The AddLineDialog constructor needs to be updated to accept this.
+        dialog = AddLineDialog(
+            vertices_data=self.diagram_model.vertices,
+            parent=self.main_window,
+            initial_start_vertex_id=initial_start_vertex_id # <--- Pass the new argument
+        )
+
         if dialog.exec() == QDialog.Accepted:
             line_info = dialog.get_line_data()
             if line_info:
-                # 再次确认顶点是否被用户修改
                 final_v_start = line_info['v_start']
                 final_v_end = line_info['v_end']
+
                 if final_v_start == final_v_end:
                     QMessageBox.warning(self.main_window, "输入错误", "起始顶点和结束顶点不能相同！")
                     self.status_message.emit("线条添加失败: 起始顶点和结束顶点相同。")
                     return
                 try:
-                    # 默认使用 FermionLine，可以扩展为选择线条类型
                     new_line = self.diagram_model.add_line(
-                        v_start=final_v_start, 
-                        v_end=final_v_end, 
-                        label=line_info.get('label', ''), # 确保有 label 字段
+                        v_start=final_v_start,
+                        v_end=final_v_end,
+                        label=line_info.get('label', ''),
                         line_type=line_info['line_type']
                     )
                     self.status_message.emit(f"已添加线条: {new_line.id} 连接 {final_v_start.id} 和 {final_v_end.id}")
-                    self.update_all_views() # 添加后更新所有视图
-                    self.select_item(new_line) # 添加后选中新线条
+                    self.update_all_views()
+                    self.select_item(new_line)
                 except ValueError as e:
                     self.status_message.emit(f"添加线条失败: {e}")
                     QMessageBox.warning(self.main_window, "添加线条错误", f"添加线条失败: {e}")
@@ -502,12 +440,13 @@ class MainController(QObject):
                     self.status_message.emit(f"添加线条时发生未知错误: {e}")
                     QMessageBox.critical(self.main_window, "添加线条错误", f"添加线条时发生未知错误: {e}")
             else:
-                self.status_message.emit("线条添加已取消。")
+                # self.status_message.emit("线条添加已取消。")
+                print("线条添加已取消。")
         else:
-            self.status_message.emit("线条添加已取消。")
-        
-        # self.toolbox_controller.set_select_mode() # 无论是否添加成功，都切换回选择模式
-        self.canvas_controller.reset_line_creation_state() # 清除 CanvasController 中的临时线条创建状态
+            # self.status_message.emit("线条添加已取消。")
+            print("线条添加已取消。")
+            
+        self.canvas_controller.reset_line_creation_state()
 
 
     def delete_selected_vertex(self, vertex_to_delete: Optional[Vertex] = None):
@@ -556,10 +495,10 @@ class MainController(QObject):
                     # 6. 调用模型层的方法删除顶点
                     try:
                         if self.diagram_model.delete_vertex(selected_vertex_id):
-                            QMessageBox.information(self.main_window, "删除成功", 
-                                                    f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 及其关联线条已成功删除。")
+                            # QMessageBox.information(self.main_window, "删除成功", 
+                            #                         f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 及其关联线条已成功删除。")
                             self.status_message.emit(f"已删除顶点: {vertex_label} (ID: {selected_vertex_id})。")
-                            self.update_all_views() # 删除后刷新视图
+                            self.update_all_views(canvas_options={'auto_scale': True}) # 删除后刷新视图
                             self.clear_selection() # 删除后清除当前选择（如果删除的是选中项）
                         else:
                             QMessageBox.warning(self.main_window, "删除失败", 

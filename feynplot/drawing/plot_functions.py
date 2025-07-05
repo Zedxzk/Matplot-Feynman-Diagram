@@ -19,7 +19,7 @@ from feynplot.core.fermion_methods import generate_fermion_line
 import mplhep as hep
 
 from feynplot.drawing.fontSettings import *
-
+from typing import List, Tuple, Optional, Any, Dict
 
 highlight_color = 'red'
 
@@ -50,7 +50,7 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
     ax.plot(x_wave, y_wave, **current_line_plot_options)
 
     # 绘制光子线的标签
-    if line.label:
+    if line.label and not line.hidden_label:
         mid_idx = len(x_wave) // 2
         label_x = x_wave[mid_idx] + line.label_offset[0]
         label_y = y_wave[mid_idx] + line.label_offset[1]
@@ -96,7 +96,7 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
     ax.plot(x_helix, y_helix, **current_line_plot_options)
 
     # 绘制胶子线的标签
-    if line.label:
+    if line.label and not line.hidden_label:
         mid_idx = len(x_helix) // 2
         label_x = x_helix[mid_idx] + line.label_offset[0]
         label_y = y_helix[mid_idx] + line.label_offset[1]
@@ -150,7 +150,7 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
     ax.plot(x_zig, y_zig, **current_line_plot_options)
 
     # --- 绘制标签（居中位置）---
-    if line.label:
+    if line.label and not line.hidden_label:
         mid_idx = len(bezier_base_path_for_zigzag) // 2
         label_x = bezier_base_path_for_zigzag[mid_idx, 0] + line.label_offset[0]
         label_y = bezier_base_path_for_zigzag[mid_idx, 1] + line.label_offset[1]
@@ -248,7 +248,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
         )
 
     # --- 绘制标签 ---
-    if line.label:
+    if line.label and not line.hidden_label:
         mid_idx = len(fermion_path) // 2
         label_x = fermion_path[mid_idx, 0] + line.label_offset[0]
         label_y = fermion_path[mid_idx, 1] + line.label_offset[1]
@@ -334,7 +334,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
 
     original_linewidth = current_circle_props.get('linewidth', 1.5)
     original_edgecolor = current_circle_props.get('edgecolor', 'black')
-    original_zorder = current_circle_props.get('zorder', 2)
+    original_zorder = current_circle_props.get('zorder_structured', 10)
 
     # 如果顶点被选中，调整绘图属性
     if vertex.is_selected:
@@ -416,7 +416,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
             line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
     # 3. 绘制标签
-    if vertex.label and is_circle_visible: # 只有当圆圈可见时才绘制标签
+    if vertex.label and not vertex.hidden_label and not vertex.hidden_vertex: # 只有当圆圈可见时才绘制标签
         label_x = vertex.x + vertex.label_offset[0]
         label_y = vertex.y + vertex.label_offset[1]
 
@@ -435,3 +435,125 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
             label_in_latex,
             **current_label_props
         )
+
+def get_diagram_view_limits(
+    ax: plt.Axes, # Axes 对象仍然需要，尽管我们不直接用它来测量文本尺寸
+    vertices: List[Vertex],
+    lines: List[Line],
+) -> Tuple[Tuple[float, float], Tuple[float, float]]:
+    """
+    根据顶点和线列表，计算并返回合适的画布视图范围 (xlim, ylim)。
+    遍历所有顶点、线的完整路径以及标签的锚点位置，找到 x 和 y 的最小/最大值。
+    此版本**不估算标签的实际渲染宽度和高度**，只确保标签的定位点在视图内。
+    """
+    all_x: List[float] = []
+    all_y: List[float] = []
+
+    # 1. 考虑所有顶点的中心坐标
+    for v in vertices:
+        all_x.append(v.x)
+        all_y.append(v.y)
+        
+        # Determine label properties for the current vertex (still useful for drawing later)
+        # vertex_label_props = v.get_label_properties() # This line is no longer strictly needed for limits calculation
+        
+        # If StructuredVertex, consider its radius
+        if hasattr(v, 'structured_radius') and v.structured_radius is not None and v.is_structured:
+            radius = v.structured_radius
+            all_x.extend([v.x - radius, v.x + radius])
+            all_y.extend([v.y - radius, v.y + radius])
+        size2pix = 0.002
+        if not v.hidden_vertex:
+            print("v.size", v.size)
+            all_x.extend([v.x + float(v.size) * size2pix, v.x - float(v.size) * size2pix])
+            all_y.extend([v.y + float(v.size) * size2pix, v.y - float(v.size) * size2pix])
+
+        # 考虑顶点的标签锚点位置
+        if v.label and not v.hidden_label:
+            label_origin_x = v.x + v.label_offset[0]
+            label_origin_y = v.y + v.label_offset[1]
+            
+            # **核心修改：只添加标签的锚点位置**
+            all_x.append(label_origin_x)
+            all_y.append(label_origin_y)
+
+    # 2. 考虑所有线条的完整路径点
+    for line in lines:
+        path = np.array([]) # Initialize as empty path
+
+        # Get path points based on line type
+        if isinstance(line, PhotonLine):
+            path = generate_photon_wave(line)
+        elif isinstance(line, GluonLine):
+            _, path = line.get_plot_path()
+        elif isinstance(line, (WPlusLine, WMinusLine, ZBosonLine)):
+            path, _, _ = generate_WZ_zigzag(line, start_up=True)
+        elif isinstance(line, FermionLine):
+            path = generate_fermion_line(line)
+        else: # Default straight line or other unknown line type
+            # Assuming line.v_start and line.v_end are Vertex objects (not just IDs)
+            start_v = next((v_item for v_item in vertices if v_item.id == line.v_start.id), None)
+            end_v = next((v_item for v_item in vertices if v_item.id == line.v_end.id), None)
+            if start_v and end_v:
+                path = np.array([[start_v.x, start_v.y],
+                                 [end_v.x, end_v.y]])
+
+        if path.size > 0:
+            all_x.extend(path[:, 0])
+            all_y.extend(path[:, 1])
+
+        # 考虑线的标签锚点位置
+        if line.label and not line.hidden_label:
+            # 标签的基准位置通常是线的中点加上偏移
+            mid_point_x, mid_point_y = 0, 0
+            if path.size > 0:
+                mid_point_x = path[:, 0].mean()
+                mid_point_y = path[:, 1].mean()
+            elif start_v and end_v: # If path is empty, fall back to midpoint of line endpoints
+                mid_point_x = (start_v.x + end_v.x) / 2
+                mid_point_y = (start_v.y + end_v.y) / 2
+            # else: mid_point_x, mid_point_y remain 0,0 - not ideal, but fallback for unlinked lines
+
+            label_origin_x = mid_point_x + line.label_offset[0]
+            label_origin_y = mid_point_y + line.label_offset[1]
+
+            # **核心修改：只添加标签的锚点位置**
+            all_x.append(label_origin_x)
+            all_y.append(label_origin_y)
+
+    # If no elements, return default view
+    if not all_x or not all_y:
+        return (-5.0, 5.0), (-5.0, 5.0)
+
+    min_x, max_x = min(all_x), max(all_x)
+    min_y, max_y = min(all_y), max(all_y)
+
+    # Add a margin to prevent elements from touching the border
+    padding_ratio = 0.02
+    
+    # Calculate current content width and height
+    content_width = max_x - min_x
+    content_height = max_y - min_y
+
+    # Ensure a minimum size for the content, even if it's just a single point
+    min_content_size = 2.0 
+    if content_width < min_content_size:
+        mid_x = (max_x + min_x) / 2
+        min_x = mid_x - min_content_size / 2
+        max_x = mid_x + min_content_size / 2
+        content_width = min_content_size # Update width for padding calculation
+
+    if content_height < min_content_size:
+        mid_y = (max_y + min_y) / 2
+        min_y = mid_y - min_content_size / 2
+        max_y = mid_y + min_content_size / 2
+        content_height = min_content_size # Update height for padding calculation
+
+    # Apply padding
+    padding_x = content_width * padding_ratio
+    padding_y = content_height * padding_ratio
+
+    new_xlim = (min_x - padding_x, max_x + padding_x)
+    new_ylim = (min_y - padding_y, max_y + padding_y)
+    
+    return new_xlim, new_ylim

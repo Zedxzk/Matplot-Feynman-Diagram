@@ -8,6 +8,8 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, Callable
 
+# from numpy import blackman # This import seems misplaced, usually numpy is imported as np
+
 class CanvasWidget(QWidget):
     # Various user interaction signals
     canvas_clicked = Signal(QPointF)
@@ -16,7 +18,7 @@ class CanvasWidget(QWidget):
     object_moved = Signal(str, QPointF)
     selection_cleared = Signal()
     key_delete_pressed = Signal()
-
+    blank_double_clicked = Signal(QPointF)
     # Pan and zoom signals
     canvas_panned = Signal(QPointF, QPointF) # 更改：现在平移信号传递起始和结束数据点
     canvas_zoomed = Signal(QPointF, float)
@@ -26,7 +28,9 @@ class CanvasWidget(QWidget):
     # --- 为右键菜单添加信号 ---
     object_edited = Signal(str, str)
     object_deleted = Signal(str, str)
-
+    
+    # --- 【新增】添加线条的信号 ---
+    add_line_from_vertex_requested = Signal(str) # 传递起始顶点的ID
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -104,7 +108,7 @@ class CanvasWidget(QWidget):
         self._is_drag_event = False # 假定开始不是拖动，直到移动距离超过阈值
 
         current_time = QTime.currentTime().msecsSinceStartOfDay()
-        double_click_interval = 250 # 毫秒
+        double_click_interval = 200 # 毫秒
 
         # 双击检查 (使用 QTime)
         if event.button == 1 and (current_time - self._last_click_time) < double_click_interval:
@@ -112,7 +116,14 @@ class CanvasWidget(QWidget):
                 item_id, item_type = self._hit_test_callback(event.xdata, event.ydata)
                 if item_id:
                     self.object_double_clicked.emit(item_id, item_type)
-            self._last_click_time = 0 # 双击后重置时间，避免三次点击误判为双击
+                # If no item_id, it means a blank area was double-clicked
+                if not item_id:
+                    # 发出带坐标的 blank_double_clicked 信号
+                    self.blank_double_clicked.emit(self._mouse_press_data_pos)
+            else: # No hit_test_callback means we assume it's blank
+                self.blank_double_clicked.emit(self._mouse_press_data_pos)
+
+            self._last_click_time = 0
             return # 双击事件处理完毕，直接返回，不触发单击/拖拽逻辑
         else:
             self._last_click_time = current_time # 更新上次单击时间
@@ -183,8 +194,7 @@ class CanvasWidget(QWidget):
         current_mouse_pixel_pos = QPointF(event.x, event.y) if event.x is not None and event.y is not None else self._mouse_press_pixel_pos
 
         # 计算像素距离，判断是否是拖动
-        if self._mouse_press_pixel_pos and current_mouse_pixel_pos: # Add check for current_mouse_pixel_pos
-            # Create a QLineF from the two QPointF objects and get its length
+        if self._mouse_press_pixel_pos and current_mouse_pixel_pos:
             pixel_distance = QLineF(self._mouse_press_pixel_pos, current_mouse_pixel_pos).length()
             if pixel_distance > self.DRAG_THRESHOLD_PIXELS:
                 self._is_drag_event = True
@@ -210,7 +220,6 @@ class CanvasWidget(QWidget):
                     if item_id:
                         # 确保单击对象时，如果之前未选中，现在可以选中。
                         # 如果在press时已发出object_selected，这里无需重复。
-                        # self.object_selected.emit(item_id, item_type) # 已在press时发出
                         pass
                     else:
                         # 点击空白区域，发出 canvas_clicked
@@ -252,26 +261,22 @@ class CanvasWidget(QWidget):
 
         # 如果鼠标按下位置已记录，且当前是拖动模式（_is_dragging_object 或 _is_panning）
         # 并且移动距离超过阈值，则标记为拖动事件
-        if self._mouse_press_pixel_pos and current_mouse_pixel_pos: # Add check for current_mouse_pixel_pos
-            # Create a QLineF from the two QPointF objects and get its length
+        if self._mouse_press_pixel_pos and current_mouse_pixel_pos:
             pixel_distance = QLineF(self._mouse_press_pixel_pos, current_mouse_pixel_pos).length()
             if pixel_distance > self.DRAG_THRESHOLD_PIXELS:
                 self._is_drag_event = True # 标记为拖动事件
                 # 一旦达到拖动阈值，即使是点击对象，也可能转化为拖动其父级（画布平移）
                 # 因此，如果最初没有拖动对象，但进入了平移模式，此处应开始发出平移信号
                 if self._is_panning and not self._dragged_object_id: # 确认是空白区域平移
-                     # 持续发出平移信号，通知控制器平移
-                     self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
+                    # 持续发出平移信号，通知控制器平移
+                    self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
 
 
         if self._is_dragging_object and self._dragged_object_id:
             # 发出 object_moved 信号，通知 CanvasController 更新模型中的对象位置
             self.object_moved.emit(self._dragged_object_id, current_mouse_data_pos)
             self.draw_idle_canvas() 
-        elif self._is_panning and self._is_drag_event: # 确保只有在被识别为拖动事件时才发出平移信号
-            # 持续发出平移信号，通知控制器平移
-            # 这里的 emit 放在前面 if _is_drag_event 内部更合适
-            # self.canvas_panned.emit(self._mouse_press_data_pos, current_mouse_data_pos)
+        elif self._is_panning and self._is_drag_event:
             pass # 已在 _is_drag_event 内部处理了
 
             
@@ -292,7 +297,7 @@ class CanvasWidget(QWidget):
         else:
             mouse_x, mouse_y = event.xdata, event.ydata
 
-        zoom_factor = 1.15
+        zoom_factor = 1.08
 
         if event.step > 0: # Scroll up (zoom in)
             scale_factor = 1.0 / zoom_factor
@@ -304,6 +309,15 @@ class CanvasWidget(QWidget):
     # --- 右键菜单相关方法 ---
     def _show_context_menu(self, event, item_id: str, item_type: str):
         menu = QMenu(self)
+
+        # 【新增】如果点击的是顶点，添加“添加线条”选项
+        if item_type == "vertex":
+            add_line_action = QAction("添加线条", self)
+            # 连接到新的槽函数，该槽函数将发出 add_line_from_vertex_requested 信号
+            add_line_action.triggered.connect(lambda: self._on_add_line_from_vertex_action(item_id))
+            menu.addAction(add_line_action)
+            # 添加一个分隔符，使菜单更清晰
+            menu.addSeparator()
 
         edit_action = QAction("编辑", self)
         edit_action.triggered.connect(lambda: self._on_edit_object_action(item_id, item_type))
@@ -324,3 +338,10 @@ class CanvasWidget(QWidget):
         """响应 '删除' 菜单项点击的槽函数。"""
         print(f"请求删除 {item_type} ID: {item_id}")
         self.object_deleted.emit(item_id, item_type)
+
+    # --- 【新增】处理“添加线条”菜单项点击的槽函数 ---
+    def _on_add_line_from_vertex_action(self, vertex_id: str):
+        """响应 '添加线条' 菜单项点击的槽函数。"""
+        print(f"请求从顶点 {vertex_id} 添加线条")
+        # 发出信号，通知控制器从这个顶点开始添加线条
+        self.add_line_from_vertex_requested.emit(vertex_id)

@@ -1,5 +1,7 @@
 from PySide6.QtCore import QObject, Signal, QPointF, Qt
-from typing import Optional, Callable, Tuple, Dict, Any # <-- Ensure these are imported
+from typing import Optional, Callable, Tuple, Dict, Any
+
+from regex import F # <-- Ensure these are imported
 
 # Import CanvasWidget, which is the "view" part of the canvas
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
@@ -29,7 +31,7 @@ class CanvasController(QObject):
 
         # Instantiate MatplotlibBackend, passing Figure and Axes objects.
         # cout3(f"Creating MatplotlibBackend, Figure: {self.canvas_widget.get_figure()}, Axes: {self.canvas_widget.get_axes()}") # Debug info
-        self._matplotlib_backend = FeynmanDiagramCanvas(
+        self._canvas_instance = FeynmanDiagramCanvas(
             fig=self.canvas_widget.get_figure(),
             ax=self.canvas_widget.get_axes()
         )
@@ -42,18 +44,22 @@ class CanvasController(QObject):
         # Connect CanvasWidget's user interaction signals to CanvasController's slots
         self.canvas_widget.canvas_clicked.connect(self._handle_canvas_click)
         self.canvas_widget.object_selected.connect(self._handle_object_selected_on_canvas_widget)
+        self.canvas_widget.object_edited.connect(self._handle_object_edited_on_canvas_widget)
+        self.canvas_widget.object_deleted.connect(self._handle_object_deleted_on_canvas_widget)
         self.canvas_widget.object_double_clicked.connect(self._handle_object_double_clicked_on_canvas_widget)
         self.canvas_widget.object_moved.connect(self._handle_object_moved_on_canvas_widget)
+        self.canvas_widget.blank_double_clicked.connect(self._handle_blank_double_clicked_on_canvas_widget)
         self.canvas_widget.selection_cleared.connect(self._handle_selection_cleared_on_canvas_widget)
         self.canvas_widget.key_delete_pressed.connect(self._handle_key_delete_pressed)
-
+        self.canvas_widget.add_line_from_vertex_requested.connect(self._handle_add_line_from_vertex_requested)
         # Connect CanvasWidget's pan and zoom signals
         self.canvas_widget.canvas_panned.connect(self._handle_canvas_panned_start)
         self.canvas_widget.canvas_zoomed.connect(self._handle_canvas_zoomed) # <-- This is where the zoom signal is connected
+        self.main_controller.toolbox_controller.toggle_grid_visibility_requested.connect(self.toggle_grid_visibility) # Example if MainController forwards it
+
 
         # Critical: Provide the hit_test method to CanvasWidget
         self.canvas_widget.set_hit_test_callback(self._perform_hit_test)
-
         # Pan state tracking (managed internally by CanvasController)
         self._is_panning_active = False
         self._pan_start_data_pos = None
@@ -67,7 +73,7 @@ class CanvasController(QObject):
         return self.canvas_widget.get_axes()
 
     def get_backend(self):
-        return self._matplotlib_backend
+        return self._canvas_instance
 
     def set_mode(self, mode: str):
         """
@@ -108,15 +114,15 @@ class CanvasController(QObject):
                 text_elem.is_selected = True
 
         # 调用 MatplotlibBackend 的 render 方法，并原样传递所有 render_kwargs
-        self._matplotlib_backend.render(
+        self._canvas_instance.render(
             vertices_list, 
             lines_list,
             **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
         )
 
         # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
-        self.main_controller.other_texts_controller.draw_texts_on_canvas(self._matplotlib_backend.ax) 
-        self.get_ax().grid(True)
+        self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
+        # self.get_ax().grid(True)
         self.canvas_widget.draw_idle_canvas() 
 
     def set_selected_object(self, item: [Vertex, Line, None]):
@@ -446,3 +452,68 @@ class CanvasController(QObject):
 
             # Restore cursor to default state
             self.canvas_widget.setCursor(Qt.ArrowCursor)
+
+
+    def _handle_object_edited_on_canvas_widget(self, item_id: str, item_type: str):
+        """
+        Handles object edited signal from CanvasWidget.
+        Notifies MainController to update global selection state.
+        """
+        obj = None
+        if item_type == "vertex":
+            obj = self._get_item_by_id(self.diagram_model.vertices, item_id)
+            if isinstance(obj, Vertex):
+                self.main_controller.vertex_controller._on_edit_vertex_requested_from_list(obj)
+        elif item_type == "line":
+            obj = self._get_item_by_id(self.diagram_model.lines, item_id)
+            if isinstance(obj, Line):
+                self.main_controller.line_controller._on_request_edit_line(obj)
+
+
+    def _handle_object_deleted_on_canvas_widget(self, item_id: str, item_type: str):
+        """
+        Handles object deleted signal from CanvasWidget.
+        Notifies MainController to update global selection state.
+        """
+        obj = None
+        if item_type == "vertex":
+            obj = self._get_item_by_id(self.diagram_model.vertices, item_id)
+            if isinstance(obj, Vertex):
+                self.main_controller.vertex_controller._on_delete_vertex_requested_from_list(obj)
+        elif item_type == "line":
+                obj = self._get_item_by_id(self.diagram_model.lines, item_id)
+                if isinstance(obj, Line):
+                    self.main_controller.line_controller._on_request_delete_line(obj)
+
+    def _handle_blank_double_clicked_on_canvas_widget(self, position: QPointF): # <--- **修改此处，接受 QPointF 参数**
+        """
+        Handles blank double-click signal from CanvasWidget.
+        Notifies MainController to open new vertex creation dialog at the given position.
+        """
+        self.main_controller.status_message.emit(f"Canvas double-clicked at: ({position.x():.2f}, {position.y():.2f})")
+        
+        # Now, pass the coordinates to add_vertex
+        # Assuming add_vertex can take optional x, y coordinates
+        # You might need to adjust your add_vertex method signature in FeynmanDiagram
+        self.main_controller.diagram_model.add_vertex(position.x(), position.y()) 
+        
+        self.main_controller.update_all_views() # Refresh the canvas to show the new vertex
+
+
+    def _handle_add_line_from_vertex_requested(self, start_vertex_id: str):
+        """
+        Handles add line from vertex request signal from MainController.
+        Notifies CanvasWidget to start line creation mode.
+        """
+        self.main_controller.add_line_between_vertices(start_vertex_id)
+
+    def toggle_grid_visibility(self):
+        """
+        槽函数：切换画布的网格可见性。
+        """
+        self._canvas_instance.switch_grid_state()
+        print(f"Grid visibility toggled. Current state: {self._canvas_instance.grid_on}")
+        self.main_controller.update_all_views(canvas_options ={"auto_scale": False})
+        # Optional: Update status message
+        # status_msg = "网格已显示" if self._grid_visible else "网格已隐藏"
+        # self.main_controller.status_message.emit(status_msg)

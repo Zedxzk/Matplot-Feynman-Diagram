@@ -34,6 +34,7 @@ class FeynmanDiagram:
             **kwargs: 额外的关键字参数，会传递给 Vertex 的构造函数，例如 label, id, color 等。
         
         如果 Vertex 实例没有 id 或 id 已被占用，则自动生成或抛出错误。
+        如果未提供 label，则以生成的或提供的 id 作为默认 label。
         """
         if vertex is not None:
             # 如果提供了 Vertex 实例，直接使用它
@@ -48,13 +49,17 @@ class FeynmanDiagram:
             else:
                 vertex_id = self._generate_unique_vertex_id()
                 vertex.id = vertex_id # 将生成的 ID 赋给 Vertex 实例
+            
+            # --- 新增逻辑：如果 Vertex 实例没有 label，则使用其 id 作为 label ---
+            if vertex.label is None or vertex.label == "":
+                vertex.label = vertex_id
 
         else:
             # 如果没有提供 Vertex 实例，则根据 x, y 和 kwargs 创建
             if x is None or y is None:
                 raise ValueError("Must provide 'vertex' instance OR 'x' and 'y' coordinates.")
 
-            # 从 kwargs 中提取 'id'，如果存在的话
+            # 从 kwargs 中提取 'id'
             vertex_id_from_kwargs = kwargs.pop('id', None) 
 
             if vertex_id_from_kwargs is not None:
@@ -64,12 +69,24 @@ class FeynmanDiagram:
             else:
                 vertex_id = self._generate_unique_vertex_id()
             
-            # 使用 x, y 和所有剩余的 kwargs 创建 Vertex 实例
-            vertex = Vertex(x=x, y=y, **kwargs)
+            # --- 新增逻辑：从 kwargs 中提取 'label'，如果不存在，则在创建 Vertex 时使用确定的 vertex_id 作为 label ---
+            label_from_kwargs = kwargs.pop('label', None)
+            if label_from_kwargs is None or label_from_kwargs == "": # 检查 label 是否提供或为空
+                label_to_use = vertex_id # 如果没有提供 label，使用 id 作为 label
+            else:
+                label_to_use = label_from_kwargs # 如果提供了 label，则使用它
+
+            # 使用 x, y, 确定的 ID, label 和所有剩余的 kwargs 创建 Vertex 实例
+            vertex = Vertex(x=x, y=y, label=label_to_use, **kwargs) # <--- 修改此处，传递 label
             vertex.id = vertex_id # 将确定的 ID 赋给 Vertex 实例
+
 
         self.vertices.append(vertex)
         self._vertex_ids.add(vertex_id)
+        
+        # Optionally, emit a signal that the diagram has changed
+        # self.emit_diagram_changed() 
+        
         return vertex
 
     def add_line(self, v_start: Vertex = None, v_end: Vertex = None, 
@@ -335,6 +352,17 @@ class FeynmanDiagram:
         for vertex in self.vertices:
             # Assumes Vertex has a show_label() method
             vertex.show_label()
+
+
+    def hide_all_line_labels(self):
+        """隐藏图中所有线条的标签。"""
+        for line in self.lines:
+            line.hide_label()
+    
+    def show_all_line_labels(self): 
+        """显示图中所有线条的标签。"""
+        for line in self.lines:
+            line.show_label()
 
     # --- JSON Export/Import Methods (delegating to diagram_io) ---
     # These methods would be present if you followed the previous refactoring advice.
