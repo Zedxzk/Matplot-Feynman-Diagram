@@ -1,0 +1,6 @@
+include README*.md
+
+recursive-include feynplot_gui/locale *.qm
+recursive-include feynplot_gui/locale *.ts
+recursive-include examples *
+recursive-include README.assets *

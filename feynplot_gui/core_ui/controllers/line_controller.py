@@ -1,3 +1,5 @@
+# feynplot_gui\core_ui\controllers\line_controller.py
+
 from PySide6.QtWidgets import QListWidgetItem, QMessageBox, QDialog
 from PySide6.QtCore import Qt, QObject, Signal
 

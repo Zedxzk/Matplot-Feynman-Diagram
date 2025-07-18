@@ -1,8 +1,5 @@
 # feynplot_GUI/feynplot_gui/controllers/main_controller.py
-from typing import Optional, Tuple, Dict, Any
-
-from sympy import re
-
+from typing import Optional, Tuple, Dict, Any, Union
 from feynplot_gui.debug_utils import cout, cout3
 from PySide6.QtCore import QObject, Signal, QPointF
 from PySide6.QtWidgets import QMessageBox, QDialog, QFileDialog
@@ -107,10 +104,6 @@ class MainController(QObject):
         self.main_window.toolbox_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
         self.main_window.toolbox_widget_instance.delete_line_requested.connect(self.delete_selected_line)
         self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self.save_diagram_to_file)
-        # self.main_window.toolbox_widget_instance.save_diagram_requested.connect(self)
-        # self.main_window.toolbox_widget_instance.load_diagram_requested.connect(self.load_diagram_from_file)
-        self.main_window.toolbox_widget_instance.undo_action_requested.connect(self.undo)
-        self.main_window.toolbox_widget_instance.redo_action_requested.connect(self.redo)
 
 
         # --- NavigationBarWidget 信号连接 ---
@@ -209,10 +202,10 @@ class MainController(QObject):
         
         self.diagram_model.add_line(v_start=v1, v_end=v2, label="l1", line_type=FermionLine)
         self.diagram_model.add_line(v_start=v2, v_end=v3, label="l2", line_type=PhotonLine)
-        
+        self.picture_model()
         # 这里不需要 update_all_views()，因为 __init__ 的最后会调用
 
-    def update_all_views(self, 
+    def update_all_views(self, picture_model = False,
                          canvas_options: Optional[Dict[str, Any]] = None, 
                          vertex_options: Optional[Dict[str, Any]] = None, 
                          line_options: Optional[Dict[str, Any]] = None
@@ -222,6 +215,8 @@ class MainController(QObject):
         当模型数据发生改变时，由 MainController 主动调用。
         """
         # 确保传入的字典不为 None，如果为 None 则使用空字典
+        if picture_model:
+            self.picture_model()
         canvas_opts = canvas_options if canvas_options is not None else {}
         vertex_opts = vertex_options if vertex_options is not None else {}
         line_opts = line_options if line_options is not None else {}
@@ -384,6 +379,7 @@ class MainController(QObject):
                     self.status_message.emit(f"已添加顶点: {new_vertex.id} 在 ({new_vertex.x:.2f}, {new_vertex.y:.2f})")
                     self.update_all_views(canvas_options={'auto_scale': True}) # 添加后更新所有视图
                     self.select_item(new_vertex)  # 添加后选中新顶点
+                    self.picture_model()
                 except ValueError as e:
                     self.status_message.emit(f"添加顶点失败: {e}")
                     QMessageBox.warning(self.main_window, "添加顶点错误", f"添加顶点失败: {e}")
@@ -435,6 +431,7 @@ class MainController(QObject):
                     self.status_message.emit(f"已添加线条: {new_line.id} 连接 {final_v_start.id} 和 {final_v_end.id}")
                     self.update_all_views()
                     self.select_item(new_line)
+                    self.picture_model()
                 except ValueError as e:
                     self.status_message.emit(f"添加线条失败: {e}")
                     QMessageBox.warning(self.main_window, "添加线条错误", f"添加线条失败: {e}")
@@ -500,6 +497,7 @@ class MainController(QObject):
                             # QMessageBox.information(self.main_window, "删除成功", 
                             #                         f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 及其关联线条已成功删除。")
                             self.status_message.emit(f"已删除顶点: {vertex_label} (ID: {selected_vertex_id})。")
+                            self.picture_model()
                             self.update_all_views(canvas_options={'auto_scale': True}) # 删除后刷新视图
                             self.clear_selection() # 删除后清除当前选择（如果删除的是选中项）
                         else:
@@ -585,7 +583,6 @@ class MainController(QObject):
         """从导航栏通用删除按钮触发，删除当前选中的对象（顶点或线条）。"""
         pass
 
-
     # --- 文件操作 ---
     def save_diagram_to_file(self):
         """保存当前图到文件。支持 .pdf, .png, .jpg 格式。"""
@@ -633,7 +630,7 @@ class MainController(QObject):
             # return
             # Matplotlib 的 savefig 方法会根据文件扩展名自动处理图像格式
             backend.savefig(file_path,
-                            #  bbox_inches='tight', dpi=300
+                             bbox_inches='tight', dpi=300
                              )
             print(f"图像已成功保存到: {file_path}")
             # self.status_message.emit(f"图像已成功保存到: {file_path}")
@@ -646,24 +643,6 @@ class MainController(QObject):
             )
             self.status_message.emit(f"保存失败: {str(e)}")
 
-
-
-    # def load_diagram_from_file(self):
-    #     """从文件加载图。"""
-    #     file_path, _ = QFileDialog.getOpenFileName(self.main_window, "加载费曼图", "", "JSON Files (*.json);;All Files (*)")
-    #     if file_path:
-    #         try:
-    #             # FeynmanDiagram.load_from_json 应该返回一个新的 FeynmanDiagram 实例
-    #             loaded_diagram = FeynmanDiagram.load_from_json(file_path)
-    #             self.diagram_model = loaded_diagram # 替换当前模型
-    #             self.update_all_views() # 加载后更新所有视图
-    #             self.clear_selection() # 清除选中状态
-    #             self.status_message.emit(f"图表已成功从 {file_path} 加载。")
-    #         except Exception as e:
-    #             QMessageBox.critical(self.main_window, "加载失败", f"加载图表时发生错误：\n{str(e)}")
-    #     else:
-    #         self.status_message.emit("加载操作已取消。")
-
     def clear_diagram(self):
         """
         清空图表，使用 PySide6 自带的 QMessageBox 进行二次确认。
@@ -671,7 +650,7 @@ class MainController(QObject):
         reply = QMessageBox.question(
             self.main_window, # 父窗口
             "再次确认清空图表",       # 弹窗标题
-            "再次确认：您确定要清空当前图表吗？此操作不可撤销。", # 弹窗消息
+            "再次确认：您确定要清空当前图表吗？", # 弹窗消息
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, # 确认和取消按钮
             QMessageBox.StandardButton.No # 默认选中“否”按钮
         )
@@ -688,15 +667,6 @@ class MainController(QObject):
         else:
             self.status_message.emit("清空图表操作已取消。")
 
-    def undo(self):
-        self.status_message.emit("执行撤销操作 (待实现)。")
-        # self.diagram_model.undo() # 如果你的模型支持撤销
-        # self.update_all_views()
-
-    def redo(self):
-        self.status_message.emit("执行重做操作 (待实现)。")
-        # self.diagram_model.redo() # 如果你的模型支持重做
-        # self.update_all_views()
     def save_diagram_from_toolbox(self):
         # QMessageBox.information(self.main_window, "提示", "save_diagram_from_toolbox")
         # exit()
@@ -709,3 +679,12 @@ class MainController(QObject):
     # 你可能还需要实现其他更复杂的交互，如多选，复制粘贴等。
 
 
+    def edit_item_properties(self, item: Union[Vertex, Line]):
+        """编辑顶点或线条的属性。"""
+        if isinstance(item, Vertex):
+            self.vertex_controller._on_edit_vertex_requested_from_list(item)
+        elif isinstance(item, Line):
+            self.line_controller._on_request_edit_line(item)    
+    
+    def picture_model(self):
+        self.toolbox_controller._save_current_diagram_state()

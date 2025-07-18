@@ -1,4 +1,9 @@
 from setuptools import setup, find_packages
+import os
+
+# 读取 README 内容
+with open("README.md", encoding="utf-8") as f:
+    long_description = f.read()
 
 setup(
     name="pyfeynplot",
@@ -6,12 +11,11 @@ setup(
     author="Zedxzk",
     author_email="Zedxzk@gmail.com",
     description="Matplot-Feynman-Diagram",
-    long_description=open("README.md", encoding="utf-8").read(),
+    long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main",
-    packages=find_packages(include=["feynplot", "feynplot_gui", "feynplot_gui.*"]),  # 确保包含子包
-    # package_dir={"": "."},  # 可以不设置，默认就是当前目录
-    include_package_data=True,
+    packages=find_packages(include=["feynplot", "feynplot.*", "feynplot_gui", "feynplot_gui.*"]),
+    include_package_data=True,  # 关键！允许使用 MANIFEST.in 添加非 Python 文件
     install_requires=[
         "matplotlib>=3.7.2",
         "mplhep>=0.3.59",

@@ -26,3 +26,7 @@ Homepage = "https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main"
 
 [project.scripts]
 feynplot-gui = "feynplot_gui.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["feynplot", "feynplot.*", "feynplot_gui", "feynplot_gui.*"]

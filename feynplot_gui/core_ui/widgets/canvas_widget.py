@@ -25,6 +25,7 @@ class CanvasWidget(QWidget):
     # --- 为右键菜单添加信号 ---
     object_edited = Signal(str, str)
     object_deleted = Signal(str, str)
+    mouse_released = Signal()
     
     # --- 【新增】添加线条的信号 ---
     add_line_from_vertex_requested = Signal(str) # 传递起始顶点的ID
@@ -190,6 +191,7 @@ class CanvasWidget(QWidget):
             self._mouse_press_pixel_pos = None
             self._is_drag_event = False
             self.set_mode(self._current_mode) # 恢复光标
+            # self.mouse_released.emit() # 确保总是在此方法结束时发出
             return
 
         current_mouse_data_pos = QPointF(event.xdata, event.ydata) if event.xdata is not None and event.ydata is not None else self._mouse_press_data_pos
@@ -212,6 +214,7 @@ class CanvasWidget(QWidget):
             self._mouse_press_pixel_pos = None
             self._is_drag_event = False # 重置拖动标记
             self.set_mode(self._current_mode) # 恢复光标
+            self.mouse_released.emit() # 确保总是在此方法结束时发出
             return # 拖动事件，不视为点击
 
         # 以下是点击事件处理逻辑

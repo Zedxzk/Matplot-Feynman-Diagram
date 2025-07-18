@@ -419,7 +419,7 @@ def import_diagram_from_json(filename: str, diagram_instance=None):
             
             # 修正点：调用 diagram.add_line 方法，并传入已构建的 Line 实例
             # 这样就可以利用 add_line 方法中的所有逻辑（ID检查、添加到内部集合等）
-            print(line)
+            # print(line)
             diagram.add_line(line=line) # <--- 调用图的 add_line 方法
             
         except Exception as e:
@@ -432,4 +432,82 @@ def import_diagram_from_json(filename: str, diagram_instance=None):
     print(f"Diagram imported successfully from {filename}")
     print(f"Diagram instance: {diagram}, Vertices: {diagram.vertices}, Lines: {diagram.lines}")
     
+    return diagram
+
+
+def diagram_to_json_string(diagram_instance: FeynmanDiagram) -> str:
+    """
+    将费曼图的当前状态导出为JSON字符串。
+    
+    Args:
+        diagram_instance: FeynmanDiagram 的实例，包含 vertices 和 lines 列表。
+    Returns:
+        str: 表示图的JSON字符串。
+    """
+    data = {
+        "vertices": [v.to_dict() for v in diagram_instance.vertices],
+        "lines": [l.to_dict() for l in diagram_instance.lines],
+        "metadata": getattr(diagram_instance, 'metadata', {})
+    }
+    return json.dumps(data, indent=4, ensure_ascii=False) # ensure_ascii=False 支持中文
+
+def diagram_from_json_string(json_string: str, diagram_instance: FeynmanDiagram = None) -> FeynmanDiagram:
+    """
+    从JSON字符串导入费曼图的状态。
+    如果提供了 diagram_instance，它将被清空并用导入的数据填充。
+    否则，将创建一个新的 FeynmanDiagram 实例并返回。
+    
+    Args:
+        json_string (str): 包含图数据的JSON字符串。
+        diagram_instance (FeynmanDiagram, optional): 要填充的 FeynmanDiagram 实例。
+                                                    如果为 None，将创建并返回一个新的实例。
+    Returns:
+        FeynmanDiagram: 包含导入数据的 FeynmanDiagram 实例。
+    Raises:
+        json.JSONDecodeError: 如果字符串内容不是有效的JSON。
+        ValueError: 如果JSON数据结构不符合预期或存在ID冲突。
+        TypeError: 如果 diagram_instance 提供但不是 FeynmanDiagram 类型。
+    """
+    try:
+        data = json.loads(json_string)
+    except json.JSONDecodeError as e:
+        raise json.JSONDecodeError(f"Failed to decode JSON string: {e}", e.doc, e.pos)
+
+    if diagram_instance is None:
+        diagram = FeynmanDiagram()
+    elif not isinstance(diagram_instance, FeynmanDiagram):
+        raise TypeError("Provided diagram_instance must be a FeynmanDiagram object.")
+    else:
+        diagram = diagram_instance
+        diagram.clear_diagram() # 清空现有数据
+
+    vertices_map = {}
+    for v_data in data.get("vertices", []):
+        try:
+            vertex_type_name = v_data.get("__type__", "Vertex")
+            # 假设你有一个从类型名映射到类的字典，类似 _LINE_CLASS_MAPPING
+            vertex_class = globals().get(vertex_type_name, Vertex) # 简单示例，实际可能需要更稳健的映射
+            
+            vertex = vertex_class.from_dict(v_data)
+            diagram.add_vertex(vertex=vertex)
+            vertices_map[vertex.id] = vertex
+        except Exception as e:
+            raise ValueError(f"Error loading vertex data for ID '{v_data.get('id', 'unknown')}': {e}") 
+
+    for l_data in data.get("lines", []):
+        try:
+            line_type_name = l_data.get("__type__", "Line")
+            line_class = _LINE_CLASS_MAPPING.get(line_type_name)
+            
+            if not line_class:
+                print(f"Warning: Unknown line type '{line_type_name}' for line ID '{l_data.get('id', 'unknown')}'. Skipping.")
+                continue
+
+            line = line_class.from_dict(l_data, vertices_map) 
+            diagram.add_line(line=line)
+            
+        except Exception as e:
+            raise ValueError(f"Error loading line data for ID '{l_data.get('id', 'unknown')}': {e}")
+
+    # diagram.metadata = data.get("metadata", {})
     return diagram

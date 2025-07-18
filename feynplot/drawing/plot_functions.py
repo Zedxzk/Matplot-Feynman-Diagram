@@ -308,12 +308,12 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         current_label_props['zorder'] = original_zorder + 11
 
     # --- 绘制点状顶点 ---
-    if not vertex.hidden_vertex:
+    if not vertex.hidden_vertex or vertex.is_selected:
         cout(current_scatter_props)
         ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
     # 绘制标签
-    if vertex.label and not vertex.hidden_vertex and not vertex.hidden_label:
+    if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
         label_x = vertex.x + vertex.label_offset[0]
         label_y = vertex.y + vertex.label_offset[1]
 
@@ -344,6 +344,9 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
     original_linewidth = current_circle_props.get('linewidth', 1.5)
     original_edgecolor = current_circle_props.get('edgecolor', 'black')
     original_zorder = current_circle_props.get('zorder_structured', 10)
+
+    if vertex.hidden_vertex and not vertex.is_selected:
+        return
 
     # 如果顶点被选中，调整绘图属性
     if vertex.is_selected:
@@ -425,7 +428,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
             line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
     # 3. 绘制标签
-    if vertex.label and not vertex.hidden_label and not vertex.hidden_vertex: # 只有当圆圈可见时才绘制标签
+    if (vertex.label and not vertex.hidden_label and not vertex.hidden_vertex) or  vertex.is_selected: # 只有当圆圈可见时才绘制标签
         label_x = vertex.x + vertex.label_offset[0]
         label_y = vertex.y + vertex.label_offset[1]
 

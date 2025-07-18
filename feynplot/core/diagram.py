@@ -1,8 +1,6 @@
-# 确保导入了必要的类和模块
-from sympy import im
+# feynplot/core/diagram.py
 from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line, FermionLine, AntiFermionLine, PhotonLine, GluonLine, WPlusLine, WMinusLine, ZBosonLine
-from feynplot.core.line_support import update_line_plot_points
 
 
 # from feynplot.io.diagram_io import export_diagram_to_json, import_diagram_from_json

@@ -1,7 +1,7 @@
+# feynplot_gui\core_ui\controllers\canvas_controller.py
+
 from PySide6.QtCore import QObject, Signal, QPointF, Qt, QTimer 
 from typing import Optional, Callable, Tuple, Dict, Any
-
-from regex import F # <-- Ensure these are imported
 
 # Import CanvasWidget, which is the "view" part of the canvas
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
@@ -57,6 +57,7 @@ class CanvasController(QObject):
         # Connect CanvasWidget's pan and zoom signals
         self.canvas_widget.canvas_panned.connect(self._handle_canvas_panned_start)
         self.canvas_widget.canvas_zoomed.connect(self._handle_canvas_zoomed) # <-- This is where the zoom signal is connected
+        self.canvas_widget.mouse_released.connect(self._handle_mouse_released) # <-- This is where the zoom signal is connected
         self.main_controller.toolbox_controller.toggle_grid_visibility_requested.connect(self.toggle_grid_visibility) # Example if MainController forwards it
 
 
@@ -315,6 +316,14 @@ class CanvasController(QObject):
         
         # 关键点：将计算出的新轴限制作为字典传递给 MainController 的 update_all_views
         self.main_controller.update_all_views(canvas_options={'target_xlim': new_xlim, 'target_ylim': new_ylim})
+    
+
+    def _handle_mouse_released(self):
+        """
+        处理鼠标释放信号，结束画布平移模式。
+        """
+        self.main_controller.picture_model()
+
 
     ### Line Creation Logic ###
     def _collect_vertex_for_line(self, vertex_id: str):
@@ -484,6 +493,8 @@ class CanvasController(QObject):
 
             # Restore cursor to default state
             self.canvas_widget.setCursor(Qt.ArrowCursor)
+            print("Pan ended.")
+            # self.main_controller.picture_model()
 
 
     def _handle_object_edited_on_canvas_widget(self, item_id: str, item_type: str):
@@ -528,7 +539,7 @@ class CanvasController(QObject):
         # Assuming add_vertex can take optional x, y coordinates
         # You might need to adjust your add_vertex method signature in FeynmanDiagram
         self.main_controller.diagram_model.add_vertex(position.x(), position.y()) 
-        
+        self.main_controller.picture_model()
         self.main_controller.update_all_views() # Refresh the canvas to show the new vertex
 
 
