@@ -122,26 +122,26 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
 
             self.main_form_layout.addRow("线条粒子类型:", self.particle_type_combo)
 
-            # --- 5. 线条样式 (LineStyle 枚举) ---
-            self.line_style_combo = QComboBox(self)
-            for style_enum in LineStyle:
-                self.line_style_combo.addItem(style_enum.name.replace('_', ' ').title(), style_enum)
+            # # --- 5. 线条样式 (LineStyle 枚举) ---
+            # self.line_style_combo = QComboBox(self)
+            # for style_enum in LineStyle:
+            #     self.line_style_combo.addItem(style_enum.name.replace('_', ' ').title(), style_enum)
 
-            # 遍历 QComboBox 的所有项目，找到数据匹配的项并设置当前索引
-            target_style = self.line.style
-            found_index = -1
-            for i in range(self.line_style_combo.count()):
-                item_data = self.line_style_combo.itemData(i)
-                if item_data == target_style:
-                    found_index = i
-                    break
-            if found_index != -1:
-                self.line_style_combo.setCurrentIndex(found_index)
-            else:
-                print(f"Warning: LineStyle '{target_style}' not found in QComboBox items. Defaulting to first item.")
-                self.line_style_combo.setCurrentIndex(0)  # 默认选中第一个
+            # # 遍历 QComboBox 的所有项目，找到数据匹配的项并设置当前索引
+            # target_style = self.line.style
+            # found_index = -1
+            # for i in range(self.line_style_combo.count()):
+            #     item_data = self.line_style_combo.itemData(i)
+            #     if item_data == target_style:
+            #         found_index = i
+            #         break
+            # if found_index != -1:
+            #     self.line_style_combo.setCurrentIndex(found_index)
+            # else:
+            #     print(f"Warning: LineStyle '{target_style}' not found in QComboBox items. Defaulting to first item.")
+            #     self.line_style_combo.setCurrentIndex(0)  # 默认选中第一个
 
-            self.main_form_layout.addRow("线条样式:", self.line_style_combo)
+            # self.main_form_layout.addRow("线条样式:", self.line_style_combo)
 
             # --- 6. 颜色 (color) ---
             self.color_button = QPushButton("选择颜色", self)
@@ -321,7 +321,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             # 移除ID冲突检查，因为ID不能被修改
             
             selected_particle_class = self.particle_type_combo.currentData()
-            selected_line_style_enum = self.line_style_combo.currentData()  # 获取 LineStyle 枚举成员
+            # selected_line_style_enum = self.line_style_combo.currentData()  # 获取 LineStyle 枚举成员
 
             # 从 UI 获取所有通用属性
             common_kwargs = {
@@ -337,7 +337,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
                 'label_color': self._label_color_picked_color,
                 'label_ha': self.label_ha_combo.currentText(),
                 'label_va': self.label_va_combo.currentText(),
-                'style': selected_line_style_enum,
+                # 'style': selected_line_style_enum,
             }
 
             # 处理 angleIn 和 angleOut 的“自动”选项 (None)
@@ -406,7 +406,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
                 self.line.label_color = common_kwargs['label_color']
                 self.line.label_ha = common_kwargs['label_ha']
                 self.line.label_va = common_kwargs['label_va']
-                self.line.style = common_kwargs['style']
+                # self.line.style = common_kwargs['style']
                 self.line._angleIn = common_kwargs['angleIn']
                 self.line._angleOut = common_kwargs['angleOut']
 

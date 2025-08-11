@@ -22,9 +22,9 @@ from feynplot.core.line import Line, FermionLine, PhotonLine, GluonLine, LineSty
 from feynplot_gui.core_ui.widgets.main_window import MainWindow
 # 导入对话框，因为 MainController 现在负责它们的创建和数据显示
 from feynplot_gui.core_ui.dialogs.add_vertex_dialog import AddVertexDialog
-from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
+# from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
 from feynplot_gui.core_ui.dialogs.add_line_dialog import AddLineDialog
-from feynplot_gui.core_ui.dialogs.edit_line_dialog import EditLineDialog
+# from feynplot_gui.core_ui.dialogs.edit_line_dialog import EditLineDialog
 from feynplot_gui.core_ui.dialogs.delete_vertex_dialog import DeleteVertexDialog
 from feynplot_gui.core_ui.dialogs.delete_line_dialog import DeleteLineDialog
 
@@ -266,8 +266,8 @@ class MainController(QObject):
                 elif isinstance(self._current_selected_item, Line):
                     item_type_str = '线条'
 
-                self.status_message.emit(f"选中: {self._current_selected_item.id} ({item_type_str})")
-                print(f"选中: {self._current_selected_item.id} ({item_type_str})")
+                # self.status_message.emit(f"选中: {self._current_selected_item.id} ({item_type_str})")
+                # print(f"选中: {self._current_selected_item.id} ({item_type_str})")
                 print(f"Current selected item (model ID): {self._current_selected_item.id}, is_selected: {self._current_selected_item.is_selected}")
 
             else:
@@ -350,10 +350,7 @@ class MainController(QObject):
     def start_add_vertex_process(self):
         """启动添加顶点的流程。"""
         self.add_vertex_at_coords()
-        # parent_window = self.main_window if 
-        # self.toolbox_controller.set_add_vertex_mode() # 切换工具箱模式
-        # self.status_message.emit("请在画布上点击以添加顶点。")
-
+        
     def add_vertex_at_coords(self):
         dialog = AddVertexDialog(diagram = self.diagram_model, parent=self.main_window)
         # dialog.set_position(x, y) # 预设点击的位置
@@ -687,4 +684,6 @@ class MainController(QObject):
             self.line_controller._on_request_edit_line(item)    
     
     def picture_model(self):
+        print("Model pictured.")
         self.toolbox_controller._save_current_diagram_state()
+        self.toolbox_controller._update_undo_redo_button_states()

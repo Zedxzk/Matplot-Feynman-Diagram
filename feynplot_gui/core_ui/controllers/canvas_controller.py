@@ -3,20 +3,16 @@
 from PySide6.QtCore import QObject, Signal, QPointF, Qt, QTimer 
 from typing import Optional, Callable, Tuple, Dict, Any
 
-# Import CanvasWidget, which is the "view" part of the canvas
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
-
-# Import your MatplotlibBackend (renderer, don't modify it directly)
 from feynplot.drawing.renderer import FeynmanDiagramCanvas
-
-# Import your core model classes (ensure Vertex and Line have is_selected property)
 from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line
 from feynplot_gui.core_ui.controllers.other_texts_controller import TextElement
-# from debug_utils import cout3 # Uncomment if you have this utility for debugging
+from feynplot_gui.default.default_settings import canvas_controller_default_settings
+# from debug_utils import cout3 
 
-import numpy as np # <-- Ensure numpy is imported for hit testing
+import numpy as np 
 
 last_move_time = QTimer
 
@@ -42,7 +38,7 @@ class CanvasController(QObject):
         self._first_vertex_for_line = None
         # Current canvas operation mode, set by MainController
         self._current_canvas_mode = "select"
-
+        self.only_allow_grid_points = canvas_controller_default_settings['ONLY_ALLOW_GRID_POINTS']
         # Connect CanvasWidget's user interaction signals to CanvasController's slots
         self.canvas_widget.canvas_clicked.connect(self._handle_canvas_click)
         self.canvas_widget.object_selected.connect(self._handle_object_selected_on_canvas_widget)
@@ -59,7 +55,7 @@ class CanvasController(QObject):
         self.canvas_widget.canvas_zoomed.connect(self._handle_canvas_zoomed) # <-- This is where the zoom signal is connected
         self.canvas_widget.mouse_released.connect(self._handle_mouse_released) # <-- This is where the zoom signal is connected
         self.main_controller.toolbox_controller.toggle_grid_visibility_requested.connect(self.toggle_grid_visibility) # Example if MainController forwards it
-
+        self.main_controller.navigation_bar_controller.navigation_bar_widget.toggle_gride_points_mode.connect(self._handle_gride_points_mode_toggled) 
 
         # Critical: Provide the hit_test method to CanvasWidget
         self.canvas_widget.set_hit_test_callback(self._perform_hit_test)
@@ -196,9 +192,23 @@ class CanvasController(QObject):
         if any(v.id == item_id for v in self.diagram_model.vertices):
             obj = next((v for v in self.diagram_model.vertices if v.id == item_id), None)
             if obj:
-                # 更新顶点位置
-                obj.x = new_pos.x()
-                obj.y = new_pos.y()
+                # 检查是否需要对齐到网格
+                if self.only_allow_grid_points:
+                    # 获取网格大小（假设 self.grid_size 存在）
+                    grid_size = canvas_controller_default_settings['GRID_SIZE']
+                    
+                    # 计算最近的网格点
+                    # 使用 round() 进行四舍五入
+                    snapped_x = round(new_pos.x() / grid_size) * grid_size
+                    snapped_y = round(new_pos.y() / grid_size) * grid_size
+                    
+                    # 更新为对齐后的位置
+                    obj.x = snapped_x
+                    obj.y = snapped_y
+                else:
+                    # 直接使用新位置
+                    obj.x = new_pos.x()
+                    obj.y = new_pos.y()
                 # 同时更新受影响的线条的端点引用，确保数据一致性
                 for line in self.diagram_model.lines:
                     if line.v_start.id == obj.id:
@@ -364,33 +374,44 @@ class CanvasController(QObject):
 
     def _perform_hit_test(self, x: float, y: float) -> Tuple[Optional[str], Optional[str]]:
         """
-        执行点击测试，判断点击是否落在对象（顶点或线条）上。
-        此方法需要根据 Matplotlib 的绘制方式准确判断，特别是考虑到存储在 plot_points 中的复杂线条路径。
+        执行点击测试，判断点击是否落在对象（顶点或线条）上，并返回最近的对象。
+        此方法会遍历所有对象，找到距离鼠标点击位置最近的那个。
         """
-        # 遍历顶点进行点击检测
+        closest_id: Optional[str] = None
+        closest_type: Optional[str] = None
+        min_dist_sq = float('inf') # 使用平方距离，避免开方运算，提高性能
+
+        # --- 遍历顶点进行点击检测 ---
         for vertex in self.diagram_model.vertices:
             # 简单的距离检查，0.5 是经验值，根据顶点视觉大小调整
             dist_sq = (x - vertex.x)**2 + (y - vertex.y)**2
-            if dist_sq < 0.5**2: # 假设点击半径为 0.5 数据单位
-                return vertex.id, "vertex"
+            x_limits, y_limits = self._canvas_instance.get_axes_limits()
+            x_coverage = (x_limits[1] - x_limits[0])
+            y_coverage = (y_limits[1] - y_limits[0])
+            width = max(x_coverage , y_coverage)
+            # 使用容差来决定是否命中，这里我们直接比较距离
+            tolarence_scaling_factor = canvas_controller_default_settings["SCALING_FACTOR_FOR_TOLERANCE"]
+            hit_tolerance_vertex_sq = (tolarence_scaling_factor  *  width) ** 2
+            # hit_tolerance_vertex_sq = 0.5**2  # 顶点的点击容差
+            if dist_sq < min_dist_sq and dist_sq < hit_tolerance_vertex_sq:
+                min_dist_sq = dist_sq
+                closest_id = vertex.id
+                closest_type = "vertex"
 
-        # 遍历线条进行点击检测
+        # --- 遍历线条进行点击检测 ---
         for line in self.diagram_model.lines:
             # 确保线条有 plot_points 且至少包含两个点以构成线段
             if not hasattr(line, 'plot_points') or not line.plot_points or len(line.plot_points) < 2:
                 continue # 跳过没有有效绘制路径的线条
 
             num_plot_points = len(line.plot_points)
-            
-            # --- 优化开始：根据点数均分采样，最多遍历 30 个点 ---
-            # 如果点的数量小于等于 30，则遍历所有点
-            if num_plot_points <= 30:
+            shorted_points_number = canvas_controller_default_settings['NUMBER_OF_COMPARISON_POINTS']
+            if num_plot_points <= shorted_points_number:
                 indices_to_check = range(num_plot_points - 1)
             else:
-                # 否则，从总点数中均匀选择 30 个点（或更少，取决于 num_plot_points - 1 是否大于 0）
-                # 确保步长至少为 1，避免无限循环
-                step = max(1, (num_plot_points - 1) // 30) 
+                step = max(1, (num_plot_points - 1) // shorted_points_number) 
                 indices_to_check = range(0, num_plot_points - 1, step)
+                indices_to_check = indices_to_check[1:-1] 
             # --- 优化结束 ---
 
             # 现在，遍历由 plot_points 定义的各个线段
@@ -420,12 +441,15 @@ class CanvasController(QObject):
 
                 # 计算鼠标点击到这个最近点的距离平方
                 dist_to_line_sq = (x - closest_point[0])**2 + (y - closest_point[1])**2
+                
+                # 如果距离小于当前最小距离，且在容忍范围内，则更新最近对象
+                hit_tolerance_line_sq = hit_tolerance_vertex_sq # 线条点击容差
+                if dist_to_line_sq < min_dist_sq and dist_to_line_sq < hit_tolerance_line_sq:
+                    min_dist_sq = dist_to_line_sq
+                    closest_id = line.id
+                    closest_type = "line"
 
-                # 如果距离在容忍范围内，则命中
-                if dist_to_line_sq < 0.2**2: # 假设线条点击容差为 0.2 数据单位
-                    return line.id, "line"
-
-        return None, None
+        return closest_id, closest_type
     
 
     def _handle_canvas_panned_start(self, pan_start_data_pos: QPointF, current_pan_data_pos: QPointF):
@@ -566,3 +590,9 @@ class CanvasController(QObject):
         槽函数：设置画布更新间隔。
         """
         self.canvas_widget.set_update_interval(interval)
+
+    def _handle_gride_points_mode_toggled(self):
+        self.only_allow_grid_points = not self.only_allow_grid_points
+        if self.only_allow_grid_points:
+            self.main_controller.toolbox_controller._on_auto_grid_adjustment_requested()
+            pass

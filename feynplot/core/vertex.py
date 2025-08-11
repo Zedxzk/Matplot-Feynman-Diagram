@@ -23,6 +23,7 @@ class Vertex:
     def __init__(self, x, y, vertex_type=VertexType.ELECTROMAGNETIC, label="",
                  coupling_constant=1.0, symmetry_factor=1,
                  label_offset=(0.1, -0.2),
+                 label_zorder = 2,
                  is_structured: bool = False,
                  structured_radius: float = 0.5,
                  structured_facecolor: str = 'lightgray',
@@ -68,7 +69,9 @@ class Vertex:
         self.label_size = kwargs.pop('fontsize', kwargs.pop('label_size', 30))
         self.label_color = kwargs.pop('label_color', kwargs.pop('labelcolor', 'black'))
         self.label_offset = np.array(label_offset)
+        self.label_zorder = label_zorder
 
+        
         self.is_structured = is_structured
         self.structured_radius = structured_radius
         self.structured_facecolor = structured_facecolor

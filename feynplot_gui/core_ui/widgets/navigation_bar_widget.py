@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu, QSpinBox, QLabel # Import QSpinBox and QLabel
+from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, QCheckBox # Import QSpinBox and QLabel
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, Signal
 from typing import Optional
 from feynplot_gui.default.default_settings import canvas_widget_default_settings as cw_default_settings
+from feynplot_gui.default.default_settings import canvas_controller_default_settings as cc_default_settings
 
 class NavigationBarWidget(QWidget):
     # 定义信号，这些信号将被 MainController 或 NavigationBarController 监听
@@ -33,6 +34,7 @@ class NavigationBarWidget(QWidget):
     
     # 【修改】自动缩放信号，现在只在点击时触发，不携带状态
     toggle_auto_scale_requested = Signal() 
+    toggle_gride_points_mode = Signal() 
 
     # --- 【新增】画布更新间隔调整信号 ---
     # 当用户通过UI（QSpinBox）改变间隔时，NavigationBarWidget发出此信号
@@ -101,13 +103,13 @@ class NavigationBarWidget(QWidget):
         about_menu = self.menu_bar.addMenu("关于")
 
         # 文件菜单项
-        self.save_action = QAction("保存项目", self)
-        self.save_action.triggered.connect(self.save_project_action_triggered.emit)
-        file_menu.addAction(self.save_action)
-
         self.load_action = QAction("加载项目", self)
         self.load_action.triggered.connect(self.load_project_action_triggered.emit)
         file_menu.addAction(self.load_action)
+
+        self.save_action = QAction("保存项目", self)
+        self.save_action.triggered.connect(self.save_project_action_triggered.emit)
+        file_menu.addAction(self.save_action)
 
         # 编辑菜单项
         add_vertex_action = QAction("添加顶点", self)
@@ -188,6 +190,22 @@ class NavigationBarWidget(QWidget):
         # 连接 spinbox 的 valueChanged 信号到我们自定义的 signal
         self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
         self.tool_bar.addWidget(self.canvas_update_interval_spinbox)
+
+
+        # 添加网格模式
+        self.tool_bar.addSeparator() # 添加分隔符，使UI更整洁
+        self.tool_bar.addWidget(QLabel("仅允许拖动到格点上:", self)) # 添加标签
+
+        # 添加一个选项框（QCheckBox）
+        self.snap_to_grid_checkbox = QCheckBox(self)
+        self.tool_bar.addWidget(self.snap_to_grid_checkbox)
+
+        # 设置默认状态和关联信号
+        # 默认状态从 main_controller 获取
+        self.snap_to_grid_checkbox.setChecked(cc_default_settings['ONLY_ALLOW_GRID_POINTS'])
+
+        # 连接 toggled 信号到一个处理函数
+        self.snap_to_grid_checkbox.toggled.connect(self._on_snap_to_grid_toggled)
         # --- 新增结束 ---
 
         main_layout.addWidget(self.tool_bar)
@@ -330,6 +348,14 @@ class NavigationBarWidget(QWidget):
         if self.canvas_update_interval_spinbox:
             return self.canvas_update_interval_spinbox.value()
         return 0 # 默认值
+
+    def _on_snap_to_grid_toggled(self, checked: bool):
+        """
+        当“仅允许拖动到格点上”复选框状态改变时被调用。
+        更新 canvas_controller 中的 only_allow_grid_points 属性。
+        """
+        self.toggle_gride_points_mode.emit()
+
 
     def _show_about_dialog(self):
         """

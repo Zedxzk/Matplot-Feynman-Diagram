@@ -164,23 +164,16 @@ class ToolboxWidget(QFrame):
         self.show_all_vertices_button.clicked.connect(self.show_all_vertices_requested.emit)
         self.hide_all_vertices_button.clicked.connect(self.hide_all_vertices_requested.emit)
         
-        # 顶点标签可见性信号
         self.show_all_vertex_labels_button.clicked.connect(self.show_all_vertex_labels_requested.emit)
         self.hide_all_vertex_labels_button.clicked.connect(self.hide_all_vertex_labels_requested.emit)
 
-        # 线标签可见性信号
         self.show_all_line_labels_button.clicked.connect(self.show_all_line_labels_requested.emit)
         self.hide_all_line_labels_button.clicked.connect(self.hide_all_line_labels_requested.emit)
-        
         self.auto_set_line_angles_button.clicked.connect(self.request_auto_set_line_angles.emit)
-
         self.auto_grid_button.clicked.connect(self.request_auto_grid_adjustment.emit)
-
         self.auto_scale_button.clicked.connect(self.request_auto_scale.emit)
-
-        # 【新增】连接切换网格可见性按钮信号
-        self.toggle_grid_button.clicked.connect(self.request_toggle_grid_visibility.emit) # <--- **连接信号**
-
+        
+        self.toggle_grid_button.clicked.connect(self.request_toggle_grid_visibility.emit) 
         self.clear_diagram_button.clicked.connect(self._on_clear_diagram_button_clicked)
 
     def _emit_tool_signal(self, tool_name):

@@ -997,12 +997,12 @@
             "label_fontsize": 30,
             "label_color": "black",
             "label_ha": "left",
-            "label_va": "bottom",
+            "label_va": "baseline",
             "style": "photon",
             "is_selected": false,
             "metadata": {},
             "amplitude": 0.2,
-            "wavelength": 0.39999999999999997,
+            "wavelength": 0.49999999999999994,
             "initial_phase": 0,
             "final_phase": 0
         }

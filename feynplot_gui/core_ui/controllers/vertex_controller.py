@@ -9,12 +9,12 @@ from feynplot.core.line import Line
 from feynplot_gui.core_ui.widgets.vertex_list_widget import VertexListWidget
 
 # 导入对话框 (这里保留你的结构，尽管对话框的协调通常由 MainController 或专门的 DialogController 负责)
-from feynplot_gui.core_ui.dialogs.add_vertex_dialog import AddVertexDialog
-from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
+# from feynplot_gui.core_ui.dialogs.add_vertex_dialog import AddVertexDialog
+# from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
 
 # 导入你的功能函数
 from .vertex_dialogs.edit_vertex import open_edit_vertex_dialog
-
+from feynplot.io.diagram_io import diagram_to_json_string, diagram_from_json_string
 
 class VertexController(QObject):
     # 移除: vertex_selection_changed 信号，因为我们将直接调用 main_controller.select_item
@@ -59,7 +59,7 @@ class VertexController(QObject):
         self.vertex_list_widget.clear()
 
         for vertex in self.diagram_model.vertices:
-            item_text = f"[{vertex.id}] Vtx: {vertex.label} ({vertex.x:.2f}, {vertex.y:.2f})"
+            item_text = f"[{vertex.id}] {vertex.label} ({vertex.x:.2f}, {vertex.y:.2f})"
             item = QListWidgetItem(item_text)
             item.setData(Qt.ItemDataRole.UserRole, vertex)
             self.vertex_list_widget.addItem(item)
@@ -176,10 +176,15 @@ class VertexController(QObject):
         parent_widget = self._get_parent_widget() # Get parent widget
 
         # Call the imported functional function
+        # self.main_controller.toolbox_controller._save_current_diagram_state()
+        current_status = diagram_to_json_string(self.main_controller.diagram_model)
         if open_edit_vertex_dialog(vertex, self.main_controller.diagram_model, parent_widget=parent_widget):
+            self.main_controller.toolbox_controller.update_redo_unto_status(current_status)
+            self.main_controller.toolbox_controller.update_redo_unto_status()
             # If successfully edited, notify MainController to update UI
             self.main_controller.update_all_views() # Assume MainController has a method to trigger all UI updates
             self.main_controller.status_message.emit(f"顶点 {vertex.id} 属性已成功更新并刷新。")
+            # print(f"顶点 {vertex.id} 属性已成功更新并刷新。")
             # Re-set the selected item to ensure its highlighted state is preserved/updated
             self.set_selected_item_in_list(vertex)
         else:

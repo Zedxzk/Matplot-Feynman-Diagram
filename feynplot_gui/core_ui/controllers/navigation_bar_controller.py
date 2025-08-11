@@ -173,6 +173,7 @@ class NavigationBarController(QObject):
                 # 如果 MainController 只是直接赋值，则可能需要 MainController 内部做调整来发出信号。
                 self.main_controller.diagram_model = import_diagram_from_json(file_path, self.main_controller.diagram_model)
                 QMessageBox.information(self.navigation_bar_widget, "加载成功", f"项目已成功从：\n{file_path}")
+                self.main_controller.picture_model()
                 self.status_message.emit(f"项目已从：{file_path} 加载。")
                 self.project_loaded.emit() # 通知NavigationBarController自身项目已加载
             except Exception as e:

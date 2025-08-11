@@ -292,7 +292,6 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
         init_kwargs['amplitude'] = data_copy.pop('amplitude', 0.1) # GluonLine 也有 amplitude
         init_kwargs['wavelength'] = data_copy.pop('wavelength', 0.2) # GluonLine 也有 wavelength
         init_kwargs['n_cycles'] = data_copy.pop('n_cycles', 16)
-        init_kwargs['bezier_offset'] = data_copy.pop('bezier_offset', 0.3) # GluonLine 自身的 bezier_offset
 
     # 处理 WPlusLine, WMinusLine, ZBosonLine, HiggsLine 特有的属性
     if issubclass(line_class, (WPlusLine, WMinusLine, ZBosonLine)):

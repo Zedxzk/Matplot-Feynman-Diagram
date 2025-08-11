@@ -1,8 +1,42 @@
 import numpy as np
 
+# def cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
+#     """
+#     生成从点 A 到点 B 的三次贝塞尔曲线。
+    
+#     参数:
+#         A, B: 起点和终点坐标，格式为 [x, y]。
+#         angleA_deg: 起点切线角度（以度为单位，逆时针方向，0 度表示向右）。
+#         angleB_deg: 终点切线角度（以度为单位）。
+#         offset_ratio: 控制点相对于 AB 直线长度的偏移比例。
+#         points: 曲线上采样的点数。
+
+#     返回:
+#         xs, ys: 曲线的 x 和 y 坐标数组。
+#     """
+    
+#     A = np.array(A, dtype=float)
+#     B = np.array(B, dtype=float)
+
+#     dist = np.linalg.norm(B - A)
+
+#     angleA_rad = np.deg2rad(angleA_deg)
+#     angleB_rad = np.deg2rad(angleB_deg)
+
+#     C1 = A + offset_ratio * dist * np.array([np.cos(angleA_rad), np.sin(angleA_rad)])
+#     C2 = B + offset_ratio * dist * np.array([np.cos(angleB_rad), np.sin(angleB_rad)])
+
+#     t = np.linspace(0, 1, points)
+#     xs = (1 - t)**3 * A[0] + 3*(1 - t)**2 * t * C1[0] + 3*(1 - t)*t**2 * C2[0] + t**3 * B[0]
+#     ys = (1 - t)**3 * A[1] + 3*(1 - t)**2 * t * C1[1] + 3*(1 - t)*t**2 * C2[1] + t**3 * B[1]
+
+#     return xs, ys
+
+
+
 def cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
     """
-    生成从点 A 到点 B 的三次贝塞尔曲线。
+    生成从点 A 到点 B 的三次贝塞尔曲线，使用弧长重采样使得点间距均匀。
     
     参数:
         A, B: 起点和终点坐标，格式为 [x, y]。
@@ -14,10 +48,8 @@ def cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
     返回:
         xs, ys: 曲线的 x 和 y 坐标数组。
     """
-    
     A = np.array(A, dtype=float)
     B = np.array(B, dtype=float)
-
     dist = np.linalg.norm(B - A)
 
     angleA_rad = np.deg2rad(angleA_deg)
@@ -26,11 +58,26 @@ def cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
     C1 = A + offset_ratio * dist * np.array([np.cos(angleA_rad), np.sin(angleA_rad)])
     C2 = B + offset_ratio * dist * np.array([np.cos(angleB_rad), np.sin(angleB_rad)])
 
-    t = np.linspace(0, 1, points)
-    xs = (1 - t)**3 * A[0] + 3*(1 - t)**2 * t * C1[0] + 3*(1 - t)*t**2 * C2[0] + t**3 * B[0]
-    ys = (1 - t)**3 * A[1] + 3*(1 - t)**2 * t * C1[1] + 3*(1 - t)*t**2 * C2[1] + t**3 * B[1]
+    # 先生成高密度曲线
+    t_dense = np.linspace(0, 1, 5000)
+    xs_dense = (1 - t_dense)**3 * A[0] + 3*(1 - t_dense)**2 * t_dense * C1[0] + \
+               3*(1 - t_dense)*t_dense**2 * C2[0] + t_dense**3 * B[0]
+    ys_dense = (1 - t_dense)**3 * A[1] + 3*(1 - t_dense)**2 * t_dense * C1[1] + \
+               3*(1 - t_dense)*t_dense**2 * C2[1] + t_dense**3 * B[1]
+    curve_dense = np.column_stack((xs_dense, ys_dense))
+
+    # 弧长重采样
+    deltas = np.diff(curve_dense, axis=0)
+    segment_lengths = np.sqrt((deltas**2).sum(axis=1))
+    arc_lengths = np.concatenate([[0], np.cumsum(segment_lengths)])
+    total_length = arc_lengths[-1]
+    target_lengths = np.linspace(0, total_length, points)
+    xs = np.interp(target_lengths, arc_lengths, xs_dense)
+    ys = np.interp(target_lengths, arc_lengths, ys_dense)
 
     return xs, ys
+
+
 
 
 def generate_bezier_path(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):

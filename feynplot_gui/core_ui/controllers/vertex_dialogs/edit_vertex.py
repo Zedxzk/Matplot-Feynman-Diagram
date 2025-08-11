@@ -119,13 +119,29 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             )
             basic_layout.addLayout(self.vertex_linewidth_layout)
 
-            # --- Vertex Z-order (Read-only) ---
-            zorder_layout = QHBoxLayout()
-            zorder_layout.addWidget(QLabel(self.tr("顶点 Z 轴顺序 (zorder):")))
-            self.zorder_display = QLabel(str(getattr(self.vertex, 'zorder', 2)))
-            zorder_layout.addWidget(self.zorder_display)
+
+            # --- 顶点和标签 Z 轴顺序 (并排在一行) ---
+            zorder_layout, self.vertex_zorder_input, self.label_zorder_input = self._create_dual_spinbox_row(
+                label1_text=self.tr("顶点 zorder:"),
+                initial1_value=getattr(self.vertex, 'zorder', 2),
+                label2_text=self.tr("标签 zorder:"),
+                initial2_value=getattr(self.vertex, 'label_zorder', 3),
+                is_int=True
+            )
+
+            # 连接各自的信号到相应的更新函数
+            # self.vertex_zorder_spinbox.valueChanged.connect(self.update_vertex_zorder)
+            # self.label_zorder_spinbox.valueChanged.connect(self.update_label_zorder)
+
+            # 将整个布局添加到主布局中
             basic_layout.addLayout(zorder_layout)
 
+            # 将整个水平布局添加到主布局中
+
+
+
+
+            
             # --- Label Font Size ---
             initial_label_size = getattr(self.vertex, 'label_size', 12.0)
             self.label_fontsize_layout, self.label_fontsize_input = self._create_spinbox_row(
@@ -178,22 +194,22 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             font_settings_layout.addLayout(mathtext_bf_layout)
 
             type_layout = QHBoxLayout()
-            type_layout.addWidget(QLabel(self.tr("类型:")))
-            self.type_combo = QComboBox()
-            for v_type in VertexType:
-                self.type_combo.addItem(v_type.name.replace('_', ' ').title(), v_type)
-            current_type_name_formatted = self.vertex.vertex_type.name.replace('_', ' ').title()
-            index = self.type_combo.findText(current_type_name_formatted)
-            if index != -1:
-                self.type_combo.setCurrentIndex(index)
-            type_layout.addWidget(self.type_combo)
-            basic_layout.addLayout(type_layout)
+            # type_layout.addWidget(QLabel(self.tr("类型:")))
+            # self.type_combo = QComboBox()
+            # for v_type in VertexType:
+            #     self.type_combo.addItem(v_type.name.replace('_', ' ').title(), v_type)
+            # current_type_name_formatted = self.vertex.vertex_type.name.replace('_', ' ').title()
+            # index = self.type_combo.findText(current_type_name_formatted)
+            # if index != -1:
+            #     self.type_combo.setCurrentIndex(index)
+            # type_layout.addWidget(self.type_combo)
+            # basic_layout.addLayout(type_layout)
 
-            self.coupling_layout, self.coupling_input = self._create_spinbox_row("耦合常数:", self.vertex.coupling_constant, min_val=0.0, max_val=100.0, step=0.1)
-            basic_layout.addLayout(self.coupling_layout)
+            # self.coupling_layout, self.coupling_input = self._create_spinbox_row("耦合常数:", self.vertex.coupling_constant, min_val=0.0, max_val=100.0, step=0.1)
+            # basic_layout.addLayout(self.coupling_layout)
 
-            self.symmetry_layout, self.symmetry_input = self._create_spinbox_row("对称因子:", self.vertex.symmetry_factor, is_int=True, min_val=1, max_val=100)
-            basic_layout.addLayout(self.symmetry_layout)
+            # self.symmetry_layout, self.symmetry_input = self._create_spinbox_row("对称因子:", self.vertex.symmetry_factor, is_int=True, min_val=1, max_val=100)
+            # basic_layout.addLayout(self.symmetry_layout)
 
             label_offset_x = self.vertex.label_offset[0] if self.vertex.label_offset is not None and len(self.vertex.label_offset) > 0 else 0.0
             label_offset_y = self.vertex.label_offset[1] if self.vertex.label_offset is not None and len(self.vertex.label_offset) > 1 else 0.0
@@ -314,6 +330,45 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             h_layout.addWidget(spinbox)
             return h_layout, spinbox
 
+
+        def _create_dual_spinbox_row(self, label1_text, initial1_value, label2_text, initial2_value, is_int=True):
+            """
+            Helper function to create two labels and two spinboxes in a single horizontal layout.
+            """
+            h_layout = QHBoxLayout()
+
+            # 第一个控件组 (左边)
+            h_layout.addWidget(QLabel(label1_text))
+            if is_int:
+                spinbox1 = QSpinBox()
+                spinbox1.setRange(0, 100)
+                spinbox1.setValue(int(initial1_value))
+            else:
+                spinbox1 = QDoubleSpinBox()
+                spinbox1.setRange(-999.0, 999.0)
+                spinbox1.setValue(float(initial1_value))
+                spinbox1.setDecimals(2)
+            h_layout.addWidget(spinbox1)
+            
+            # 添加一个分隔符或间隔
+            h_layout.addSpacing(20)
+
+            # 第二个控件组 (右边)
+            h_layout.addWidget(QLabel(label2_text))
+            if is_int:
+                spinbox2 = QSpinBox()
+                spinbox2.setRange(0, 100)
+                spinbox2.setValue(int(initial2_value))
+            else:
+                spinbox2 = QDoubleSpinBox()
+                spinbox2.setRange(-999.0, 999.0)
+                spinbox2.setValue(float(initial2_value))
+                spinbox2.setDecimals(2)
+            h_layout.addWidget(spinbox2)
+
+            return h_layout, spinbox1, spinbox2
+
+
         def _pick_color(self, button, temp_attr_name):
             """Opens a color dialog, sets the button's background color, and stores the selected color."""
             initial_color_str = getattr(self, temp_attr_name)
@@ -425,15 +480,18 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
                 self.vertex.edgecolor = self._vertex_edgecolor_picked_color
             if hasattr(self.vertex, 'linewidth'):
                 self.vertex.linewidth = self.vertex_linewidth_input.value()
-
+            if hasattr(self.vertex, 'zorder'):
+                self.vertex.zorder = self.vertex_zorder_input.value()
             if hasattr(self.vertex, 'label_size'):
                 self.vertex.label_size = self.label_fontsize_input.value()
 
-            self.vertex.vertex_type = self.type_combo.currentData()
-            self.vertex.coupling_constant = self.coupling_input.value()
-            self.vertex.symmetry_factor = self.symmetry_input.value()
+            # self.vertex.vertex_type = self.type_combo.currentData()
+            # self.vertex.coupling_constant = self.coupling_input.value()
+            # self.vertex.symmetry_factor = self.symmetry_input.value()
 
             self.vertex.label_offset = np.array([self.label_offset_x_input.value(), self.label_offset_y_input.value()])
+            if hasattr(self.vertex, 'label_zorder'):
+                self.vertex.label_zorder = self.label_zorder_input.value()
 
             self.vertex.is_structured = self.is_structured_checkbox.isChecked()
             if self.vertex.is_structured:

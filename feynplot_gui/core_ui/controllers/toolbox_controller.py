@@ -6,12 +6,8 @@ from PySide6.QtCore import QObject, Signal
 import numpy as np 
 from collections import defaultdict
 
-# 导入 UI Widget
 from feynplot_gui.core_ui.widgets.toolbox_widget import ToolboxWidget
-
-# 导入 diagram_to_json_string 和 diagram_from_json_string
 from feynplot.io.diagram_io import diagram_to_json_string, diagram_from_json_string
-# 确保导入 FeynmanDiagram 类
 from feynplot.core.diagram import FeynmanDiagram 
 
 
@@ -60,13 +56,16 @@ class ToolboxController(QObject):
         self.toolbox_widget.request_toggle_grid_visibility.connect(self._on_request_toggle_grid_visibility)
         
 
-    def _save_current_diagram_state(self):
+    def _save_current_diagram_state(self,  message=None):
         """
         保存当前图的状态到撤销栈。
         """
-        current_state_json = diagram_to_json_string(self.main_controller.diagram_model)
+        if message is None:
+            current_state_json = diagram_to_json_string(self.main_controller.diagram_model)
+        else:
+            current_state_json = message
         self.undo_stack.append(current_state_json)
-        print(self._get_diagram_summary(self.main_controller.diagram_model))
+        # print(self._get_diagram_summary(self.main_controller.diagram_model))
         if len(self.undo_stack) > self.max_history:
             self.undo_stack.pop(0)
         self.redo_stack.clear()
@@ -155,7 +154,7 @@ class ToolboxController(QObject):
         # print("Undo requested.") # 保持这个输出以指示操作开始
         if len(self.undo_stack) > 1:
             # 1. 记录恢复前的图状态摘要
-            pre_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
+            # pre_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
             # self._save_current_diagram_state() # 保存当前状态到重做栈
             state_to_redo = self.undo_stack.pop() # 弹出当前状态
             self.redo_stack.append(state_to_redo) # 移到重做栈
@@ -164,12 +163,12 @@ class ToolboxController(QObject):
             self._restore_diagram_state(previous_state_json)
 
             # 2. 记录恢复后的图状态摘要
-            post_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
+            # post_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
             
             # 3. 打印差异
-            print(f"撤销前栈大小: {len(self.undo_stack) + 1}, 重做前栈大小: {len(self.redo_stack) - 1}") # 打印操作前的实际大小
-            print(f"撤销后栈大小: {len(self.undo_stack)}, 重做后栈大小: {len(self.redo_stack)}")
-            self._print_diagram_diff(pre_restore_summary, post_restore_summary, "撤销")
+            # print(f"撤销前栈大小: {len(self.undo_stack) + 1}, 重做前栈大小: {len(self.redo_stack) - 1}") # 打印操作前的实际大小
+            # print(f"撤销后栈大小: {len(self.undo_stack)}, 重做后栈大小: {len(self.redo_stack)}")
+            # self._print_diagram_diff(pre_restore_summary, post_restore_summary, "撤销")
 
             self.main_controller.status_message.emit("已撤销上一步操作。")
         else:
@@ -182,7 +181,6 @@ class ToolboxController(QObject):
         """
         处理重做请求。
         """
-        # print("Redo requested.") # 保持这个输出以指示操作开始
         if self.redo_stack:
             # 1. 记录恢复前的图状态摘要
             pre_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
@@ -193,34 +191,17 @@ class ToolboxController(QObject):
             self._restore_diagram_state(state_to_undo)
 
             # 2. 记录恢复后的图状态摘要
-            post_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
+            # post_restore_summary = self._get_diagram_summary(self.main_controller.diagram_model)
 
-            # 3. 打印差异
-            print(f"重做前栈大小: {len(self.undo_stack) - 1}, 重做前栈大小: {len(self.redo_stack) + 1}") # 打印操作前的实际大小
-            print(f"重做后栈大小: {len(self.undo_stack)}, 重做后栈大小: {len(self.redo_stack)}")
-            self._print_diagram_diff(pre_restore_summary, post_restore_summary, "重做")
+            # # 3. 打印差异
+            # print(f"重做前栈大小: {len(self.undo_stack) - 1}, 重做前栈大小: {len(self.redo_stack) + 1}") # 打印操作前的实际大小
+            # print(f"重做后栈大小: {len(self.undo_stack)}, 重做后栈大小: {len(self.redo_stack)}")
+            # self._print_diagram_diff(pre_restore_summary, post_restore_summary, "重做")
             
             self.main_controller.status_message.emit("已重做上一步操作。")
         else:
             self.main_controller.status_message.emit("没有更多可重做的操作。")
-            # print("没有更多可重做的操作。") # 保持这个输出
-        # print(f"Redo. Undo stack size: {len(self.undo_stack)}, Redo stack size: {len(self.redo_stack)}") # 最终状态输出
 
-    # 以下是其他操作处理函数，它们在执行实际操作前调用 _save_current_diagram_state()
-    # 这些函数保持不变，因为它们通过 _save_current_diagram_state() 间接触发了状态的保存和栈的更新
-    
-    # def _on_add_vertex_requested(self):
-    #     self.main_controller.add_vertex_at_center()
-    #     self.main_controller.status_message.emit("已添加新顶点。")
-    #     self._save_current_diagram_state()
-    #     self._update_undo_redo_button_states()
-
-    # def _on_add_line_requested(self):
-    #     self.main_controller.add_line_between_selected_vertices()
-    #     self.main_controller.status_message.emit("已尝试添加新线条。")
-    #     self._save_current_diagram_state()
-    #     self._update_undo_redo_button_states()
-        
     def _on_delete_selected_vertex_requested(self):
         self.main_controller.delete_selected_object(object_type='vertex')
         self.main_controller.status_message.emit("已删除选定顶点。")
@@ -421,6 +402,11 @@ class ToolboxController(QObject):
             if hasattr(self.toolbox_widget, 'selection_button'): self.toolbox_widget.selection_button.setChecked(False)
             
         self.main_controller.status_message.emit(f"工具箱工具模式已更新为：{mode}")
+
+    def update_redo_unto_status(self,message=None):
+        self._save_current_diagram_state(message)
+        self._update_undo_redo_button_states()
+        self.main_controller.status_message.emit("撤销/重做状态已更新。")
 
 
     def update(self):

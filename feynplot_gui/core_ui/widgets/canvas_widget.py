@@ -20,14 +20,11 @@ class CanvasWidget(QWidget):
     canvas_panned = Signal(QPointF, QPointF) # 更改：现在平移信号传递起始和结束数据点
     canvas_zoomed = Signal(QPointF, float)
     
-    # --- 新增的信号，用于通知视图需要更新，并传递新的轴限制 ---
     view_updated = Signal(dict) # 传递一个字典，包含 target_xlim 和 target_ylim
-    # --- 为右键菜单添加信号 ---
     object_edited = Signal(str, str)
     object_deleted = Signal(str, str)
     mouse_released = Signal()
     
-    # --- 【新增】添加线条的信号 ---
     add_line_from_vertex_requested = Signal(str) # 传递起始顶点的ID
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -181,6 +178,8 @@ class CanvasWidget(QWidget):
 
 
     def _on_mouse_release(self, event):
+        if self._is_dragging_object and self._is_drag_event:
+            self.mouse_released.emit()
         if event.inaxes != self.axes or self._mouse_press_data_pos is None:
             # 如果不是在 Axes 内部释放，或者没有记录按下时的位置（例如双击后立即返回）
             self._is_panning = False
@@ -214,7 +213,7 @@ class CanvasWidget(QWidget):
             self._mouse_press_pixel_pos = None
             self._is_drag_event = False # 重置拖动标记
             self.set_mode(self._current_mode) # 恢复光标
-            self.mouse_released.emit() # 确保总是在此方法结束时发出
+            # self.mouse_released.emit() # 确保总是在此方法结束时发出
             return # 拖动事件，不视为点击
 
         # 以下是点击事件处理逻辑
