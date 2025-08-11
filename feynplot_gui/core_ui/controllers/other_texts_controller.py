@@ -2,8 +2,10 @@
 
 from PySide6.QtWidgets import QMessageBox, QInputDialog, QWidget
 from PySide6.QtCore import Qt, QObject, Signal
-from feynplot_gui.debug.debug_output import other_texts_print # 假设这是你的调试输出函数
-
+from PySide6.QtGui import QColor
+from feynplot_gui.debug.debug_output import other_texts_print 
+from feynplot_gui.core_ui.controllers.other_texts_dialogs.edit_text_dialog import EditTextDialog
+from feynplot.core.extra_text_element import TextElement
 # 导入真正的 MainController
 # 假设你的 MainController 在 feynplot_gui.core_ui.controllers.main_controller 模块中
 # 注意：这里我们只进行类型导入，避免循环依赖在运行时发生
@@ -11,40 +13,8 @@ from feynplot_gui.debug.debug_output import other_texts_print # 假设这是你�
 # 以及 main_window 和 canvas_controller 属性。
 # from feynplot_gui.core_ui.controllers.main_controller import MainController as RealMainController
 
-# 你的 TextElement 类定义
-class TextElement:
-    _next_id = 1
-    def __init__(self, text: str, x: float = 0.0, y: float = 0.0):
-        self.id = TextElement._next_id
-        TextElement._next_id += 1
-        self.text = text
-        self.x = x
-        self.y = y
-        self.is_selected = False # 用于UI同步选择状态
-
-    def __repr__(self):
-        return f"TextElement(id={self.id}, text='{self.text}', x={self.x}, y={self.y})"
-
 # 导入 UI Widgets
 from feynplot_gui.core_ui.widgets.other_texts_widget import OtherTextsWidget
-
-# 仅用于类型提示的 MainController 桩 (Stub) 类
-# 这是一个临时的定义，帮助 Pylance 进行静态分析。
-# 实际运行时会使用真正导入的 MainController。
-class MainController:
-    status_message: Signal = Signal(str)
-    project_root: str
-    main_window: QWidget # MainController应该持有MainWindow的引用
-    
-    # 模拟 MainController 中的 CanvasController 结构，用于类型提示
-    class CanvasControllerMock:
-        canvas_widget: QWidget = None
-        def update_canvas(self): pass
-    canvas_controller: CanvasControllerMock = CanvasControllerMock()
-
-    def get_selected_item(self) -> object: pass # 声明 get_selected_item 方法
-    def select_item(self, item: object): pass # 声明 select_item 方法
-    def update_all_views(self): pass # 声明 update_all_views 方法
 
 
 class OtherTextsController(QObject):
@@ -149,27 +119,42 @@ class OtherTextsController(QObject):
 
     def _on_request_edit_text(self, text_element: TextElement):
         """
-        处理“编辑文本”请求。直接在此控制器的私有集合中编辑文本。
+        处理“编辑文本”请求。使用自定义对话框编辑文本的属性。
         """
         other_texts_print(f"收到编辑文本请求，ID：{text_element.id}")
         self.main_controller.status_message.emit(f"打开文本编辑对话框：{text_element.id}")
         
-        parent_widget = self.main_controller.main_window # 使用实际的 MainWindow 实例作为父级
+        parent_widget = self.main_controller.main_window
 
-        new_text_content, ok = QInputDialog.getText(parent_widget,
-                                                     f"编辑文本 {text_element.id}", 
-                                                     "请输入新文本内容:", 
-                                                     text=text_element.text)
-        if ok and new_text_content is not None:
-            text_element.text = new_text_content # 更新私有模型数据
-            # 如果需要更新X, Y坐标，可以在这里加入逻辑
+        # 确保传入对话框的颜色是 QColor 对象
+        # TextElement.color 可能是字符串或元组，需要统一转换为 QColor
+        if isinstance(text_element.color, (tuple, str)):
+            initial_color = QColor(*text_element.color)
+        else:
+            initial_color = text_element.color
+
+
+        dialog = EditTextDialog(
+            parent=parent_widget,
+            properties=text_element.to_dict()
+        )
+        
+        # 运行对话框并获取用户输入的属性字典
+        text_properties = dialog.get_text_properties()
+
+        # 如果用户点击了“确定”，则更新文本元素
+        if text_properties:
+            # 使用 TextElement.update_from_dict() 方法更新对象属性
+            text_element.update_from_dict(text_properties)
             
-            self.update_text_list() # 更新自己的视图
+            # 更新私有模型数据
+            self.update_text_list() 
             self.main_controller.status_message.emit(f"成功编辑文本：{text_element.id}")
-            self.set_selected_item_in_list(text_element) # 重新选中编辑的文本
-            # 通知 MainController 更新画布，因为文本显示可能已更改
-            self.main_controller.canvas_controller.update_canvas() # <--- 通知画布重绘
-            other_texts_print(f"文本 {text_element.id} 更新为 '{text_element.text}'。")
+            self.set_selected_item_in_list(text_element) 
+            
+            # 通知 MainController 更新画布，因为文本显示已更改
+            self.main_controller.canvas_controller.update_canvas()
+            other_texts_print(f"文本 {text_element.id} 已更新。")
         else:
             self.main_controller.status_message.emit(f"文本 {text_element.id} 编辑已取消。")
             other_texts_print(f"文本 {text_element.id} 编辑已取消。")
@@ -201,24 +186,45 @@ class OtherTextsController(QObject):
 
     def _on_request_add_new_text(self):
         """
-        处理“添加新文本”请求。直接在此控制器的私有集合中添加新文本。
+        处理“添加新文本”请求。使用自定义对话框获取文本属性，并添加新文本。
         """
         other_texts_print("收到添加新文本请求。")
         self.main_controller.status_message.emit("打开添加新文本对话框。")
 
-        parent_widget = self.main_controller.main_window # 使用实际的 MainWindow 实例作为父级
+        parent_widget = self.main_controller.main_window
 
-        new_text_content, ok = QInputDialog.getText(parent_widget,
-                                                     "添加新文本", 
-                                                     "请输入新文本内容:")
-        if ok and new_text_content:
-            new_text_elem = TextElement(text=new_text_content, x=0, y=0) 
-            self.text_elements.append(new_text_elem) 
+        # 创建一个包含默认值的字典
+        # 这样，当你增加新的属性时，只需要在这里添加即可，而不需要修改 dialog 的调用
+        default_properties = {
+            "text": "New Text",
+            "x": 0.0,
+            "y": 0.0,
+            "size": 12,
+            "color": 'black', # 也可以是 QColor('black')
+            "bold": False,
+            "italic": False,
+            "ha": 'center',
+            "va": 'center'
+        }
+
+        # 创建自定义的 EditTextDialog 对话框，并将默认属性字典作为参数传入
+        dialog = EditTextDialog(parent=parent_widget, properties=default_properties)
+        
+        # 调用 get_text_properties() 方法，它会返回一个字典或 None
+        text_properties = dialog.get_text_properties()
+
+        # 检查返回的字典是否有效（用户是否点击了“确定”）
+        if text_properties:
+            # 使用 TextElement.from_dict() 类方法创建新的 TextElement
+            new_text_elem = TextElement.from_dict(text_properties)
+            self.text_elements.append(new_text_elem)
             
-            self.update_text_list() 
-            self.main_controller.select_item(new_text_elem) 
+            self.update_text_list()
+            self.main_controller.select_item(new_text_elem)
+            
             # 通知 MainController 更新画布，因为添加了新文本
-            self.main_controller.canvas_controller.update_canvas() # <--- 通知画布重绘
+            self.main_controller.canvas_controller.update_canvas()
+            
             self.main_controller.status_message.emit(f"成功添加新文本：{new_text_elem.id}")
             other_texts_print(f"新文本已添加到私有集合：{new_text_elem}")
         else:
@@ -239,10 +245,8 @@ class OtherTextsController(QObject):
         """
         other_texts_print("在画布上绘制文本元素。")
         for text_elem in self.text_elements:
-            color = 'red' if text_elem.is_selected else 'black'
+            color = 'red' if text_elem.is_selected else text_elem.color
             font_weight = 'bold' if text_elem.is_selected else 'normal'
             # 根据你的图表布局调整位置和对齐方式
-            ax.text(text_elem.x, text_elem.y, text_elem.text,
-                    color=color, fontsize=20, fontweight=font_weight,
-                    ha='center', va='center', clip_on=True) # clip_on=True 确保文本保持在轴边界内
+            ax.text(** text_elem.to_matplotlib_kwargs()) # clip_on=True 确保文本保持在轴边界内
         other_texts_print(f"完成绘制 {len(self.text_elements)} 个文本元素。")

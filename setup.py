@@ -15,7 +15,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main",
     packages=find_packages(include=["feynplot", "feynplot.*", "feynplot_gui", "feynplot_gui.*"]),
-    include_package_data=True,  # 关键！允许使用 MANIFEST.in 添加非 Python 文件
+    include_package_data=True,  
     install_requires=[
         "matplotlib>=3.7.2",
         "mplhep>=0.3.59",
