@@ -24,6 +24,25 @@ class FeynmanDiagram:
             i += 1
         return f"l_{i}"
 
+    def format_vertex_id(self, vertex_id):
+        """
+        将格式如 'v_11' 的ID转换为 'v_{11}'。
+
+        Args:
+            vertex_id: 原始的顶点ID字符串。
+
+        Returns:
+            格式化后的字符串。
+        """
+        if '_' in vertex_id:
+            parts = vertex_id.split('_', 1) # 只分割一次，防止ID中出现多个下划线
+            number = parts[1]
+            return f"v_{{{number}}}"
+        else:
+            return vertex_id # 如果ID格式不符合预期，返回原ID
+
+
+
     def add_vertex(self, x: float = None, y: float = None, vertex: Vertex = None, **kwargs):
         """
         添加一个顶点到图中。
@@ -52,7 +71,11 @@ class FeynmanDiagram:
             
             # --- 新增逻辑：如果 Vertex 实例没有 label，则使用其 id 作为 label ---
             if vertex.label is None or vertex.label == "":
-                vertex.label = vertex_id
+                print("No label provided, using vertex_id as label, going to use:")
+                print(self.format_vertex_id(vertex.id) )
+                vertex.label = self.format_vertex_id(vertex.id) 
+
+
 
         else:
             # 如果没有提供 Vertex 实例，则根据 x, y 和 kwargs 创建
@@ -72,7 +95,9 @@ class FeynmanDiagram:
             # --- 新增逻辑：从 kwargs 中提取 'label'，如果不存在，则在创建 Vertex 时使用确定的 vertex_id 作为 label ---
             label_from_kwargs = kwargs.pop('label', None)
             if label_from_kwargs is None or label_from_kwargs == "": # 检查 label 是否提供或为空
-                label_to_use = vertex_id # 如果没有提供 label，使用 id 作为 label
+                print("No label provided, using vertex_id as label, going to use:")
+                print(self.format_vertex_id(vertex_id) )
+                label_to_use = self.format_vertex_id(vertex_id) 
             else:
                 label_to_use = label_from_kwargs # 如果提供了 label，则使用它
 
@@ -363,4 +388,5 @@ class FeynmanDiagram:
         """显示图中所有线条的标签。"""
         for line in self.lines:
             line.show_label()
+
 
