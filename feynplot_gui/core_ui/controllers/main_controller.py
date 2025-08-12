@@ -692,7 +692,7 @@ class MainController(QObject):
         self.toolbox_controller._update_undo_redo_button_states()
 
     def _update_canvas_range_on_navigation_bar(self):
-        print("Updating navigation bar ui for canvas.")
+        # print("Updating navigation bar ui for canvas.")
         (xmin, xmax), (ymin, ymax) = self.canvas_controller._canvas_instance.get_axes_limits()
         self.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
         # self.navigation_bar_controller._on_canvas_set_range_ui(xmin, xmax, ymin, ymax)

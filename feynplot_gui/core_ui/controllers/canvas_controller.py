@@ -62,6 +62,8 @@ class CanvasController(QObject):
         # Pan state tracking (managed internally by CanvasController)
         self._is_panning_active = False
         self._pan_start_data_pos = None
+        self.zoom_times = 0
+        self.absolute_text_size = False
         self._motion_cid: Optional[int] = None # Stores Matplotlib event connection ID
         self._release_cid: Optional[int] = None # Stores Matplotlib event connection ID
 
@@ -118,13 +120,14 @@ class CanvasController(QObject):
             vertices_list, 
             lines_list,
             texts_list,
+            zoom_times= self.zoom_times,
             **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
         )
         # (xmin, xmax), (ymin, ymax) = self._canvas_instance.get_axes_limits()
         # self.main_controller.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
 
         # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
-        self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
+        # self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
         # self.get_ax().grid(True)
         self.canvas_widget.draw_idle_canvas() 
         self.main_controller._update_canvas_range_on_navigation_bar()
@@ -330,9 +333,9 @@ class CanvasController(QObject):
                     y_mouse + (current_ylim[1] - y_mouse) * scale_factor)
         
         if scale_factor > 1:
-            self.main_controller.zoom_times += 1 
+            self.zoom_times += 1 
         elif scale_factor < 1:
-            self.main_controller.zoom_times -= 1
+            self.zoom_times -= 1
         else:
             pass
             

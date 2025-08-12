@@ -19,6 +19,7 @@ class TextElement:
         self.italic = italic
         self.ha = ha
         self.va = va
+        self.clip_on = True
         self.is_selected = False # 用于UI同步选择状态
 
     def __repr__(self):
@@ -67,6 +68,7 @@ class TextElement:
             'color': props.pop('color'),
             'horizontalalignment': props.pop('ha'),
             'verticalalignment': props.pop('va'),
+            'clip_on': props.pop('clip_on'),
         }
 
         # 根据 bold 和 italic 布尔值设置 Matplotlib 的字体样式

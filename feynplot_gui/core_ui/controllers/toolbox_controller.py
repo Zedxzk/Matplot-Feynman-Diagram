@@ -265,6 +265,7 @@ class ToolboxController(QObject):
 
     def _on_request_auto_scale(self):
         self.main_controller.status_message.emit("请求自动调整画布视图。")
+        self.main_controller.canvas_controller.zoom_times = 0.0
         self.main_controller.update_all_views(canvas_options={'auto_scale': True})
 
     def _on_request_auto_set_line_angles(self):

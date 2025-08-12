@@ -1,11 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
-from pygments import highlight
 from feynplot_gui.debug_utils import cout
 from feynplot.shared.common_functions import str2latex
 from feynplot.core.extra_text_element import TextElement
 from matplotlib.text import Text
+from matplotlib.axes import Axes
+from feynplot.default_settings.default_settings import renderer_default_settings
+
+scaling_factor = renderer_default_settings["DEFAULT_SCALE_FACTOR"]
 
 # 导入你的核心模型类（如果这些函数直接依赖于 Line 和 Vertex 对象）
 # 这些导入最好放在文件的顶部，以便清晰可见。
@@ -13,7 +16,7 @@ from feynplot.core.line import Line, FermionLine, AntiFermionLine, PhotonLine, G
 from feynplot.core.vertex import Vertex
 
 # 导入生成路径的方法
-from feynplot.core.gluon_methods import generate_gluon_helix # 假设你正在使用这个来获取胶子路径
+from feynplot.core.gluon_methods import generate_gluon_helix
 from feynplot.core.photon_methods import generate_photon_wave
 from feynplot.core.WZ_methods import generate_WZ_zigzag
 from feynplot.core.fermion_methods import generate_fermion_line
@@ -24,7 +27,7 @@ from typing import List, Tuple, Optional, Any, Dict
 
 highlight_color = 'red'
 
-def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict):
+def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
     # 复制字典以避免修改原始对象内部的配置
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
@@ -48,31 +51,13 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
     x_wave, y_wave = wave_path[:, 0], wave_path[:, 1]
 
     # 绘制光子波的路径，使用调整后的属性
-    ax.plot(x_wave, y_wave, **current_line_plot_options)
+    drawn_line = ax.plot(x_wave, y_wave, **current_line_plot_options)
     line.set_plot_points(x_wave, y_wave)
-
-    # 绘制光子线的标签
-    if line.label and not line.hidden_label:
-        mid_idx = len(x_wave) // 2
-        label_x = x_wave[mid_idx] + line.label_offset[0]
-        label_y = y_wave[mid_idx] + line.label_offset[1]
-
-        # --- 新增的可见性检查 ---
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-            # 如果标签位置不在当前视图范围内，则跳过绘制
-            return
-        # ------------------------
+    drwan_text = draw_line_label(ax, line, label_text_options, zoom_times) # 绘制标签
+    return drawn_line, drwan_text
         
-        label_in_latex = str2latex(line.label)
-        ax.text(label_x,
-                label_y,
-                label_in_latex,
-                **current_label_text_options)
 
-
-def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict):
+def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
     # print('Detected GluonLine') # 可以保留用于调试
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
@@ -95,31 +80,14 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
     x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
 
     # 绘制胶子线的路径
-    ax.plot(x_helix, y_helix, **current_line_plot_options)
+    drawn_line = ax.plot(x_helix, y_helix, **current_line_plot_options)
     line.set_plot_points(x_helix, y_helix)
 
-    # 绘制胶子线的标签
-    if line.label and not line.hidden_label:
-        mid_idx = len(x_helix) // 2
-        label_x = x_helix[mid_idx] + line.label_offset[0]
-        label_y = y_helix[mid_idx] + line.label_offset[1]
-
-        # --- 新增的可见性检查 ---
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-            # 如果标签位置不在当前视图范围内，则跳过绘制
-            return
-        # ------------------------
-
-        label_in_latex = str2latex(line.label)
-        ax.text(label_x,
-                label_y,
-                label_in_latex,
-                **current_label_text_options)
+    drawn_text = draw_line_label(ax, line, label_text_options) # 绘制标签
+    return drawn_line, drawn_text
 
 
-def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict):
+def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
@@ -150,32 +118,15 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
 
     # --- 绘制锯齿路径 (主要线条) ---
     x_zig, y_zig = zigzag_path[:, 0], zigzag_path[:, 1]
-    ax.plot(x_zig, y_zig, **current_line_plot_options)
+    drawn_line = ax.plot(x_zig, y_zig, **current_line_plot_options)
     line.set_plot_points(x_zig, y_zig)
     
 
-    # --- 绘制标签（居中位置）---
-    if line.label and not line.hidden_label:
-        mid_idx = len(bezier_base_path_for_zigzag) // 2
-        label_x = bezier_base_path_for_zigzag[mid_idx, 0] + line.label_offset[0]
-        label_y = bezier_base_path_for_zigzag[mid_idx, 1] + line.label_offset[1]
-
-        # --- 新增的可见性检查 ---
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-            # 如果标签位置不在当前视图范围内，则跳过绘制
-            return
-        # ------------------------
-
-        label_in_latex = str2latex(line.label)
-        ax.text(label_x,
-                label_y,
-                label_in_latex,
-                **current_label_text_options)
+    drawn_text = draw_line_label(ax, line, label_text_options) # 绘制标签
+    return drawn_line, drawn_text
 
 
-def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict):
+def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
@@ -200,7 +151,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
     x, y = fermion_path[:, 0], fermion_path[:, 1]
 
     # 绘制费米子线本身
-    ax.plot(x, y, **current_line_plot_options)
+    drawn_line = ax.plot(x, y, **current_line_plot_options)
     line.set_plot_points(x, y)
     # from pprint import pprint
     # points = line.get_line_plot_points()[:10]
@@ -257,25 +208,11 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
             '', xy=xy, xytext=xytext, arrowprops=arrow_props
         )
 
-    # --- 绘制标签 ---
-    if line.label and not line.hidden_label:
-        mid_idx = len(fermion_path) // 2
-        label_x = fermion_path[mid_idx, 0] + line.label_offset[0]
-        label_y = fermion_path[mid_idx, 1] + line.label_offset[1]
-
-        # --- 新增的可见性检查 ---
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-            # 如果标签位置不在当前视图范围内，则跳过绘制
-            return
-        # ------------------------
-
-        label_in_latex = str2latex(line.label)
-        ax.text(label_x, label_y, label_in_latex, **current_label_text_options)
+    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times) # 绘制标签
+    return drawn_line, drawn_text
 
 
-def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
+def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0):
     # 复制字典以避免修改原始对象内部的配置
     current_scatter_props = vertex.get_scatter_properties().copy()
     current_label_props = vertex.get_label_properties().copy()
@@ -314,29 +251,33 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex):
         ax.scatter(vertex.x, vertex.y, **current_scatter_props)
 
     # 绘制标签
-    if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
-        label_x = vertex.x + vertex.label_offset[0]
-        label_y = vertex.y + vertex.label_offset[1]
+    drawn_text = draw_vertex_label(ax, vertex, current_label_props, zoom_times)
 
-        # --- 新增的可见性检查 ---
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        # print(f"xlim: {xlim}")
-        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-            # 如果标签位置不在当前视图范围内，则跳过绘制
-            return
-        # ------------------------
+    # if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
+    #     label_x = vertex.x + vertex.label_offset[0]
+    #     label_y = vertex.y + vertex.label_offset[1]
 
-        label_in_latex = str2latex(vertex.label)
-        ax.text(
-            label_x,
-            label_y,
-            label_in_latex ,
-            **current_label_props # 使用调整后的标签属性
-        )
+    #     # --- 新增的可见性检查 ---
+    #     xlim = ax.get_xlim()
+    #     ylim = ax.get_ylim()
+    #     # print(f"xlim: {xlim}")
+    #     if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+    #         # 如果标签位置不在当前视图范围内，则跳过绘制
+    #         return
+    #     # ------------------------
+
+    #     label_in_latex = str2latex(vertex.label)
+    #     drawn_text = ax.text(
+    #         label_x,
+    #         label_y,
+    #         label_in_latex ,
+    #         **current_label_props # 使用调整后的标签属性
+    #     )
+    #     return drawn_text
+    return drawn_text
 
 
-def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
+def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0):
     # 复制字典以避免修改原始对象内部的配置
     current_circle_props = vertex.get_circle_properties().copy()
     current_custom_hatch_props = vertex.get_custom_hatch_properties().copy()
@@ -429,25 +370,27 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex):
             line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
     # 3. 绘制标签
-    if (vertex.label and not vertex.hidden_label and not vertex.hidden_vertex) or  vertex.is_selected: # 只有当圆圈可见时才绘制标签
-        label_x = vertex.x + vertex.label_offset[0]
-        label_y = vertex.y + vertex.label_offset[1]
+    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, zoom_times=zoom_times)
+    # if (vertex.label and not vertex.hidden_label and not vertex.hidden_vertex) or  vertex.is_selected: # 只有当圆圈可见时才绘制标签
+    #     label_x = vertex.x + vertex.label_offset[0]
+    #     label_y = vertex.y + vertex.label_offset[1]
 
-        # --- 新增的可见性检查 (针对标签) ---
-        # 即使圆圈可见，标签自身也可能超出视图，所以这里再检查一次更精确
-        xlim = ax.get_xlim()
-        ylim = ax.get_ylim()
-        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-            return # 如果标签位置不在当前视图范围内，则跳过绘制
-        # ------------------------
+    #     # --- 新增的可见性检查 (针对标签) ---
+    #     # 即使圆圈可见，标签自身也可能超出视图，所以这里再检查一次更精确
+    #     xlim = ax.get_xlim()
+    #     ylim = ax.get_ylim()
+    #     if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+    #         return # 如果标签位置不在当前视图范围内，则跳过绘制
+    #     # ------------------------
         
-        label_in_latex = str2latex(vertex.label)
-        ax.text(
-            label_x,
-            label_y,
-            label_in_latex,
-            **current_label_props
-        )
+    #     label_in_latex = str2latex(vertex.label)
+    #     drawn_text = ax.text(
+    #         label_x,
+    #         label_y,
+    #         label_in_latex,
+    #         **current_label_props
+    #     )
+    return drawn_text
 
 def get_diagram_view_limits(
     ax: plt.Axes, # Axes 对象仍然需要，尽管我们不直接用它来测量文本尺寸
@@ -536,18 +479,18 @@ def get_diagram_view_limits(
 
 
     # --- 【新增】3. 处理已绘制的文本对象 ---
-    if drawn_texts:
-        for text_obj in drawn_texts:
-            # 获取文本对象的边界框
-            # 必须先绘制 canvas 才能获得正确的边界框
-            bbox = text_obj.get_window_extent().transformed(ax.transData.inverted())
-            print("bbox:", bbox.x0, bbox.x1, bbox.y0, bbox.y1)
-            # for corner_name, (x, y) in corners.items():
-            # 将边界框的四个角点坐标加入列表
-            all_x.append(bbox.x0)
-            all_x.append(bbox.x1)
-            all_y.append(bbox.y0)
-            all_y.append(bbox.y1)
+    # if drawn_texts:
+    #     for text_obj in drawn_texts:
+    #         # 获取文本对象的边界框
+    #         # 必须先绘制 canvas 才能获得正确的边界框
+    #         bbox = text_obj.get_window_extent().transformed(ax.transData.inverted())
+    #         # print("bbox:", bbox.x0, bbox.x1, bbox.y0, bbox.y1)
+    #         # for corner_name, (x, y) in corners.items():
+    #         # 将边界框的四个角点坐标加入列表
+    #         all_x.append(bbox.x0)
+    #         all_x.append(bbox.x1)
+    #         all_y.append(bbox.y0)
+    #         all_y.append(bbox.y1)
 
 
     # If no elements, return default view
@@ -586,3 +529,114 @@ def get_diagram_view_limits(
     new_ylim = (min_y - padding_y, max_y + padding_y)
     
     return new_xlim, new_ylim
+
+
+
+def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom_times : int = 0):
+    if not line.label or line.hidden_label:
+        print(f"Line {line.id} is hidden, skipping")
+        return
+
+    # 绘制光子线的标签
+    if line.label and not line.hidden_label:
+        plot_points = line.plot_points
+        mid_idx = len(plot_points) // 2
+        label_x = (plot_points[mid_idx] + line.label_offset[0])[0]
+        label_y = (plot_points[mid_idx] + line.label_offset[1])[1]
+
+        # --- 新增的可见性检查 ---
+        # xlim = ax.get_xlim()
+        # ylim = ax.get_ylim()
+        # print("\n***************************\n")
+        # print(f"Label {line.label} x={label_x}, y={label_y}, xlim={xlim}, ylim={ylim}")
+        # print(f"canvas xlim={ax.get_xbound()}, ylim={ax.get_ybound()}")
+        # print(f"line label {line.label}, in range? {'Yes' if xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1] else 'No'}")
+        # if not ((xlim[0] <= label_x <= xlim[1]) and ylim[0] <= label_y <= ylim[1]):
+        #     # 如果标签位置不在当前视图范围内，则跳过绘制
+        #     print(f"Label {line.label} out of range, skipping")
+        #     return
+        # ------------------------
+        
+        label_in_latex = str2latex(line.label)
+        current_label_text_options = get_fontsize_from_data_units(ax, current_label_text_options)
+        drawn_text = ax.text(label_x,
+                label_y,
+                label_in_latex,
+                **current_label_text_options)
+        return drawn_text
+
+
+def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_times : int = 0):
+    # 绘制标签
+    if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
+        label_x = vertex.x + vertex.label_offset[0]
+        label_y = vertex.y + vertex.label_offset[1]
+
+        # --- 新增的可见性检查 ---
+        xlim = ax.get_xlim()
+        ylim = ax.get_ylim()
+        # print(f"xlim: {xlim}")
+        if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
+            # 如果标签位置不在当前视图范围内，则跳过绘制
+            return
+        # ------------------------
+        current_label_props = get_fontsize_from_data_units(ax, current_label_props)
+        label_in_latex = str2latex(vertex.label)
+        drawn_text = ax.text(
+            label_x,
+            label_y,
+            label_in_latex ,
+            **current_label_props # 使用调整后的标签属性
+        )
+        return drawn_text
+
+
+
+
+def get_fontsize_from_data_units(
+    ax: plt.Axes,
+    text_properties: dict
+) -> dict:
+    """
+    从字典中提取字体大小并根据数据单位进行调整。
+    
+    Args:
+        ax: Matplotlib 的 Axes 对象。
+        text_properties: 包含文本属性的字典，可能包含 'fontsize' 或 'size' 键。
+        
+    Returns:
+        调整后的文本属性字典。
+    """
+    # 复制字典以避免修改原始字典
+    adjusted_props = text_properties.copy()
+    
+    fig = ax.figure
+    if fig is None:
+        return adjusted_props  # 如果没有 figure，返回原始属性
+
+    # fig_width_inch, fig_height_inch = fig.get_size_inches()
+    # print(f"Figure size in inches: {fig_width_inch} x {fig_height_inch}")
+    xlim = ax.get_xlim()
+    data_range = xlim[1] - xlim[0]
+    print(f"Data range in x-axis: {data_range}")
+    
+    if data_range == 0:
+        return adjusted_props  # 如果数据范围为0，返回原始属性
+
+    # 提取字体大小
+    fontsize = None
+    if 'fontsize' in adjusted_props:
+        fontsize = adjusted_props['fontsize']
+    elif 'size' in adjusted_props:
+        fontsize = adjusted_props['size']
+        # 将 size 转换为 fontsize
+        adjusted_props['fontsize'] = adjusted_props.pop('size')
+    
+    if fontsize is not None:
+        # 计算调整后的字体大小
+        target_pixels = 12 * fontsize / data_range
+        adjusted_props['fontsize'] = target_pixels
+    
+    return adjusted_props
+
+

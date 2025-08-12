@@ -1,6 +1,6 @@
 # feynplot_gui/widgets/main_window.py
 
-from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QLabel
+from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QLabel, QToolBar
 from PySide6.QtCore import Qt
 
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
@@ -75,7 +75,16 @@ class MainWindow(QMainWindow):
         # 顶部导航栏 (通常通过 self.setMenuBar 和 self.addToolBar 添加)
         self.navigation_bar_widget = NavigationBarWidget(self)
         self.setMenuBar(self.navigation_bar_widget.menu_bar)
+        # 使用 addToolBarBreak() 强制换行
+        # 将第一个工具栏添加到顶部
+
         self.addToolBar(Qt.TopToolBarArea, self.navigation_bar_widget.tool_bar)
+
+        # 使用 addToolBarBreak() 强制换行
+        self.addToolBarBreak(Qt.TopToolBarArea)
+
+        # 将第二个工具栏添加到新的一行
+        self.addToolBar(Qt.TopToolBarArea, self.navigation_bar_widget.second_tool_bar)
 
         # 将重要的子组件实例暴露出来，供 MainController 访问
         self.canvas_widget_instance = self.canvas_widget

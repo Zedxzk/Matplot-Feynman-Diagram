@@ -29,7 +29,7 @@ class CanvasWidget(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.figure = Figure(figsize=(10, 10), dpi=150)
+        self.figure = Figure(figsize=(10, 10), dpi=100)
         self.axes = self.figure.add_subplot(111)
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.canvas.setParent(self)

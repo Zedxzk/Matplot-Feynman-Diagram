@@ -69,7 +69,7 @@ class NavigationBarWidget(QWidget):
 
     def init_ui(self):
         """初始化导航栏的用户界面元素。"""
-        main_layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
 
         # --- 菜单栏示例 ---
         self.menu_bar = QMenuBar(self)
@@ -179,17 +179,17 @@ class NavigationBarWidget(QWidget):
         self.add_vertex_button.clicked.connect(self.add_vertex_button_clicked.emit)
         self.tool_bar.addWidget(self.add_vertex_button)
         
-        # --- 【新增】画布更新间隔的QSpinBox ---
-        self.tool_bar.addSeparator() # 添加分隔符，使UI更整洁
-        self.tool_bar.addWidget(QLabel("画布拖动更新间隔:", self)) # 添加标签
-        self.canvas_update_interval_spinbox = QSpinBox(self)
-        self.canvas_update_interval_spinbox.setRange(0, 1000) # 间隔范围 0ms 到 1000ms
-        self.canvas_update_interval_spinbox.setSingleStep(1) # 步长 1ms
-        self.canvas_update_interval_spinbox.setSuffix(" ms") # 单位后缀
-        self.canvas_update_interval_spinbox.setValue(cw_default_settings['SIGNAL_INTERVAL_MS'])
-        # 连接 spinbox 的 valueChanged 信号到我们自定义的 signal
-        self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
-        self.tool_bar.addWidget(self.canvas_update_interval_spinbox)
+        # # --- 【新增】画布更新间隔的QSpinBox ---
+        # self.tool_bar.addSeparator() # 添加分隔符，使UI更整洁
+        # self.tool_bar.addWidget(QLabel("画布拖动更新间隔:", self)) # 添加标签
+        # self.canvas_update_interval_spinbox = QSpinBox(self)
+        # self.canvas_update_interval_spinbox.setRange(0, 1000) # 间隔范围 0ms 到 1000ms
+        # self.canvas_update_interval_spinbox.setSingleStep(1) # 步长 1ms
+        # self.canvas_update_interval_spinbox.setSuffix(" ms") # 单位后缀
+        # self.canvas_update_interval_spinbox.setValue(cw_default_settings['SIGNAL_INTERVAL_MS'])
+        # # 连接 spinbox 的 valueChanged 信号到我们自定义的 signal
+        # self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
+        # self.tool_bar.addWidget(self.canvas_update_interval_spinbox)
 
 
         # 添加网格模式
@@ -209,58 +209,124 @@ class NavigationBarWidget(QWidget):
         self.tool_bar.addSeparator()
         # 创建一个容器小部件来放置数值框
         # --- 添加 X 轴范围显示 ---
-        self.tool_bar.addWidget(QLabel("X范围:", self))
+        # self.tool_bar.addWidget(QLabel("X范围:", self))
+
+        # # X min
+        # self.tool_bar.addWidget(QLabel("min:", self))
+        # self.x_min_spinbox = QDoubleSpinBox(self)
+        # self.x_min_spinbox.setRange(-1000.0, 1000.0)
+        # self.x_min_spinbox.setValue(-50.0)
+        # # 设置键盘跟踪为False，这样只有在失去焦点或按Enter时才触发valueChanged
+        # self.x_min_spinbox.setKeyboardTracking(False)
+        # self.tool_bar.addWidget(self.x_min_spinbox)
+
+        # # X max
+        # self.tool_bar.addWidget(QLabel("max:", self))
+        # self.x_max_spinbox = QDoubleSpinBox(self)
+        # self.x_max_spinbox.setRange(-1000.0, 1000.0)
+        # self.x_max_spinbox.setValue(50.0)
+        # self.x_max_spinbox.setKeyboardTracking(False)
+        # self.tool_bar.addWidget(self.x_max_spinbox)
+
+        # # --- 添加 Y 轴范围显示 ---
+        # self.tool_bar.addSeparator()
+        # self.tool_bar.addWidget(QLabel("Y范围:", self))
+
+        # # Y min
+        # self.y_min_spinbox = QDoubleSpinBox(self)
+        # self.tool_bar.addWidget(QLabel("min:", self))
+        # self.y_min_spinbox.setRange(-1000.0, 1000.0)
+        # self.y_min_spinbox.setValue(-50.0)
+        # self.y_min_spinbox.setKeyboardTracking(False)
+        # self.tool_bar.addWidget(self.y_min_spinbox)
+
+        # # Y max
+        # self.y_max_spinbox = QDoubleSpinBox(self)
+        # self.tool_bar.addWidget(QLabel("max:", self))
+        # self.y_max_spinbox.setRange(-1000.0, 1000.0)
+        # self.y_max_spinbox.setValue(50.0)
+        # self.y_max_spinbox.setKeyboardTracking(False)
+        # self.tool_bar.addWidget(self.y_max_spinbox)
+
+        # --- 将所有信号连接到同一个槽函数 ---
+        # 方案1: 使用valueChanged信号 + setKeyboardTracking(False)
+        # self.x_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        # self.x_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        # self.y_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        # self.y_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
+
+        # main_layout.addWidget(self.tool_bar)
+        # --- bar 1 新增结束 ---
+        # --- bar 2 新增开始 ---
+
+       # --- 工具栏 2 ---
+        self.second_tool_bar = QToolBar("画布控制区", self)
+
+        self.second_tool_bar.setMovable(False)
+        self.second_tool_bar.addSeparator()
+        self.second_tool_bar.addWidget(QLabel("画布拖动更新间隔:", self))
+        self.canvas_update_interval_spinbox = QSpinBox(self)
+        self.canvas_update_interval_spinbox.setRange(0, 1000)
+        self.canvas_update_interval_spinbox.setSingleStep(1)
+        self.canvas_update_interval_spinbox.setSuffix(" ms")
+        self.canvas_update_interval_spinbox.setValue(cw_default_settings['SIGNAL_INTERVAL_MS'])
+        self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
+        self.second_tool_bar.addWidget(self.canvas_update_interval_spinbox)
+
+        main_layout.addWidget(self.second_tool_bar)
+
+        self.second_tool_bar.addSeparator()
+        # 创建一个容器小部件来放置数值框
+        # --- 添加 X 轴范围显示 ---
+        self.second_tool_bar.addWidget(QLabel("X范围:", self))
 
         # X min
-        self.tool_bar.addWidget(QLabel("min:", self))
+        self.second_tool_bar.addWidget(QLabel("min:", self))
         self.x_min_spinbox = QDoubleSpinBox(self)
         self.x_min_spinbox.setRange(-1000.0, 1000.0)
         self.x_min_spinbox.setValue(-50.0)
         # 设置键盘跟踪为False，这样只有在失去焦点或按Enter时才触发valueChanged
         self.x_min_spinbox.setKeyboardTracking(False)
-        self.tool_bar.addWidget(self.x_min_spinbox)
+        self.second_tool_bar.addWidget(self.x_min_spinbox)
 
         # X max
+        self.second_tool_bar.addWidget(QLabel("max:", self))
         self.x_max_spinbox = QDoubleSpinBox(self)
-        self.x_max_spinbox.setPrefix("max: ")
         self.x_max_spinbox.setRange(-1000.0, 1000.0)
         self.x_max_spinbox.setValue(50.0)
         self.x_max_spinbox.setKeyboardTracking(False)
-        self.tool_bar.addWidget(self.x_max_spinbox)
+        self.second_tool_bar.addWidget(self.x_max_spinbox)
 
         # --- 添加 Y 轴范围显示 ---
-        self.tool_bar.addSeparator()
-        self.tool_bar.addWidget(QLabel("Y范围:", self))
+        self.second_tool_bar.addSeparator()
+        self.second_tool_bar.addWidget(QLabel("Y范围:", self))
 
         # Y min
         self.y_min_spinbox = QDoubleSpinBox(self)
-        self.y_min_spinbox.setPrefix("min: ")
+        self.second_tool_bar.addWidget(QLabel("min:", self))
         self.y_min_spinbox.setRange(-1000.0, 1000.0)
         self.y_min_spinbox.setValue(-50.0)
         self.y_min_spinbox.setKeyboardTracking(False)
-        self.tool_bar.addWidget(self.y_min_spinbox)
+        self.second_tool_bar.addWidget(self.y_min_spinbox)
 
         # Y max
         self.y_max_spinbox = QDoubleSpinBox(self)
-        self.y_max_spinbox.setPrefix("max: ")
+        self.second_tool_bar.addWidget(QLabel("max:", self))
         self.y_max_spinbox.setRange(-1000.0, 1000.0)
         self.y_max_spinbox.setValue(50.0)
         self.y_max_spinbox.setKeyboardTracking(False)
-        self.tool_bar.addWidget(self.y_max_spinbox)
+        self.second_tool_bar.addWidget(self.y_max_spinbox)
 
-        # --- 将所有信号连接到同一个槽函数 ---
-        # 方案1: 使用valueChanged信号 + setKeyboardTracking(False)
+
         self.x_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
         self.x_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
         self.y_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
         self.y_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
 
+        
+        # 【重要改动】: 这行是必须的，将布局应用到这个 QWidget
+        self.setLayout(main_layout) 
 
-        # --- 新增结束 ---
-
-        main_layout.addWidget(self.tool_bar)
-
-        self.setLayout(main_layout)
 
     # --- 槽函数和控制方法 ---
     def _on_edit_object_triggered(self):
