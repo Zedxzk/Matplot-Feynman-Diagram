@@ -94,7 +94,8 @@ class CanvasController(QObject):
         """
         vertices_list = self.diagram_model.vertices
         lines_list = self.diagram_model.lines
-        
+        texts_list = self.main_controller.other_texts_controller.text_elements
+
         selected_item = self.main_controller.get_selected_item() 
 
         for vertex in vertices_list:
@@ -107,7 +108,7 @@ class CanvasController(QObject):
             if selected_item and hasattr(selected_item, 'id') and selected_item.id == line.id and isinstance(selected_item, Line):
                 line.is_selected = True
 
-        for text_elem in self.main_controller.other_texts_controller.text_elements:
+        for text_elem in texts_list:
             text_elem.is_selected = False
             if selected_item and hasattr(selected_item, 'id') and selected_item.id == text_elem.id and isinstance(selected_item, TextElement):
                 text_elem.is_selected = True
@@ -116,21 +117,25 @@ class CanvasController(QObject):
         self._canvas_instance.render(
             vertices_list, 
             lines_list,
+            texts_list,
             **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
         )
+        # (xmin, xmax), (ymin, ymax) = self._canvas_instance.get_axes_limits()
+        # self.main_controller.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
 
         # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
         self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
         # self.get_ax().grid(True)
         self.canvas_widget.draw_idle_canvas() 
+        self.main_controller._update_canvas_range_on_navigation_bar()
 
-    def set_selected_object(self, item: [Vertex, Line, None]):
-        """
-        Receives the current selected object from MainController and triggers canvas update for highlighting.
-        Now, it should call MainController's update_all_views.
-        """
-        # Relaying to MainController to ensure all views are updated consistently
-        self.main_controller.update_all_views() 
+    # def set_selected_object(self, item: [Vertex, Line, None]):
+    #     """
+    #     Receives the current selected object from MainController and triggers canvas update for highlighting.
+    #     Now, it should call MainController's update_all_views.
+    #     """
+    #     # Relaying to MainController to ensure all views are updated consistently
+    #     self.main_controller.update_all_views() 
 
     ### CanvasWidget Signal Handling Slots ###
 
@@ -324,6 +329,13 @@ class CanvasController(QObject):
         new_ylim = (y_mouse - (y_mouse - current_ylim[0]) * scale_factor,
                     y_mouse + (current_ylim[1] - y_mouse) * scale_factor)
         
+        if scale_factor > 1:
+            self.main_controller.zoom_times += 1 
+        elif scale_factor < 1:
+            self.main_controller.zoom_times -= 1
+        else:
+            pass
+            
         # 关键点：将计算出的新轴限制作为字典传递给 MainController 的 update_all_views
         self.main_controller.update_all_views(canvas_options={'target_xlim': new_xlim, 'target_ylim': new_ylim})
     

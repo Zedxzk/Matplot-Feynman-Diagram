@@ -7,6 +7,7 @@ canvas_widget_default_settings = {
     'SIGNAL_INTERVAL_MS': 100,
     'DRAG_THRESHOLD_PIXELS': 3,
     'DOUBLE_CLICK_INTERVAL_MS': 300,
+    'ZOOM_FACTOR' : 1.08,
 }
 
 

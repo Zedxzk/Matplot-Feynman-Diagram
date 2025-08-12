@@ -62,6 +62,10 @@ class NavigationBarController(QObject):
         """连接导航栏部件的信号到控制器槽函数，并发出请求信号给MainController。"""
         # 文件菜单动作 - 直接连接到控制器内的处理函数
         self.navigation_bar_widget.canvas_update_interval_changed_ui.connect(self._on_canvas_update_interval_changed_ui)
+        self.navigation_bar_widget.canvas_set_range.connect(self._on_canvas_set_range_ui)
+        # self.main_controller.canvas_controller.canvas_widget.canvas_panned.connect(self._on_canvas_set_range_ui)
+
+
         self.navigation_bar_widget.save_project_action_triggered.connect(self._on_save_project_ui_triggered)
         self.navigation_bar_widget.load_project_action_triggered.connect(self._on_load_project_ui_triggered)
         
@@ -369,3 +373,10 @@ class NavigationBarController(QObject):
 
     def _on_canvas_update_interval_changed_ui(self, interval: int):
         self.main_controller.canvas_controller.set_update_interval(interval)
+
+    def _on_canvas_set_range_ui(self, x_min, x_max, y_min, y_max):
+        canvas_opts = {
+            "target_xlim": (x_min, x_max),
+            "target_ylim": (y_min, y_max),
+        }
+        self.main_controller.update_all_views(canvas_options=canvas_opts)

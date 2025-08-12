@@ -306,7 +306,7 @@ class CanvasWidget(QWidget):
         else:
             mouse_x, mouse_y = event.xdata, event.ydata
 
-        zoom_factor = 1.08
+        zoom_factor = default_settings["ZOOM_FACTOR"]
 
         if event.step > 0: # Scroll up (zoom in)
             scale_factor = 1.0 / zoom_factor

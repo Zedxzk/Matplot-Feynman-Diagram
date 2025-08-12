@@ -4,7 +4,8 @@ from matplotlib.patches import Circle
 from pygments import highlight
 from feynplot_gui.debug_utils import cout
 from feynplot.shared.common_functions import str2latex
-
+from feynplot.core.extra_text_element import TextElement
+from matplotlib.text import Text
 
 # 导入你的核心模型类（如果这些函数直接依赖于 Line 和 Vertex 对象）
 # 这些导入最好放在文件的顶部，以便清晰可见。
@@ -452,11 +453,11 @@ def get_diagram_view_limits(
     ax: plt.Axes, # Axes 对象仍然需要，尽管我们不直接用它来测量文本尺寸
     vertices: List[Vertex],
     lines: List[Line],
+    drawn_texts : Optional[List[Text]] = None
 ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
     """
     根据顶点和线列表，计算并返回合适的画布视图范围 (xlim, ylim)。
     遍历所有顶点、线的完整路径以及标签的锚点位置，找到 x 和 y 的最小/最大值。
-    此版本**不估算标签的实际渲染宽度和高度**，只确保标签的定位点在视图内。
     """
     all_x: List[float] = []
     all_y: List[float] = []
@@ -532,6 +533,22 @@ def get_diagram_view_limits(
             # **核心修改：只添加标签的锚点位置**
             all_x.append(label_origin_x)
             all_y.append(label_origin_y)
+
+
+    # --- 【新增】3. 处理已绘制的文本对象 ---
+    if drawn_texts:
+        for text_obj in drawn_texts:
+            # 获取文本对象的边界框
+            # 必须先绘制 canvas 才能获得正确的边界框
+            bbox = text_obj.get_window_extent().transformed(ax.transData.inverted())
+            print("bbox:", bbox.x0, bbox.x1, bbox.y0, bbox.y1)
+            # for corner_name, (x, y) in corners.items():
+            # 将边界框的四个角点坐标加入列表
+            all_x.append(bbox.x0)
+            all_x.append(bbox.x1)
+            all_y.append(bbox.y0)
+            all_y.append(bbox.y1)
+
 
     # If no elements, return default view
     if not all_x or not all_y:

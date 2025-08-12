@@ -46,7 +46,6 @@ class MainController(QObject):
         self._current_tool_mode = "select" # 默认选择模式
 
         # 实例化所有子控制器，并传递必要的依赖（模型、UI组件实例、MainController自身）
-        # 注意：这里我们使用 main_window 暴露的 'xxx_instance' 属性
 
         self.vertex_controller = VertexController(
             diagram_model=self.diagram_model,
@@ -88,7 +87,9 @@ class MainController(QObject):
         # 初始更新所有视图
         self.update_all_views()
         self.status_message.emit("应用程序已启动。")
-
+        # 设置一些属性
+        self.zoom_times = 0
+        self.absolute_fontsize = False
 
     def _link_controllers_signals(self):
         """连接所有UI组件发出的信号到对应的控制器槽函数。"""
@@ -120,7 +121,7 @@ class MainController(QObject):
         # self.main_window.vertex_list_widget_instance.edit_vertex_requested.connect(self.select_item)
         # self.main_window.vertex_list_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
         # self.main_window.vertex_list_widget_instance.search_vertex_requested.connect(self.search_vertex_by_keyword)
-
+        self.canvas_controller.canvas_widget.canvas_panned.connect(self._update_canvas_range_on_navigation_bar)
 
         # --- LineListWidget 信号连接 ---
         # 用户的列表项点击事件 (现在只在 mousePressEvent 中发出)
@@ -220,6 +221,8 @@ class MainController(QObject):
         canvas_opts = canvas_options if canvas_options is not None else {}
         vertex_opts = vertex_options if vertex_options is not None else {}
         line_opts = line_options if line_options is not None else {}
+        
+
         
         # 将这些字典解包为关键字参数，传递给对应的控制器方法
         self.canvas_controller.update_canvas(**canvas_opts)
@@ -687,3 +690,9 @@ class MainController(QObject):
         print("Model pictured.")
         self.toolbox_controller._save_current_diagram_state()
         self.toolbox_controller._update_undo_redo_button_states()
+
+    def _update_canvas_range_on_navigation_bar(self):
+        print("Updating navigation bar ui for canvas.")
+        (xmin, xmax), (ymin, ymax) = self.canvas_controller._canvas_instance.get_axes_limits()
+        self.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
+        # self.navigation_bar_controller._on_canvas_set_range_ui(xmin, xmax, ymin, ymax)

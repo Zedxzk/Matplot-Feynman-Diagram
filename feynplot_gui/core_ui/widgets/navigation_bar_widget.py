@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, QCheckBox # Import QSpinBox and QLabel
+from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, QCheckBox, QDoubleSpinBox, QHBoxLayout # Import QSpinBox and QLabel
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, Signal
 from typing import Optional
@@ -39,7 +39,7 @@ class NavigationBarWidget(QWidget):
     # --- 【新增】画布更新间隔调整信号 ---
     # 当用户通过UI（QSpinBox）改变间隔时，NavigationBarWidget发出此信号
     canvas_update_interval_changed_ui = Signal(int) # 发送新的间隔值 (ms)
-
+    canvas_set_range = Signal(float, float, float, float)
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -206,6 +206,56 @@ class NavigationBarWidget(QWidget):
 
         # 连接 toggled 信号到一个处理函数
         self.snap_to_grid_checkbox.toggled.connect(self._on_snap_to_grid_toggled)
+        self.tool_bar.addSeparator()
+        # 创建一个容器小部件来放置数值框
+        # --- 添加 X 轴范围显示 ---
+        self.tool_bar.addWidget(QLabel("X范围:", self))
+
+        # X min
+        self.tool_bar.addWidget(QLabel("min:", self))
+        self.x_min_spinbox = QDoubleSpinBox(self)
+        self.x_min_spinbox.setRange(-1000.0, 1000.0)
+        self.x_min_spinbox.setValue(-50.0)
+        # 设置键盘跟踪为False，这样只有在失去焦点或按Enter时才触发valueChanged
+        self.x_min_spinbox.setKeyboardTracking(False)
+        self.tool_bar.addWidget(self.x_min_spinbox)
+
+        # X max
+        self.x_max_spinbox = QDoubleSpinBox(self)
+        self.x_max_spinbox.setPrefix("max: ")
+        self.x_max_spinbox.setRange(-1000.0, 1000.0)
+        self.x_max_spinbox.setValue(50.0)
+        self.x_max_spinbox.setKeyboardTracking(False)
+        self.tool_bar.addWidget(self.x_max_spinbox)
+
+        # --- 添加 Y 轴范围显示 ---
+        self.tool_bar.addSeparator()
+        self.tool_bar.addWidget(QLabel("Y范围:", self))
+
+        # Y min
+        self.y_min_spinbox = QDoubleSpinBox(self)
+        self.y_min_spinbox.setPrefix("min: ")
+        self.y_min_spinbox.setRange(-1000.0, 1000.0)
+        self.y_min_spinbox.setValue(-50.0)
+        self.y_min_spinbox.setKeyboardTracking(False)
+        self.tool_bar.addWidget(self.y_min_spinbox)
+
+        # Y max
+        self.y_max_spinbox = QDoubleSpinBox(self)
+        self.y_max_spinbox.setPrefix("max: ")
+        self.y_max_spinbox.setRange(-1000.0, 1000.0)
+        self.y_max_spinbox.setValue(50.0)
+        self.y_max_spinbox.setKeyboardTracking(False)
+        self.tool_bar.addWidget(self.y_max_spinbox)
+
+        # --- 将所有信号连接到同一个槽函数 ---
+        # 方案1: 使用valueChanged信号 + setKeyboardTracking(False)
+        self.x_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        self.x_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        self.y_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        self.y_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
+
+
         # --- 新增结束 ---
 
         main_layout.addWidget(self.tool_bar)
@@ -355,6 +405,48 @@ class NavigationBarWidget(QWidget):
         更新 canvas_controller 中的 only_allow_grid_points 属性。
         """
         self.toggle_gride_points_mode.emit()
+
+    def update_plot_limits(self, x_min, x_max, y_min, y_max):
+        """
+        这个公共接口用于外部修改UI数值，但不会触发自定义信号。
+        """
+        # 在更新数值时，确保定时器是停止的
+        # self.update_timer.stop() 
+        
+        # 暂时断开信号连接
+        self.x_min_spinbox.valueChanged.disconnect(self._on_canvas_range_set)
+        self.x_max_spinbox.valueChanged.disconnect(self._on_canvas_range_set)
+        self.y_min_spinbox.valueChanged.disconnect(self._on_canvas_range_set)
+        self.y_max_spinbox.valueChanged.disconnect(self._on_canvas_range_set)
+        
+        # 调用 setValue() 更新数值
+        self.x_min_spinbox.setValue(x_min)
+        self.x_max_spinbox.setValue(x_max)
+        self.y_min_spinbox.setValue(y_min)
+        self.y_max_spinbox.setValue(y_max)
+        
+        # 重新连接信号
+        self.x_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        self.x_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        self.y_min_spinbox.valueChanged.connect(self._on_canvas_range_set)
+        self.y_max_spinbox.valueChanged.connect(self._on_canvas_range_set)
+
+
+    def _on_canvas_range_set(self):
+        """
+        这个槽函数会在任何一个 QDoubleSpinBox 的值改变时被触发。
+        它会立即获取所有四个值，并将它们作为一个整体传递。
+        """
+        # 获取所有 SpinBox 的当前值
+        x_min = self.x_min_spinbox.value()
+        x_max = self.x_max_spinbox.value()
+        y_min = self.y_min_spinbox.value()
+        y_max = self.y_max_spinbox.value()
+        
+        # 在这里调用你的核心处理函数，并传入所有值
+        self.canvas_set_range.emit(x_min, x_max, y_min, y_max)
+
+
 
 
     def _show_about_dialog(self):

@@ -1,14 +1,14 @@
 # /home/zed/pyfeynmandiagram/feynplot/drawing/renderer.py
 # from cout import cout
-from hmac import new
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, List, Any, Tuple 
 from feynplot.drawing.fontSettings import *
 from feynplot.shared.common_functions import str2latex
 from feynplot.core.line_support import update_line_plot_points
+from feynplot.core.extra_text_element import TextElement
+from matplotlib.text import Text # 导入正确的类型
 
 # 导入你的核心模型类
 from feynplot.core.vertex import Vertex, VertexType
@@ -61,9 +61,10 @@ class FeynmanDiagramCanvas:
     def _get_reset_view(
         self,
         vertices: List[Vertex],
-        lines: List[Line]
+        lines: List[Line],
+        drawn_texts: Optional[List[Text]] = None
     ) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-        return get_diagram_view_limits(self.ax, vertices, lines)
+        return get_diagram_view_limits(self.ax, vertices, lines, drawn_texts)
 
     def _update_render_parameters(self, **kwargs: Any):
         if 'target_xlim' in kwargs:
@@ -72,8 +73,9 @@ class FeynmanDiagramCanvas:
             self._current_target_ylim = kwargs['target_ylim']
 
     def render(self, 
-               vertices: List['Vertex'], 
-               lines: List['Line'],
+               vertices: List[Vertex], 
+               lines: List[Line],
+               texts: Optional[List[TextElement]] = None,
                auto_scale: bool = False, # 【修改】从参数中读取 auto_scale 状态，默认不自动缩放
                **kwargs: Any): 
         
@@ -86,10 +88,46 @@ class FeynmanDiagramCanvas:
         self.ax.clear() 
         self.ax.set_aspect('equal', adjustable='box')
 
+
+        drawn_texts = []
+        for text in texts:
+            drawn_text = self.ax.text(**text.to_matplotlib_kwargs())
+            drawn_texts.append(drawn_text)
+
+        # # self.fig.canvas.draw()  # 确保 renderer 可用
+        # renderer = self.fig.canvas.get_renderer()
+
+        # for drawn_text in drawn_texts:
+        #     bbox_pixel = drawn_text.get_window_extent(renderer=renderer)
+        #     bbox_data = bbox_pixel.transformed(self.ax.transData.inverted())
+        #     print(f"bbox range in data coords: x0={bbox_data.x0}, x1={bbox_data.x1}, y0={bbox_data.y0}, y1={bbox_data.y1}")
+
+
+
+        # 绘制所有线
+        for line in lines:
+            self._draw_line(line)
+
+        # 绘制所有顶点
+        for vertex in vertices:
+            self._draw_vertex(vertex)
+
+        self.fig.tight_layout()
+        if self.grid_on:
+            self.ax.grid(True, zorder=0)
+        else:
+            self.ax.axis('off')
+
+        for drawn_text in drawn_texts:
+            bbox_pixel = drawn_text.get_window_extent()
+            bbox_data = bbox_pixel.transformed(self.ax.transData.inverted())
+            print(f"bbox range in data coords: x0={bbox_data.x0}, x1={bbox_data.x1}, y0={bbox_data.y0}, y1={bbox_data.y1}")
+
+
         # --- 根据参数和实例属性来应用轴限制或触发自动缩放 ---
         # 如果 auto_scale 为 True，则优先进行自动缩放
         if auto_scale:
-            new_xlim, new_ylim = self._get_reset_view(vertices, lines) 
+            new_xlim, new_ylim = self._get_reset_view(vertices, lines, drawn_texts) 
             self.ax.set_xlim(new_xlim)
             self.ax.set_ylim(new_ylim)
             # 更新内部存储的限制，以便后续渲染（当 auto_scale 为 False 时）保持此视图
@@ -109,22 +147,9 @@ class FeynmanDiagramCanvas:
             self._current_target_ylim = self.ax.get_ylim()
         # 如果是后续渲染，且没有请求自动缩放，也没有明确设置限制，则保持当前视图
         # 此时 self._current_target_xlim 和 self._current_target_ylim 会是上一次的限制
-
-        # 绘制所有线
-        for line in lines:
-            self._draw_line(line)
-
-        # 绘制所有顶点
-        for vertex in vertices:
-            self._draw_vertex(vertex)
-
-        self.fig.tight_layout()
-        if self.grid_on:
-            self.ax.grid(True, zorder=0)
-        else:
-            self.ax.axis('off')
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
+
 
     def _draw_line(self, line: Line):
         line_plot_options = line.get_plot_properties()

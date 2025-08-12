@@ -27,3 +27,16 @@ feynplot-gui
 即可显示GUI界面，如下图所示：
 
 ![alt text](README.assets/zh_CN/UI_example.png)
+
+## 一些例子
+
+![image-20250811175954496](README.zh.assets/image-20250811175954496.png)
+
+
+
+
+
+## 小技巧
+
+1. 双击空白处可快捷添加顶点
+2. 双击对象可快速编辑
