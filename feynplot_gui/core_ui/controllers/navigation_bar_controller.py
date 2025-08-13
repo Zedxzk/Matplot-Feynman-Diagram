@@ -83,8 +83,7 @@ class NavigationBarController(QObject):
 
         # 后端设置菜单动作
         self.navigation_bar_widget.show_matplotlib_settings_triggered.connect(self._on_show_matplotlib_settings_ui_triggered)
-
-        # 连接到 MainController 的选中改变信号，以便更新自身UI状态
+        self.navigation_bar_widget.toggle_use_relative_unit.connect(self._on_toggle_use_relative_unit_ui_triggered)
         try:
             self.main_controller.selection_changed.connect(self._on_main_controller_selection_changed)
         except AttributeError:
@@ -380,3 +379,14 @@ class NavigationBarController(QObject):
             "target_ylim": (y_min, y_max),
         }
         self.main_controller.update_all_views(canvas_options=canvas_opts)
+
+    def _on_toggle_use_relative_unit_ui_triggered(self):
+        """
+        当用户在导航栏中切换“相对单位”复选框时调用。
+        更新 canvas_controller 的 relative_size_unit 属性，并通知 MainController 更新所有视图。
+        """
+        print("触发切换相对单位的UI事件。")
+        self.main_controller.canvas_controller.relative_size_unit = not self.main_controller.canvas_controller.relative_size_unit
+        self.status_message.emit(f"已切换相对单位使用状态: {self.main_controller.canvas_controller.relative_size_unit}")
+        print(f"当前相对单位状态: {self.main_controller.canvas_controller.relative_size_unit}")
+        self.main_controller.update_all_views(canvas_options={'auto_scale': True})

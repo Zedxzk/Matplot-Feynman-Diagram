@@ -27,7 +27,7 @@ from typing import List, Tuple, Optional, Any, Dict
 
 highlight_color = 'red'
 
-def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
+def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
@@ -51,13 +51,13 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
     x_wave, y_wave = wave_path[:, 0], wave_path[:, 1]
 
     # 绘制光子波的路径，使用调整后的属性
-    drawn_line = ax.plot(x_wave, y_wave, **current_line_plot_options)
+    drawn_line = ax.plot(x_wave, y_wave, **current_line_plot_options, **kwargs)[0]
     line.set_plot_points(x_wave, y_wave)
-    drwan_text = draw_line_label(ax, line, label_text_options, zoom_times) # 绘制标签
-    return drawn_line, drwan_text
-        
+    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times=zoom_times, **kwargs) # 绘制标签
+    return drawn_line, drawn_text
 
-def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
+
+def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
     # print('Detected GluonLine') # 可以保留用于调试
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
@@ -80,14 +80,14 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
     x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
 
     # 绘制胶子线的路径
-    drawn_line = ax.plot(x_helix, y_helix, **current_line_plot_options)
+    drawn_line = ax.plot(x_helix, y_helix, **current_line_plot_options)[0]
     line.set_plot_points(x_helix, y_helix)
 
-    drawn_text = draw_line_label(ax, line, label_text_options) # 绘制标签
+    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times=zoom_times, **kwargs) # 绘制标签
     return drawn_line, drawn_text
 
 
-def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
+def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
@@ -118,15 +118,15 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
 
     # --- 绘制锯齿路径 (主要线条) ---
     x_zig, y_zig = zigzag_path[:, 0], zigzag_path[:, 1]
-    drawn_line = ax.plot(x_zig, y_zig, **current_line_plot_options)
+    drawn_line = ax.plot(x_zig, y_zig, **current_line_plot_options)[0]
     line.set_plot_points(x_zig, y_zig)
     
 
-    drawn_text = draw_line_label(ax, line, label_text_options) # 绘制标签
+    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times=zoom_times, **kwargs) # 绘制标签
     return drawn_line, drawn_text
 
 
-def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0):
+def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
@@ -151,7 +151,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
     x, y = fermion_path[:, 0], fermion_path[:, 1]
 
     # 绘制费米子线本身
-    drawn_line = ax.plot(x, y, **current_line_plot_options)
+    drawn_line = ax.plot(x, y, **current_line_plot_options)[0]
     line.set_plot_points(x, y)
     # from pprint import pprint
     # points = line.get_line_plot_points()[:10]
@@ -201,21 +201,31 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
             arrowstyle=arrowstyle_str,
             linewidth=arrow_lw,
             color=current_line_plot_options.get('color', 'black'),
-            zorder=current_line_plot_options.get('zorder', 1) + 1
+            zorder=current_line_plot_options.get('zorder', 1) + 1,
+            alpha=label_text_options.get('alpha', 1.0) # 将 alpha 添加到这里
         )
 
         ax.annotate(
-            '', xy=xy, xytext=xytext, arrowprops=arrow_props
+            '',
+            xy=xy,
+            xytext=xytext,
+            arrowprops=arrow_props,
         )
 
-    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times) # 绘制标签
+    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times, use_relative_unit=use_relative_unit, **kwargs) # 绘制标签
     return drawn_line, drawn_text
 
 
-def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0):
+def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     current_scatter_props = vertex.get_scatter_properties().copy()
     current_label_props = vertex.get_label_properties().copy()
+    if 'pre_render' in kwargs and kwargs['pre_render']:
+        # 设置 alpha 为 0 以隐藏顶点
+        current_scatter_props['alpha'] = 0
+        current_label_props['alpha'] = 0
+        kwargs.pop('pre_render', None)
+
     cout(f"current_scatter_props: {current_scatter_props}")
     cout(f"current_label_props: {current_label_props}")
 
@@ -246,12 +256,13 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0):
         current_label_props['zorder'] = original_zorder + 11
 
     # --- 绘制点状顶点 ---
+    # print(f"kwargs: {kwargs}")
     if not vertex.hidden_vertex or vertex.is_selected:
         cout(current_scatter_props)
-        ax.scatter(vertex.x, vertex.y, **current_scatter_props)
+        drawn_vertex = ax.scatter(vertex.x, vertex.y, **current_scatter_props, **kwargs)
 
     # 绘制标签
-    drawn_text = draw_vertex_label(ax, vertex, current_label_props, zoom_times)
+    drawn_text = draw_vertex_label(ax, vertex, current_label_props, zoom_times, use_relative_unit=use_relative_unit, **kwargs)
 
     # if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
     #     label_x = vertex.x + vertex.label_offset[0]
@@ -274,10 +285,10 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0):
     #         **current_label_props # 使用调整后的标签属性
     #     )
     #     return drawn_text
-    return drawn_text
+    return drawn_vertex, drawn_text
 
 
-def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0):
+def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0, use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     current_circle_props = vertex.get_circle_properties().copy()
     current_custom_hatch_props = vertex.get_custom_hatch_properties().copy()
@@ -325,7 +336,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0):
             (vertex.x, vertex.y),
             **current_circle_props
         )
-        ax.add_patch(circle)
+        ax.add_patch(circle, **kwargs)
     else:
         # 如果圆圈不可见，则其阴影线和标签也不需要绘制
         return
@@ -365,12 +376,13 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0):
                 [rotated_p1_y, rotated_p2_y],
                 color=hatch_line_color,
                 linewidth=hatch_line_width,
-                zorder=zorder_hatch
+                zorder=zorder_hatch,
+                **kwargs # 允许传入额外的绘图参数
             )
             line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
     # 3. 绘制标签
-    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, zoom_times=zoom_times)
+    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
     # if (vertex.label and not vertex.hidden_label and not vertex.hidden_vertex) or  vertex.is_selected: # 只有当圆圈可见时才绘制标签
     #     label_x = vertex.x + vertex.label_offset[0]
     #     label_y = vertex.y + vertex.label_offset[1]
@@ -532,10 +544,14 @@ def get_diagram_view_limits(
 
 
 
-def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom_times : int = 0):
+def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom_times : int = 0, use_relative_unit : bool = True, **kwargs):
     if not line.label or line.hidden_label:
         print(f"Line {line.id} is hidden, skipping")
         return
+
+    if 'pre_render' in kwargs and kwargs['pre_render']:
+        current_label_text_options['alpha'] = 0
+        kwargs.pop('pre_render', None)
 
     # 绘制光子线的标签
     if line.label and not line.hidden_label:
@@ -558,15 +574,15 @@ def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom
         # ------------------------
         
         label_in_latex = str2latex(line.label)
-        current_label_text_options = get_fontsize_from_data_units(ax, current_label_text_options)
+        current_label_text_options = convert_props_from_data(ax, current_label_text_options, use_relative_unit=use_relative_unit)
         drawn_text = ax.text(label_x,
                 label_y,
                 label_in_latex,
-                **current_label_text_options)
+                **current_label_text_options, **kwargs)
         return drawn_text
 
 
-def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_times : int = 0):
+def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_times : int = 0, use_relative_unit: bool = True, **kwargs):
     # 绘制标签
     if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
         label_x = vertex.x + vertex.label_offset[0]
@@ -580,63 +596,71 @@ def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_t
             # 如果标签位置不在当前视图范围内，则跳过绘制
             return
         # ------------------------
-        current_label_props = get_fontsize_from_data_units(ax, current_label_props)
+        current_label_props = convert_props_from_data(ax, current_label_props, use_relative_unit=use_relative_unit)
         label_in_latex = str2latex(vertex.label)
         drawn_text = ax.text(
             label_x,
             label_y,
             label_in_latex ,
-            **current_label_props # 使用调整后的标签属性
+            **current_label_props, # 使用调整后的标签属性
+            **kwargs
         )
         return drawn_text
 
 
 
 
-def get_fontsize_from_data_units(
-    ax: plt.Axes,
-    text_properties: dict
-) -> dict:
+def convert_props_from_data(ax: plt.Axes, props: dict, use_relative_unit : bool = True) -> dict:
     """
-    从字典中提取字体大小并根据数据单位进行调整。
-    
+    自动将字典中所有表示尺寸的属性从数据单位转换为 Matplotlib 的绘图单位。
+
     Args:
-        ax: Matplotlib 的 Axes 对象。
-        text_properties: 包含文本属性的字典，可能包含 'fontsize' 或 'size' 键。
-        
+        ax: Matplotlib Axes 对象。
+        props: 包含需要转换的属性（数据单位）的字典。
+
     Returns:
-        调整后的文本属性字典。
+        一个新字典，包含转换后的属性。
     """
-    # 复制字典以避免修改原始字典
-    adjusted_props = text_properties.copy()
-    
+    if not use_relative_unit:
+        # 如果不使用相对单位，直接返回原始属性
+        return props
+
+    # 定义所有需要自动转换的属性键
+    # 这里我们只区分字体相关和非字体相关的属性
+    fontsize_keys = {'fontsize', 'size'}
+    other_size_keys = {'s', 'markersize', 'linewidth', 'markeredgewidth', 'elinewidth'}
+
+    adjusted_props = props.copy()
     fig = ax.figure
     if fig is None:
-        return adjusted_props  # 如果没有 figure，返回原始属性
+        return adjusted_props
 
-    # fig_width_inch, fig_height_inch = fig.get_size_inches()
-    # print(f"Figure size in inches: {fig_width_inch} x {fig_height_inch}")
+    # 获取每个数据单位对应的像素数
+    bbox = ax.get_position()
+    fig_width_inch, _ = fig.get_size_inches()
+    dpi = fig.dpi
+    ax_width_px = bbox.width * fig_width_inch * dpi
     xlim = ax.get_xlim()
-    data_range = xlim[1] - xlim[0]
-    print(f"Data range in x-axis: {data_range}")
-    
-    if data_range == 0:
-        return adjusted_props  # 如果数据范围为0，返回原始属性
+    data_range_x = xlim[1] - xlim[0]
+    if data_range_x == 0:
+        return adjusted_props
+    px_per_data = ax_width_px / data_range_x
 
-    # 提取字体大小
-    fontsize = None
-    if 'fontsize' in adjusted_props:
-        fontsize = adjusted_props['fontsize']
-    elif 'size' in adjusted_props:
-        fontsize = adjusted_props['size']
-        # 将 size 转换为 fontsize
-        adjusted_props['fontsize'] = adjusted_props.pop('size')
-    
-    if fontsize is not None:
-        # 计算调整后的字体大小
-        target_pixels = 12 * fontsize / data_range
-        adjusted_props['fontsize'] = target_pixels
-    
+    # 遍历传入的属性字典，智能转换
+    for key, value in adjusted_props.items():
+        if value is None:
+            continue
+
+        # 字体大小转换：数据单位 -> 像素 -> pt
+        if key in fontsize_keys:
+            fontsize_px = value * px_per_data
+            fontsize_pt = fontsize_px   / dpi
+            adjusted_props[key] = fontsize_pt
+            
+        # 其他尺寸转换：数据单位 -> 像素
+        elif key in other_size_keys:
+            # 标记大小、线宽等，Matplotlib 默认单位是 pt，但像素值更直观，且可以直接使用
+            size_px = value * px_per_data
+            adjusted_props[key] = size_px
+
     return adjusted_props
-
-

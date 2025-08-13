@@ -63,7 +63,7 @@ class CanvasController(QObject):
         self._is_panning_active = False
         self._pan_start_data_pos = None
         self.zoom_times = 0
-        self.absolute_text_size = False
+        self.relative_size_unit = canvas_controller_default_settings['use_relative_unit']
         self._motion_cid: Optional[int] = None # Stores Matplotlib event connection ID
         self._release_cid: Optional[int] = None # Stores Matplotlib event connection ID
 
@@ -116,11 +116,16 @@ class CanvasController(QObject):
                 text_elem.is_selected = True
 
         # 调用 MatplotlibBackend 的 render 方法，并原样传递所有 render_kwargs
+        # canvas_size = self.canvas_widget.size()
+        # width = canvas_size.width()
+        # height = canvas_size.height()
+        # print(f"画布的实际像素大小为: {width} x {height}")
         self._canvas_instance.render(
             vertices_list, 
             lines_list,
             texts_list,
             zoom_times= self.zoom_times,
+            use_relative_unit= self.relative_size_unit,
             **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
         )
         # (xmin, xmax), (ymin, ymax) = self._canvas_instance.get_axes_limits()

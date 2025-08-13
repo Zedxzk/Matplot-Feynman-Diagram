@@ -4,6 +4,9 @@ from PySide6.QtCore import Qt, Signal
 from typing import Optional
 from feynplot_gui.default.default_settings import canvas_widget_default_settings as cw_default_settings
 from feynplot_gui.default.default_settings import canvas_controller_default_settings as cc_default_settings
+from feynplot_gui.default.default_settings import navigation_widget_default_settings as nw_default_settings
+
+
 
 class NavigationBarWidget(QWidget):
     # 定义信号，这些信号将被 MainController 或 NavigationBarController 监听
@@ -35,6 +38,8 @@ class NavigationBarWidget(QWidget):
     # 【修改】自动缩放信号，现在只在点击时触发，不携带状态
     toggle_auto_scale_requested = Signal() 
     toggle_gride_points_mode = Signal() 
+    toggle_use_relative_unit = Signal() # <--- **新增信号：切换相对单位使用状态**
+
 
     # --- 【新增】画布更新间隔调整信号 ---
     # 当用户通过UI（QSpinBox）改变间隔时，NavigationBarWidget发出此信号
@@ -203,11 +208,28 @@ class NavigationBarWidget(QWidget):
         # 设置默认状态和关联信号
         # 默认状态从 main_controller 获取
         self.snap_to_grid_checkbox.setChecked(cc_default_settings['ONLY_ALLOW_GRID_POINTS'])
-
         # 连接 toggled 信号到一个处理函数
         self.snap_to_grid_checkbox.toggled.connect(self._on_snap_to_grid_toggled)
+
+
         self.tool_bar.addSeparator()
-        # 创建一个容器小部件来放置数值框
+        self.tool_bar.addWidget(QLabel("相对对象尺寸:", self))
+
+        self.relative_units_checkbox = QCheckBox("随图像缩放", self)
+        
+        # 添加鼠标悬停的注释（Tooltip）
+        # 这行代码在 PySide6 和 PyQt5/6 中都是通用的
+        self.relative_units_checkbox.setToolTip("开启此项，绘图元素的尺寸（如文字、标记）将随图像的缩放而自动调整；关闭则保持绝对像素大小。")
+        
+        self.tool_bar.addWidget(self.relative_units_checkbox)
+
+        self.relative_units_checkbox.setChecked(nw_default_settings['use_relative_unit'])
+        self.relative_units_checkbox.stateChanged.connect(self._on_relative_units_toggled)
+
+        
+
+        # 创建一个容器小部件来放置
+        # 数值框
         # --- 添加 X 轴范围显示 ---
         # self.tool_bar.addWidget(QLabel("X范围:", self))
 
@@ -471,6 +493,15 @@ class NavigationBarWidget(QWidget):
         更新 canvas_controller 中的 only_allow_grid_points 属性。
         """
         self.toggle_gride_points_mode.emit()
+
+
+    def _on_relative_units_toggled(self, checked: bool):
+        """
+        当“相对对象尺寸”复选框状态改变时被调用。
+        更新 navigation_widget_default_settings 中的 use_relative_unit 属性。
+        """
+        self.toggle_use_relative_unit.emit()
+
 
     def update_plot_limits(self, x_min, x_max, y_min, y_max):
         """
