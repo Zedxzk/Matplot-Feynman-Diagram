@@ -18,7 +18,7 @@ class LineStyle(enum.Enum):
 # --- Line Class ---
 class Line:
     # Counter for generating unique IDs
-    _line_counter_global = 0
+    _line_counter_global = 1
 
     def __init__(self, v_start, v_end,
                  label: str = '',
@@ -38,14 +38,14 @@ class Line:
                  hidden_label: bool = False,
                  # Style is now an internal property, not directly passed to super in subclasses
                  style: LineStyle = LineStyle.STRAIGHT, 
+                 loop: bool = False,
                  **kwargs):
-
+        # print(f"Line Initializing, kwargs: {kwargs}, loop: {loop}")  # Debugging output
         # Ensure v_start and v_end are correctly assigned
         if not (hasattr(v_start, 'x') and hasattr(v_start, 'y')):
             raise TypeError("v_start 必须有 x 和 y 属性")
         if not (hasattr(v_end, 'x') and hasattr(v_end, 'y')):
             raise TypeError("v_end 必须有 x 和 y 属性")
-        
         self.v_start = v_start
         self.v_end = v_end
 
@@ -75,6 +75,15 @@ class Line:
         self.id = kwargs.pop('id', f"l_{Line._line_counter_global}")
         if self.id.startswith("l_"):
             Line._line_counter_global += 1
+        self.loop = loop
+        self.a = None
+        self.b = None
+        self.angular_direction = None
+        if self.loop:
+            print(f"DEBUG(Line_init): Loop is enabled for line ID '{self.id}'")
+            self.a = kwargs.pop('a', 1.0)  # 长半轴
+            self.b = kwargs.pop('b', 1.0)  # 短半轴
+            self.angular_direction = kwargs.pop('angular_direction', 90.0)  # 默认角度
 
         # --- Direct Line Plotting Attributes ---
         self.linewidth = kwargs.pop('linewidth', linewidth)
@@ -129,7 +138,7 @@ class Line:
         if self._angleOut is None or self._angleIn is None:
             self.set_vertices(v_start, v_end)
         
-        cout(f"DEBUG(Line_init): ID='{self.id}', Color='{self.color}', Linewidth='{self.linewidth}', Style='{self.style.name}'")
+        print(f"DEBUG(Line_init): ID='{self.id}', Color='{self.color}', Linewidth='{self.linewidth}', Style='{self.style.name}'")
     def hide_label(self):
         self.hidden_label = True
 
@@ -361,7 +370,9 @@ class FermionLine(Line):
     ):
         # 从 kwargs 中取出 style，如果不存在则使用默认值
         style_to_pass = kwargs.pop('style', style)
-        super().__init__(v_start, v_end, style=style_to_pass, **kwargs)
+        loop_to_pass = kwargs.pop('loop', False)  # 处理 loop 参数
+        print(f"Passing Loop: {loop_to_pass} to FermionLine")
+        super().__init__(v_start, v_end, style=style_to_pass, loop=loop_to_pass, **kwargs)
         # FermionLine manages its own arrow properties
         self.arrow = arrow
         self.arrow_filled = arrow_filled
@@ -488,42 +499,52 @@ class GluonLine(BosonLine):
 
 class WPlusLine(BosonLine):
     def __init__(self, v_start, v_end, 
-                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 zigzag_amplitude=0.2, zigzag_frequency=2.0, 
+                 initial_phase=0, final_phase=0, # 添加初末相位参数
+                 style: LineStyle = LineStyle.WZ,
                  **kwargs):
         label = kwargs.pop('label', r'$W^{+}$')
         
-        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
-        self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
+        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', zigzag_amplitude)
+        self.zigzag_frequency = kwargs.pop('zigzag_frequency', zigzag_frequency)
+        self.initial_phase = initial_phase
+        self.final_phase = final_phase
         
-        # 从 kwargs 中取出 style，如果不存在则使用默认值
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
 
 class WMinusLine(BosonLine):
     def __init__(self, v_start, v_end, 
-                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 zigzag_amplitude=0.2, zigzag_frequency=2.0, 
+                 initial_phase=0, final_phase=0, # 添加初末相位参数
+                 style: LineStyle = LineStyle.WZ,
                  **kwargs):
         label = kwargs.pop('label', r'$W^{-}$')
         
-        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
-        self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
+        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', zigzag_amplitude)
+        self.zigzag_frequency = kwargs.pop('zigzag_frequency', zigzag_frequency)
+        self.initial_phase = initial_phase
+        self.final_phase = final_phase
         
-        # 从 kwargs 中取出 style，如果不存在则使用默认值
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
 
 class ZBosonLine(BosonLine):
     def __init__(self, v_start, v_end, 
-                 style: LineStyle = LineStyle.WZ, # <--- 修正点：默认值在这里
+                 zigzag_amplitude=0.2, zigzag_frequency=2.0, 
+                 initial_phase=0, final_phase=0, # 添加初末相位参数
+                 style: LineStyle = LineStyle.WZ,
                  **kwargs):
         label = kwargs.pop('label', r'$Z^{0}$')
         
-        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', 0.2)
-        self.zigzag_frequency = kwargs.pop('zigzag_frequency', 2.0)
+        self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', zigzag_amplitude)
+        self.zigzag_frequency = kwargs.pop('zigzag_frequency', zigzag_frequency)
+        self.initial_phase = initial_phase
+        self.final_phase = final_phase
         
-        # 从 kwargs 中取出 style，如果不存在则使用默认值
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
+
 
 class HiggsLine(BosonLine):
     def __init__(self, v_start, v_end, 

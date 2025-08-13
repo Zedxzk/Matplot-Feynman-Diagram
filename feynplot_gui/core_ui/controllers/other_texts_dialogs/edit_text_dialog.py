@@ -67,7 +67,7 @@ class EditTextDialog(QDialog):
         main_layout.addRow("Y 坐标:", self.y_input)
         # 3. 字号输入框
         self.size_input = QDoubleSpinBox(self)
-        self.size_input.setRange(1, 100)
+        self.size_input.setRange(1, 1000)
         self.size_input.setDecimals(0)
         main_layout.addRow("字号:", self.size_input)
         

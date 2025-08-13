@@ -57,8 +57,15 @@ class OtherTextsWidget(QListWidget):
         :param position: The right-click position (QPoint)
         """
         item = self.itemAt(position)
+        menu = QMenu(self)
+
+        # 总是添加“添加新文本”的选项，因为它是一个全局操作
+        add_action = menu.addAction("添加新文本")
+        add_action.triggered.connect(self.add_new_text_requested.emit)
         
-        menu = QMenu(self) # 统一创建菜单对象
+        # 添加一个分隔线，以区分全局操作和针对具体项的操作
+        if item:
+            menu.addSeparator()
 
         if item:
             # 右键点击了列表项
@@ -69,18 +76,9 @@ class OtherTextsWidget(QListWidget):
 
                 delete_action = menu.addAction("删除文本")
                 delete_action.triggered.connect(lambda: self.delete_text_requested.emit(text_element))
-    
-        else:
-            # 右键点击了空白区域
-            add_action = menu.addAction("添加新文本")
-            # 连接到新的 add_new_text_requested 信号
-            add_action.triggered.connect(self.add_new_text_requested.emit) 
-            other_texts_print("Added add_new_text_requested signal")
-            
         
         # 只有当菜单中有动作时才显示菜单
-        if menu.actions(): 
-            # 菜单显示位置通常需要转换为全局屏幕坐标
+        if menu.actions():
             menu.exec(self.mapToGlobal(position))
 
 
@@ -118,6 +116,7 @@ class OtherTextsWidget(QListWidget):
             text_data: The actual TextElement object.
         """
         # Display text content, ID, and coordinates
+        print(text_data)
         item_text = rf"[{text_data.id}] 文本: '{text_data.text[:20]}...' ({text_data.x:.2f}, {text_data.y:.2f})" \
                     if len(text_data.text) > 20 else rf"[{text_data.id}] 文本: '{text_data.text}' ({text_data.x:.2f}, {text_data.y:.2f})"
         

@@ -5,15 +5,15 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, List, Any, Tuple 
 from feynplot.drawing.fontSettings import *
-from feynplot.shared.common_functions import str2latex
-from feynplot.core.line_support import update_line_plot_points
+# from feynplot.shared.common_functions import str2latex
+# from feynplot.core.line_support import update_line_plot_points
 from feynplot.core.extra_text_element import TextElement
 from matplotlib.text import Text # 导入正确的类型
 from matplotlib.lines import Line2D
 from matplotlib.collections import PathCollection
 from feynplot.default_settings.default_settings import renderer_default_settings
 import numpy as np
-
+from matplotlib.transforms import Bbox
 
 scale_factor = renderer_default_settings['DEFAULT_SCALE_FACTOR']
 
@@ -29,7 +29,7 @@ from feynplot.core.line import (
 from feynplot.drawing.plot_functions import (
     draw_structured_vertex, draw_point_vertex,
     draw_gluon_line, draw_photon_wave, draw_WZ_zigzag_line, draw_fermion_line,
-    get_diagram_view_limits , convert_props_from_data, draw_text_element
+    get_diagram_view_limits , draw_text_element
 )
 class FeynmanDiagramCanvas:
     _render_call_count = 0 # Class-level counter for render calls
@@ -182,8 +182,6 @@ class FeynmanDiagramCanvas:
             line_plot_options['alpha'] = 0  # 设置 alpha 为 0 以隐藏线条
             label_text_options['alpha'] = 0
             kwargs.pop('pre_render', None)  # 移除 pre_render 参数
-        # update_line_plot_points(line)
-        # self.ax.plot(line.get_line_plot_points(), line_plot_options, label_text_options)
         if isinstance(line, GluonLine):
             drawn_line, drawn_texts = draw_gluon_line(self.ax, line, line_plot_options, label_text_options, zoom_times, use_relative_unit=use_relative_unit, **kwargs)
         elif isinstance(line, PhotonLine):
@@ -195,7 +193,7 @@ class FeynmanDiagramCanvas:
         else: # 通用直线 (如果你的 Line 类可以直接绘制直线)
             (x1, y1), (x2, y2) = line.get_coords()
             self.ax.plot([x1, x2], [y1, y2], **line_plot_options)
-
+        # print(f"渲染线条: {line}, 绘制的线对象: {drawn_line}, 绘制的文本对象: {drawn_texts}")
         return drawn_line, drawn_texts 
 
     def _draw_vertex(self, vertex: Vertex, zoom_times : int = 0, use_relative_unit: bool = True,  **kwargs):
@@ -204,6 +202,7 @@ class FeynmanDiagramCanvas:
             drawn_vetex, drawn_text = draw_structured_vertex(self.ax, vertex, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
         else:
             drawn_vetex, drawn_text = draw_point_vertex(self.ax, vertex, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
+    
         return drawn_vetex, drawn_text
 
     def _draw_text(self, text: TextElement, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs) -> Text:
@@ -229,64 +228,77 @@ class FeynmanDiagramCanvas:
 
 
 
-    def _calculate_content_bounds(self, vertices, lines, texts, zoom_times: int = 0,  use_relative_unit : bool = True):
+    def _calculate_content_bounds(self, vertices, lines, texts, zoom_times: int = 0, use_relative_unit : bool = True):
         """
-        预绘制所有对象以计算它们的总边界框。
+        预绘制部分对象并估算其他对象，以计算它们的总边界框。
         """
         # 临时清除，但保留当前视图设置
         current_xlim = self.ax.get_xlim()
         current_ylim = self.ax.get_ylim()
         self.ax.clear()
         
-        temp_drawn_objects = []
+        temp_drawn_objects = {}
+        all_bboxes = []
+        renderer = self.fig.canvas.get_renderer()
 
-        # 绘制线条和顶点，但不显示它们
+        # 1. 绘制线条和文本（不实际显示），并将它们的边界框加入列表
         for line in lines:
             drawn_line, drawn_text = self._draw_line(line, zoom_times, pre_render=True, use_relative_unit=use_relative_unit)
             if drawn_line:
-                temp_drawn_objects.append(drawn_line)
-            if drawn_text:
-                temp_drawn_objects.append(drawn_text)
+                if 'line' not in temp_drawn_objects:
+                    temp_drawn_objects['line'] = []
+                temp_drawn_objects['line'].append(drawn_line)
 
-        for vertex in vertices:
-            drawn_objects_from_vertex = self._draw_vertex(vertex, zoom_times, pre_render=True, use_relative_unit=use_relative_unit)
-            if isinstance(drawn_objects_from_vertex, tuple):
-                for obj in drawn_objects_from_vertex:
-                    if obj:
-                        temp_drawn_objects.append(obj)
-            elif drawn_objects_from_vertex:
-                temp_drawn_objects.append(drawn_objects_from_vertex)
-                
-        # 【新增】绘制额外文本，并添加到列表中
+            if drawn_text:
+                if 'text' not in temp_drawn_objects:
+                    temp_drawn_objects['text'] = []
+                temp_drawn_objects['text'].append(drawn_text)
+
+        # 绘制额外文本
         if texts:
             for text in texts:
                 kwargs = text.to_matplotlib_kwargs()
-                if 'color' in kwargs:
-                    del kwargs['color']
-                # 使用 alpha=0 隐藏，同时允许计算边界
-                drawn_text = self.ax.text(alpha=0, **kwargs, transform=self.ax.transAxes)
-                temp_drawn_objects.append(drawn_text)
+                # 将 transform 参数从 transAxes 改为 transData
+                drawn_text = self._draw_text(text, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
+                print(f"绘制额外文本: {drawn_text}")
+                if 'text' not in temp_drawn_objects:
+                    temp_drawn_objects['text'] = []
+                temp_drawn_objects['text'].append(drawn_text)
 
-        # 刷新画布以确保所有对象都已在内部渲染
-        # 这一步非常重要，否则 get_window_extent() 可能返回无效值
+        # 刷新画布以确保临时对象已渲染
         self.fig.canvas.draw()
-        
-        # 过滤掉无效的边界框
-        from matplotlib.transforms import Bbox
-        all_bboxes = []
-        for obj in temp_drawn_objects:
-            if obj and hasattr(obj, 'get_window_extent'):
-                try:
-                    bbox = obj.get_window_extent()
-                    # 检查边界框的有效性，过滤掉NaN和Inf
-                    if not any(np.isnan([bbox.x0, bbox.x1, bbox.y0, bbox.y1])) and \
-                    not any(np.isinf([bbox.x0, bbox.x1, bbox.y0, bbox.y1])):
-                        all_bboxes.append(bbox)
-                except Exception as e:
-                    # 某些对象可能没有 get_window_extent 方法，或者调用失败
-                    print(f"警告：无法获取对象 {obj} 的边界框。错误: {e}")
-                    pass
-        
+
+        # 从绘制的对象中获取边界框
+        for key, value in temp_drawn_objects.items():
+            for obj in value:
+                if obj and hasattr(obj, 'get_window_extent'):
+                    try:
+                        bbox = obj.get_window_extent(renderer=renderer)
+                        if not any(np.isnan([bbox.x0, bbox.x1, bbox.y0, bbox.y1])) and \
+                            not any(np.isinf([bbox.x0, bbox.x1, bbox.y0, bbox.y1])):
+                            all_bboxes.append(bbox)
+                        else:
+                            print(f"bbox {bbox} is invalid, skipping.")
+                    except Exception as e:
+                        print(f"警告：无法获取对象 {obj} 的边界框。错误: {e}")
+                        pass
+                    print(f"{key} 对象的边界框: {bbox.transformed(self.ax.transData.inverted())}")
+                else:
+                    print(f"警告：对象 {obj} 没有有效的边界框方法，跳过。")
+        # 2. 【核心修改】估算顶点的边界框，不再进行绘制
+        for vertex in vertices:
+            # 3. 估算半径
+            # 假设 vertex.size 是以数据单位表示的，如果不是，可能需要调整
+            radius = vertex.size * 0.002 
+            
+            # 4. 创建以 (vertex.x, vertex.y) 为中心的方形边界框（数据坐标）
+            vx, vy = vertex.x, vertex.y
+            data_bbox = Bbox.from_extents(vx - radius, vy - radius, vx + radius, vy + radius)
+            
+            # 5. 将数据坐标的bbox转换为像素坐标的bbox，以便与其他bbox合并
+            pixel_bbox = data_bbox.transformed(self.ax.transData)
+            all_bboxes.append(pixel_bbox)
+
         if not all_bboxes:
             # 如果没有有效的边界框，返回一个默认的视图
             print("警告：没有有效的绘图对象边界，使用默认视图。")
@@ -296,31 +308,42 @@ class FeynmanDiagramCanvas:
             for obj in temp_drawn_objects:
                 if obj:
                     obj.remove()
-            return (-1, 1), (-1, 1)
+            return (-5, 5), (-5, 5)
+        
+        for bbox in all_bboxes:
+            transformed_bbox = bbox.transformed(self.ax.transData.inverted())
+            print(f"Transformed bbox: {transformed_bbox}")
 
-        # 合并所有边界框
+
+        # 合并所有边界框（现在包括了线条、文本和估算的顶点）
         merged_bbox = Bbox.union(all_bboxes)
 
-        # 将像素边界框转换回数据坐标系
+        # 将合并后的像素边界框转换回数据坐标系
         merged_bbox_data = merged_bbox.transformed(self.ax.transData.inverted())
         
         # 增加边界以提供一些空白
         width = merged_bbox_data.x1 - merged_bbox_data.x0
         height = merged_bbox_data.y1 - merged_bbox_data.y0
         
-        x_padding = width * 0.04 # 例如，增加 10% 的宽度作为边界
-        y_padding = height * 0.04 # 增加 10% 的高度作为边界
+        # 防止宽度或高度为0时，padding也为0的情况
+        if width == 0: width = 1
+        if height == 0: height = 1
+            
+        x_padding = width * 0.04 
+        y_padding = height * 0.04
 
         new_xlim = (merged_bbox_data.x0 - x_padding, merged_bbox_data.x1 + x_padding)
         new_ylim = (merged_bbox_data.y0 - y_padding, merged_bbox_data.y1 + y_padding)
         
         # 清理临时绘制的对象
-        for obj in temp_drawn_objects:
-            if obj:
-                obj.remove()
-        print(f"计算的内容边界: xlim={new_xlim}, ylim={new_ylim}")
-        print(f"原始绘制范围:{merged_bbox_data}")
+        for key, temp_drawn_objects in temp_drawn_objects.items():
+            # print(f"清理临时绘制的对象: {key}, 对象数量: {len(temp_drawn_objects)}")
+            if isinstance(temp_drawn_objects, list):
+                for obj in temp_drawn_objects:
+                    if obj:
+                        obj.remove()
+        # for obj in temp_drawn_objects:
+        #     if obj:
+        #         obj.remove()
+                
         return new_xlim, new_ylim
-    
-
-

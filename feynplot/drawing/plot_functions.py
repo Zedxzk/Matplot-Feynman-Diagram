@@ -47,7 +47,7 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
         current_label_text_options['zorder'] = original_zorder + 11
 
     # 获取光子波的路径点
-    wave_path = generate_photon_wave(line)
+    wave_path = generate_photon_wave(line, loop=line.loop)
     x_wave, y_wave = wave_path[:, 0], wave_path[:, 1]
 
     # 绘制光子波的路径，使用调整后的属性
@@ -96,7 +96,7 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
     original_zorder = current_line_plot_options.get('zorder', 1)
 
     # 调用 generate_WZ_zigzag 获取所有路径
-    zigzag_path, bezier_base_path_for_zigzag, high_res_bezier_path = generate_WZ_zigzag(line, start_up=True)
+    zigzag_path, base_path = generate_WZ_zigzag(line) 
 
     # --- 绘制高分辨率贝塞尔曲线 (背景线) ---
     high_res_bezier_plot_options = current_line_plot_options.copy() # 基于当前线条属性复制
@@ -218,6 +218,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
 def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
+    drawn_vertex, drawn_text = None, None
     current_scatter_props = vertex.get_scatter_properties().copy()
     current_label_props = vertex.get_label_properties().copy()
     if 'pre_render' in kwargs and kwargs['pre_render']:
@@ -546,6 +547,8 @@ def get_diagram_view_limits(
 
 def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom_times : int = 0, use_relative_unit : bool = True, **kwargs):
     if not line.label or line.hidden_label:
+        if not line.label:            # print(f"Line {line.id} has no label, skipping")
+            return
         print(f"Line {line.id} is hidden, skipping")
         return
 

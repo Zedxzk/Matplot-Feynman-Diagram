@@ -86,7 +86,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
             # --- Vertex Size ---
             initial_vertex_size = getattr(self.vertex, 'size', 100.0)
             self.vertex_size_layout, self.vertex_size_input = self._create_spinbox_row(
-                "顶点尺寸 (size):", initial_vertex_size, min_val=1.0, max_val=1000.0, step=1.0, is_int=True
+                "顶点尺寸 (size):", initial_vertex_size, min_val=0.0, max_val=1000.0, step=1.0, is_int=True
             )
             basic_layout.addLayout(self.vertex_size_layout)
 

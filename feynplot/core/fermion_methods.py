@@ -4,6 +4,7 @@ import math
 
 # 假设 cubic_bezier 定义在 feynplot.core.bezier 中
 from feynplot.core.bezier import cubic_bezier
+from feynplot.core.circle import oval_circle
 
 def generate_fermion_line(line):
     """
@@ -45,7 +46,19 @@ def generate_fermion_line(line):
     B = np.array(end_point_coords)
 
     # 直接生成贝塞尔曲线路径
-    xs, ys = cubic_bezier(A, B, angle_out, angle_in, offset_ratio=bezier_offset, points=num_points)
+    if line.loop:
+        # 如果是自环，使用椭圆路径
+        result = oval_circle(
+            start_point_coords,
+            line.angular_direction,
+            line.a,
+            line.b,
+            points=num_points
+        )
+        xs, ys = result[:, 0], result[:, 1]
+
+    else:
+        xs, ys = cubic_bezier(A, B, angle_out, angle_in, offset_ratio=bezier_offset, points=num_points)
     
     # 返回 (N, 2) 形状的路径数组
     return np.column_stack((xs, ys))

@@ -99,7 +99,7 @@ class EditAllVerticesDialog(QDialog):
         size_layout.addWidget(self.size_checkbox)
         
         self.size_spinbox = QSpinBox()
-        self.size_spinbox.setRange(1, 500)
+        self.size_spinbox.setRange(0, 500)
         self.size_spinbox.setValue(100) # A sensible default
         self.size_spinbox.setEnabled(False) # Initially disabled
         size_layout.addWidget(self.size_spinbox)

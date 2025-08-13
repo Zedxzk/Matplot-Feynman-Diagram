@@ -1,15 +1,30 @@
 from PySide6.QtGui import QColor
+from typing import Optional
 
 class TextElement:
-    _next_id = 1
+    """
+    表示一个可绘制的文本元素，包含其样式和位置属性。
+    """
     
     # 定义一个黑名单，用于在序列化时排除内部或非用户可编辑的属性
-    __exclude__ = ['id', 'is_selected']
+    __exclude__ = []
+    # __exclude__ = ['id', 'is_selected']
 
-    def __init__(self, text: str, x: float = 0.0, y: float = 0.0, size : int = 12, color = 'black', bold: bool = False, italic: bool = False, ha: str = 'center', va: str = 'center'):
-        self.id = TextElement._next_id
-        TextElement._next_id += 1
+    def __init__(self, 
+                 text: str, 
+                 x: float = 0.0, 
+                 y: float = 0.0, 
+                 size: int = 12, 
+                 color: str = 'black', 
+                 bold: bool = False, 
+                 italic: bool = False, 
+                 ha: str = 'center', 
+                 va: str = 'center', 
+                 id: Optional[str] = None, 
+                 clip_on: bool = True,
+                 is_selected: bool = False):
         
+        self.id = id  # ID will be set later by the DiagramModel
         self.text = text
         self.x = x
         self.y = y
@@ -19,8 +34,8 @@ class TextElement:
         self.italic = italic
         self.ha = ha
         self.va = va
-        self.clip_on = True
-        self.is_selected = False # 用于UI同步选择状态
+        self.clip_on = clip_on
+        self.is_selected = is_selected  # 用于UI同步选择状态
 
     def __repr__(self):
         return f"TextElement(id={self.id}, text='{self.text}', x={self.x}, y={self.y})"
@@ -51,7 +66,6 @@ class TextElement:
         # 使用字典解包 **data，让 __init__ 自动匹配参数
         return cls(**data)
     
-
     def to_matplotlib_kwargs(self) -> dict:
         """
         返回一个适合作为 ax.text() 关键字参数的字典。
@@ -64,7 +78,7 @@ class TextElement:
             'x': props.pop('x'),
             'y': props.pop('y'),
             's': r'{}'.format(props.pop('text')),  # 转换为原始字符串
-            'size': props.pop('size'),
+            'fontsize': props.pop('size'),
             'color': props.pop('color'),
             'horizontalalignment': props.pop('ha'),
             'verticalalignment': props.pop('va'),

@@ -11,6 +11,7 @@ from feynplot.core.line import Line, LineStyle, FermionLine, GluonLine, PhotonLi
 from feynplot_gui.core_ui.widgets.line_list_widget import LineListWidget 
 # Import the line-specific edit dialog function directly
 from feynplot_gui.core_ui.controllers.line_dialogs.edit_line import open_edit_line_dialog 
+from feynplot_gui.core_ui.controllers.line_dialogs.edit_loop import open_edit_loop_dialog
 from feynplot.io.diagram_io import diagram_to_json_string
 
 # Type hint for MainController to avoid circular imports
@@ -117,18 +118,39 @@ class LineController(QObject):
         """
         Handles the "Edit Line" request from the LineListWidget context menu
         or a double-click event. Opens the line-specific edit dialog directly.
+
+        This function now checks the `line.loop` attribute to determine
+        if it's a self-loop (自环).
         """
+        if not line:
+            self.main_controller.status_message.emit("No line selected to edit.")
+            return
+
         self.main_controller.status_message.emit(f"Opening edit dialog for line: {line.id}")
         current_status = diagram_to_json_string(self.main_controller.diagram_model)
-        # Directly call the line-specific edit dialog function
-        parent_widget = self.main_controller.canvas_controller.canvas_widget # Get a suitable parent for the dialog
-        if open_edit_line_dialog(line, self.diagram_model, parent_widget=parent_widget):
-            # If dialog accepted, notify MainController to update everything
+        
+        parent_widget = self.main_controller.canvas_controller.canvas_widget
+        print(f"Editing line: {line.id}, loop status: {line.loop}")
+        # --- 关键修改点: 检查 `line.loop` 属性 ---
+        if line.loop:
+            # 如果是自环，调用 open_edit_loop_dialog
+            dialog_successful = open_edit_loop_dialog(
+                loop=line,
+                diagram_model=self.diagram_model,
+                parent_widget=parent_widget
+            )
+        else:
+            # 如果不是自环，调用 open_edit_line_dialog
+            dialog_successful = open_edit_line_dialog(
+                line=line,
+                diagram_model=self.diagram_model,
+                parent_widget=parent_widget
+            )
+
+        if dialog_successful:
             self.main_controller.toolbox_controller.update_redo_unto_status(current_status)
-            self.main_controller.toolbox_controller.update_redo_unto_status()
             self.main_controller.update_all_views() 
             self.main_controller.status_message.emit(f"Successfully edited line: {line.id}")
-            # Re-select the edited line
             self.set_selected_item_in_list(line)
         else:
             self.main_controller.status_message.emit(f"Line edit for {line.id} cancelled.")

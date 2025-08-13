@@ -1,14 +1,10 @@
 import matplotlib.pyplot as plt
 
-# 创建图形
 fig, ax = plt.subplots()
 
-# 绘制大括号
-ax.text(0.5, 0.5, '{', fontsize=30, ha='center', va='center', rotation=0)
+# 使用 \left 和 \right 来实现可变大小的大括号
+# Mathtext 支持这种语法
+ax.text(0.5, 0.5, r'$\left\{ \frac{a}{b} \right\}$', ha='center', va='center', fontsize=20)
 
-# 设置坐标轴
-ax.set_xlim(0, 1)
-ax.set_ylim(0, 1)
-ax.axis('off')  # 隐藏坐标轴
-
+ax.set_title("Using mathtext with \left and \right")
 plt.show()

@@ -1,16 +1,19 @@
 # feynplot/core/diagram.py
 from feynplot.core.vertex import Vertex
+from feynplot.core.extra_text_element import TextElement
 from feynplot.core.line import Line, FermionLine, AntiFermionLine, PhotonLine, GluonLine, WPlusLine, WMinusLine, ZBosonLine
-
+from typing import List
 
 # from feynplot.io.diagram_io import export_diagram_to_json, import_diagram_from_json
 
 class FeynmanDiagram:
-    def __init__(self):
-        self.vertices = []
-        self.lines = []
-        self._vertex_ids = set() # 用于跟踪已使用的顶点ID
-        self._line_ids = set()   # 用于跟踪已使用的线条ID
+    def __init__(self): 
+        self.vertices: List[Vertex] = []  # 用于存储顶点
+        self.lines: List[Line] = []  # 用于存储线条
+        self.texts: List[TextElement] = []  # 用于存储额外的文本元素
+        self._vertex_ids = set()  # 用于跟踪已使用的顶点ID
+        self._line_ids = set()  # 用于跟踪已使用的线条ID
+        self._text_ids = set()  # 用于跟踪已使用的文本ID
 
     def _generate_unique_vertex_id(self):
         i = 1
@@ -23,6 +26,12 @@ class FeynmanDiagram:
         while f"l_{i}" in self._line_ids:
             i += 1
         return f"l_{i}"
+
+    def _generate_unique_text_id(self):
+        i = 1
+        while f"t_{i}" in self._text_ids:
+            i += 1
+        return f"t_{i}"
 
     def format_vertex_id(self, vertex_id):
         """
@@ -41,7 +50,34 @@ class FeynmanDiagram:
         else:
             return vertex_id # 如果ID格式不符合预期，返回原ID
 
+    def add_text(self, text_element_instance: TextElement = None, **kwargs) -> TextElement:
+        """
+        添加一个文本元素到图中。
 
+        Args:
+            text_element_instance (TextElement, optional): 一个已存在的 TextElement 实例。
+            **kwargs: 如果没有提供实例，这些关键字参数将用于创建新的 TextElement。
+            
+        Returns:
+            TextElement: 新添加或使用的文本元素实例。
+        """
+        if text_element_instance is not None:
+            if not isinstance(text_element_instance, TextElement):
+                raise TypeError("The 'text_element_instance' argument must be an instance of TextElement.")
+            
+            element = text_element_instance
+        else:
+            # 如果没有提供实例，就用 kwargs 创建一个
+            element = TextElement(**kwargs)
+
+        # 检查并确保 ID 唯一
+        if element.id is None or element.id in self._text_ids:
+            # 如果 ID 为 None 或已存在，重新生成一个
+            element.id = self._generate_unique_text_id()
+
+        self.texts.append(element)
+        self._text_ids.add(element.id)
+        return element
 
     def add_vertex(self, x: float = None, y: float = None, vertex: Vertex = None, **kwargs):
         """
@@ -129,6 +165,7 @@ class FeynmanDiagram:
 
         如果 Line 实例没有 id 或 id 已被占用，则自动生成或抛出错误。
         """
+
         if line is not None:
             # 如果提供了 Line 实例，直接使用它
             if not isinstance(line, Line):
@@ -165,7 +202,7 @@ class FeynmanDiagram:
                 line_id = line_id_from_kwargs
             else:
                 line_id = self._generate_unique_line_id()
-            
+            # print(f"keyword arguments for line creation: {kwargs}")
             # 使用 line_type 创建线条实例，传入顶点和所有剩余的 kwargs
             line = line_type(v_start, v_end, **kwargs)
             line.id = line_id # 将确定的 ID 赋给 Line 实例
@@ -173,8 +210,24 @@ class FeynmanDiagram:
         # 将线条添加到图中
         self.lines.append(line)
         self._line_ids.add(line_id)
+
         return line
+    def get_text_by_id(self, text_id: str):
+        """
+        根据ID检索一个文本元素。
+        Args:
+            text_id (str): 文本的唯一标识符。
+        Returns:
+            TextElement: 如果找到则返回 TextElement 实例，否则返回 None。
+        """
+        for text in self.texts:
+            if text.id == text_id:
+                return text
+        return None
     
+
+
+
     def get_vertex_by_id(self, vertex_id: str):
         """
         根据ID检索一个顶点。
@@ -200,6 +253,31 @@ class FeynmanDiagram:
             if line.id == line_id:
                 return line
         return None
+
+
+    def delete_text(self, text_id: str) -> bool:
+        """
+        根据唯一标识符删除图中的一个文本元素。
+        如果找到了文本并成功删除，则返回 True；否则返回 False。
+        
+        Args:
+            text_id (str): 要删除的文本的唯一标识符。
+        Returns:
+            bool: 如果成功删除则为 True，否则为 False。
+        """
+        original_texts_count = len(self.texts)
+        self.texts = [t for t in self.texts if t.id != text_id]
+
+        if len(self.texts) < original_texts_count:
+            self._text_ids.discard(text_id)
+            return True
+        return False
+
+    def remove_text(self, text_id: str) -> bool:
+        """
+        Same as delete_text, for backward compatibility.
+        """
+        return self.delete_text(text_id)
 
     def delete_line(self, line_id: str) -> bool:
         """
@@ -351,8 +429,10 @@ class FeynmanDiagram:
         """
         self.vertices.clear()
         self.lines.clear()
+        self.texts.clear()
         self._vertex_ids.clear()
         self._line_ids.clear()
+        self._text_ids.clear()
 
     def hide_all_vertices(self):
         """隐藏图中所有顶点。"""

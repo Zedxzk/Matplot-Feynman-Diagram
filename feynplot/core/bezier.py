@@ -80,7 +80,7 @@ def cubic_bezier(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
 
 
 
-def generate_bezier_path(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000):
+def generate_bezier_path(A, B, angleA_deg, angleB_deg, offset_ratio=0.3, points=2000, loop=False):
     """
     封装函数，返回贝塞尔路径的二维坐标点组成的 (N, 2) 数组。
     """

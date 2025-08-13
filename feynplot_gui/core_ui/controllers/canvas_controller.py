@@ -1,6 +1,7 @@
 # feynplot_gui\core_ui\controllers\canvas_controller.py
-
+import traceback
 from PySide6.QtCore import QObject, Signal, QPointF, Qt, QTimer 
+from PySide6.QtWidgets import QDialog, QMessageBox
 from typing import Optional, Callable, Tuple, Dict, Any
 
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
@@ -96,7 +97,7 @@ class CanvasController(QObject):
         """
         vertices_list = self.diagram_model.vertices
         lines_list = self.diagram_model.lines
-        texts_list = self.main_controller.other_texts_controller.text_elements
+        texts_list = self.diagram_model.texts
 
         selected_item = self.main_controller.get_selected_item() 
 
@@ -120,22 +121,28 @@ class CanvasController(QObject):
         # width = canvas_size.width()
         # height = canvas_size.height()
         # print(f"画布的实际像素大小为: {width} x {height}")
-        self._canvas_instance.render(
-            vertices_list, 
-            lines_list,
-            texts_list,
-            zoom_times= self.zoom_times,
-            use_relative_unit= self.relative_size_unit,
-            **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
-        )
-        # (xmin, xmax), (ymin, ymax) = self._canvas_instance.get_axes_limits()
-        # self.main_controller.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
+        try:
+            self._canvas_instance.render(
+                vertices_list, 
+                lines_list,
+                texts_list,
+                zoom_times= self.zoom_times,
+                use_relative_unit= self.relative_size_unit,
+                **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
+            )
+            # (xmin, xmax), (ymin, ymax) = self._canvas_instance.get_axes_limits()
+            # self.main_controller.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
 
-        # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
-        # self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
-        # self.get_ax().grid(True)
-        self.canvas_widget.draw_idle_canvas() 
-        self.main_controller._update_canvas_range_on_navigation_bar()
+            # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
+            # self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
+            # self.get_ax().grid(True)
+            self.canvas_widget.draw_idle_canvas() 
+            self.main_controller._update_canvas_range_on_navigation_bar()
+        except Exception as e:
+            error_trace = traceback.format_exc()  # 获取完整的错误堆栈信息
+            self.main_controller.status_message.emit(f"画布更新失败: {e}\n{error_trace}")
+            print(f"画布更新失败: {e}\n{error_trace}")  # 调试打印
+            QMessageBox.critical(self.main_controller.main_window, "画布更新错误", f"画布更新失败: {e}\n{error_trace}")
 
     # def set_selected_object(self, item: [Vertex, Line, None]):
     #     """

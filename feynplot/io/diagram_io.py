@@ -15,6 +15,7 @@ from feynplot.core.line import (
     UpQuarkLine, DownQuarkLine, CharmQuarkLine, StrangeQuarkLine,
     TopQuarkLine, BottomQuarkLine, HiggsLine, BosonLine # Add all specific line types if they exist
 )
+from feynplot.core.extra_text_element import TextElement # 确保导入TextElement类
 
 # from feynplot.core.diagram import FeynmanDiagram # 【关键修正点】顶层导入FeynmanDiagram
 
@@ -101,67 +102,41 @@ def _vertex_to_dict(vertex: Vertex) -> Dict[str, Any]:
     }
     return data
 
-def _vertex_from_dict(data: Dict[str, Any]) -> Vertex:
+def _vertex_from_dict(data: Dict[str, Any]) -> 'Vertex':
     """
     从字典数据创建 Vertex 实例。
     处理特殊的类型（如枚举、numpy数组）。
-    这个函数由 Vertex 类的 from_dict() 类方法调用。
     """
     data_copy = data.copy()
 
-    init_kwargs = {}
+    # 处理需要特殊转换的类型
+    if 'vertex_type' in data_copy:
+        data_copy['vertex_type'] = VertexType(data_copy['vertex_type'])
 
-    init_kwargs['id'] = data_copy.pop('id')
-    init_kwargs['x'] = data_copy.pop('x')
-    init_kwargs['y'] = data_copy.pop('y')
-    init_kwargs['vertex_type'] = VertexType(data_copy.pop('vertex_type'))
-    init_kwargs['label_offset'] = np.array(data_copy.pop('label_offset'))
-    init_kwargs['label'] = data_copy.pop('label', "")
-    init_kwargs['coupling_constant'] = data_copy.pop('coupling_constant', 1.0)
-    init_kwargs['symmetry_factor'] = data_copy.pop('symmetry_factor', 1)
-    init_kwargs['particle_types'] = data_copy.pop('particle_types', [])
-    init_kwargs['momenta'] = data_copy.pop('momenta', [])
-    init_kwargs['time_order'] = data_copy.pop('time_order', 0)
-    init_kwargs['metadata'] = data_copy.pop('metadata', {})
-    init_kwargs['hidden_vertex'] = data_copy.pop('hidden_vertex', False)
-    init_kwargs['hidden_label'] = data_copy.pop('hidden_label', False)
-    init_kwargs['is_selected'] = data_copy.pop('is_selected', False)
+    if 'label_offset' in data_copy:
+        data_copy['label_offset'] = np.array(data_copy['label_offset'])
 
-    init_kwargs['s'] = data_copy.pop('size', 100)
-    init_kwargs['c'] = data_copy.pop('color', 'blue')
-    init_kwargs['marker'] = data_copy.pop('marker', 'o')
-    init_kwargs['alpha'] = data_copy.pop('alpha', 1.0)
-    init_kwargs['edgecolor'] = data_copy.pop('edgecolor', init_kwargs['c'])
-    init_kwargs['linewidth'] = data_copy.pop('linewidth', 1.0)
-    init_kwargs['zorder'] = data_copy.pop('zorder', 2)
+    # 提取 x 和 y，因为它们是位置参数
+    x = data_copy.pop('x')
+    y = data_copy.pop('y')
 
-    init_kwargs['fontsize'] = data_copy.pop('label_size', 30)
-    init_kwargs['label_color'] = data_copy.pop('label_color', 'black')
+    # 从 data_copy 中 pop 出 kwargs 中使用的键，避免重复
+    # 这里我们只pop那些在__init__中被kwargs.pop()处理的键
+    # 比如's'对应'size', 'c'对应'color'
+    data_copy['s'] = data_copy.pop('size', 100)
+    data_copy['c'] = data_copy.pop('color', 'blue')
+    data_copy['fontsize'] = data_copy.pop('label_size', 30)
 
-    init_kwargs['is_structured'] = data_copy.pop('is_structured', False)
-    init_kwargs['structured_radius'] = data_copy.pop('structured_radius', 0.5)
-    init_kwargs['structured_facecolor'] = data_copy.pop('structured_facecolor', 'lightgray')
-    init_kwargs['structured_edgecolor'] = data_copy.pop('structured_edgecolor', 'black')
-    init_kwargs['structured_linewidth'] = data_copy.pop('structured_linewidth', 1.5)
-    init_kwargs['structured_alpha'] = data_copy.pop('structured_alpha', 1.0)
+    # 创建 Vertex 实例，将剩余所有键值对作为 kwargs 传入
+    # 这样可以确保所有属性，包括 hidden_vertex 和 is_selected，都会被正确传递
+    vertex = Vertex(x, y, **data_copy)
 
-    init_kwargs['use_custom_hatch'] = data_copy.pop('use_custom_hatch', False)
-    init_kwargs['hatch_pattern'] = data_copy.pop('hatch_pattern', '/')
-    init_kwargs['custom_hatch_line_color'] = data_copy.pop('custom_hatch_line_color', 'black')
-    init_kwargs['custom_hatch_line_width'] = data_copy.pop('custom_hatch_line_width', 0.5)
-    init_kwargs['custom_hatch_line_angle_deg'] = data_copy.pop('custom_hatch_line_angle_deg', 45)
-    init_kwargs['custom_hatch_spacing_ratio'] = data_copy.pop('custom_hatch_spacing_ratio', 0.1)
+    # 如果有在 __init__ 之后才需要设置的属性，可以在这里处理
+    vertex.hidden_vertex = data.get('hidden_vertex', False)
+    vertex.hidden_label = data.get('hidden_label', False)
+    vertex.is_selected = data.get('is_selected', False)
 
-    init_kwargs.update(data_copy.pop('scatterConfig', {}))
-    init_kwargs.update(data_copy) # Add any remaining unknown kwargs
-
-    x = init_kwargs.pop('x')
-    y = init_kwargs.pop('y')
-
-    vertex = Vertex(x, y, **init_kwargs)
     return vertex
-
-
 # --- Line 相关的序列化和反序列化辅助函数 ---
 def _line_to_dict(line: Line) -> Dict[str, Any]:
     """
@@ -189,6 +164,10 @@ def _line_to_dict(line: Line) -> Dict[str, Any]:
         'label_va': line.label_va,
         'style': line.style.value, # 将 LineStyle 枚举转换为字符串值
         'is_selected': line.is_selected,
+        'loop': line.loop,
+        'a': line.a,  # 如果是自环，存储长半轴
+        'b': line.b,  # 如果是自环，存储短半轴
+        'angular_direction': line.angular_direction,  # 如果是自环，存储角度
         'metadata': line.metadata # 存储未处理的 kwargs
     }
 
@@ -269,6 +248,10 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
     init_kwargs['label_va'] = data_copy.pop('label_va', 'center')
     init_kwargs['style'] = LineStyle(data_copy.pop('style')) # 从字符串还原 LineStyle 枚举
     init_kwargs['is_selected'] = data_copy.pop('is_selected', False)
+    init_kwargs['loop'] = data_copy.pop('loop', False)
+    init_kwargs['a'] = data_copy.pop('a', None)  # 如果是自环，长半轴
+    init_kwargs['b'] = data_copy.pop('b', None)  # 如果是自环，短半轴
+    init_kwargs['angular_direction'] = data_copy.pop('angular_direction', None)
     init_kwargs['metadata'] = data_copy.pop('metadata', {})
 
     # 处理 FermionLine 及其子类特有的属性
@@ -332,6 +315,7 @@ def export_diagram_to_json(diagram_instance, filename: str):
     data = {
         "vertices": [v.to_dict() for v in diagram_instance.vertices], # 调用 Vertex.to_dict()
         "lines": [l.to_dict() for l in diagram_instance.lines],       # 调用 Line.to_dict()
+        "texts": [t.to_dict() for t in diagram_instance.texts], # 调用 TextElement.to_dict()
         "metadata": getattr(diagram_instance, 'metadata', {}) # 假设 Diagram 也有 metadata
     }
     
@@ -424,12 +408,22 @@ def import_diagram_from_json(filename: str, diagram_instance=None):
         except Exception as e:
             print(f"Warning: Error loading line data for ID '{l_data.get('id', 'unknown')}': {e}")
             raise ValueError(f"Error loading line data for ID '{l_data.get('id', 'unknown')}': {e}")
-
+    # 3. 加载文本元素
+    for t_data in data.get("texts", []):
+        try:
+            # 假设 TextElement 类有 from_dict 方法
+            text_element = TextElement.from_dict(t_data)
+            # 调用图的 add_text 方法
+            diagram.add_text(text_element_instance=text_element) # <--- 调用图的 add_text 方法
+        except Exception as e:
+            print(f"Warning: Error loading text data for ID '{t_data.get('id', 'unknown')}': {e}")
+            raise ValueError(f"Error loading text data for ID '{t_data.get('id', 'unknown')}': {e}")
+        
     # 假设 Diagram 类有 metadata 属性
     # diagram.metadata = data.get("metadata", {})
 
     print(f"Diagram imported successfully from {filename}")
-    print(f"Diagram instance: {diagram}, Vertices: {diagram.vertices}, Lines: {diagram.lines}")
+    print(f"Diagram instance: {diagram}, Vertices: {diagram.vertices}, Lines: {diagram.lines}, Texts: {diagram.texts}")
     
     return diagram
 
@@ -446,6 +440,7 @@ def diagram_to_json_string(diagram_instance: FeynmanDiagram) -> str:
     data = {
         "vertices": [v.to_dict() for v in diagram_instance.vertices],
         "lines": [l.to_dict() for l in diagram_instance.lines],
+        "texts": [t.to_dict() for t in diagram_instance.texts],
         "metadata": getattr(diagram_instance, 'metadata', {})
     }
     return json.dumps(data, indent=4, ensure_ascii=False) # ensure_ascii=False 支持中文
@@ -508,5 +503,12 @@ def diagram_from_json_string(json_string: str, diagram_instance: FeynmanDiagram 
         except Exception as e:
             raise ValueError(f"Error loading line data for ID '{l_data.get('id', 'unknown')}': {e}")
 
+    for t_data in data.get("texts", []):
+        try:
+            # 假设 TextElement 类有 from_dict 方法
+            text_element = TextElement.from_dict(t_data)
+            diagram.add_text(text_element_instance=text_element) # 调用图的 add_text 方法
+        except Exception as e:
+            raise ValueError(f"Error loading text data for ID '{t_data.get('id', 'unknown')}': {e}")
     # diagram.metadata = data.get("metadata", {})
     return diagram

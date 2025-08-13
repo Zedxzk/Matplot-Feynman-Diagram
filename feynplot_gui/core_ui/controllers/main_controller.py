@@ -138,53 +138,54 @@ class MainController(QObject):
         根据新加载的Diagram对象更新当前的diagram_model。
         方法：清空现有模型内容，然后将加载的元素逐一添加到现有模型中。
         """
-        if not isinstance(loaded_diagram,FeynmanDiagram):
-            raise TypeError("loaded_diagram 必须是 feynplot.core.diagram.Diagram 的实例。")
+        # if not isinstance(loaded_diagram,FeynmanDiagram):
+        #     raise TypeError("loaded_diagram 必须是 feynplot.core.diagram.Diagram 的实例。")
 
-        # 1. 清空当前模型的所有内容
-        # 重要：先移除线条，因为线条依赖顶点
-        for line in list(self.diagram_model.lines): # 使用list()创建副本以安全迭代
-            self.diagram_model.remove_line(line)
-        for vertex in list(self.diagram_model.vertices): # 使用list()创建副本以安全迭代
-            self.diagram_model.remove_vertex(vertex)
+        # # 1. 清空当前模型的所有内容
+        # # 重要：先移除线条，因为线条依赖顶点
+        # for line in list(self.diagram_model.lines): # 使用list()创建副本以安全迭代
+        #     self.diagram_model.remove_line(line)
+        # for vertex in list(self.diagram_model.vertices): # 使用list()创建副本以安全迭代
+        #     self.diagram_model.remove_vertex(vertex)
 
-        # 2. 将加载的顶点和线条逐一添加到现有模型
-        # 注意：这里需要确保添加线条时，其引用的顶点是当前模型中的顶点实例。
-        # 最稳妥的方法是，先添加所有顶点，然后根据ID映射来连接线条。
+        # # 2. 将加载的顶点和线条逐一添加到现有模型
+        # # 注意：这里需要确保添加线条时，其引用的顶点是当前模型中的顶点实例。
+        # # 最稳妥的方法是，先添加所有顶点，然后根据ID映射来连接线条。
         
-        # 建立旧顶点ID到新顶点实例的映射（如果ID是唯一且稳定的）
-        # 或者，如果loaded_diagram中的顶点是全新的实例，我们直接添加它们
-        vertex_map = {} # 用于存储新旧顶点ID的映射，以便重新连接线条
+        # # 建立旧顶点ID到新顶点实例的映射（如果ID是唯一且稳定的）
+        # # 或者，如果loaded_diagram中的顶点是全新的实例，我们直接添加它们
+        # vertex_map = {} # 用于存储新旧顶点ID的映射，以便重新连接线条
         
-        for vertex in loaded_diagram.vertices:
-            # 假设 add_vertex 方法会处理将顶点添加到 self.diagram_model
-            # 并且返回添加后的顶点实例（可能是同一个，也可能是拷贝后的新实例）
-            # 我们需要保存这个新实例的引用，如果需要通过ID重新连接线条。
-            self.diagram_model.add_vertex(vertex) # 直接添加新实例
-            vertex_map[vertex.id] = vertex # 假设vertex.id是唯一的
+        # for vertex in loaded_diagram.vertices:
+        #     # 假设 add_vertex 方法会处理将顶点添加到 self.diagram_model
+        #     # 并且返回添加后的顶点实例（可能是同一个，也可能是拷贝后的新实例）
+        #     # 我们需要保存这个新实例的引用，如果需要通过ID重新连接线条。
+        #     self.diagram_model.add_vertex(vertex) # 直接添加新实例
+        #     vertex_map[vertex.id] = vertex # 假设vertex.id是唯一的
 
-        for line in loaded_diagram.lines:
-            # 确保线条连接的是当前模型中的顶点实例
-            start_v = vertex_map.get(line.start_vertex.id)
-            end_v = vertex_map.get(line.end_vertex.id)
-            line_type = vertex_map.get(line.line_type)
+        # for line in loaded_diagram.lines:
+        #     # 确保线条连接的是当前模型中的顶点实例
+        #     start_v = vertex_map.get(line.start_vertex.id)
+        #     end_v = vertex_map.get(line.end_vertex.id)
+        #     line_type = vertex_map.get(line.line_type)
 
-            if start_v and end_v:
-                # 重新创建线条，确保它引用的是当前模型中的顶点对象
-                new_line_instance = Line(start_vertex=start_v, end_vertex=end_v, **line.get_properties())
-                print(new_line_instance)
-                self.diagram_model.add_line(line=new_line_instance)
-            else:
-                print(f"警告: 无法为线条 {line.id} 找到对应的顶点，跳过此线条。")
-                # 理论上，如果 import_diagram_from_json 逻辑正确，不应该出现这种情况。
-                self.status_message.emit(f"警告: 无法加载线条 {line.id}，顶点缺失。")
+        #     if start_v and end_v:
+        #         # 重新创建线条，确保它引用的是当前模型中的顶点对象
+        #         new_line_instance = Line(start_vertex=start_v, end_vertex=end_v, **line.get_properties())
+        #         print(new_line_instance)
+        #         self.diagram_model.add_line(line=new_line_instance)
+        #     else:
+        #         print(f"警告: 无法为线条 {line.id} 找到对应的顶点，跳过此线条。")
+        #         # 理论上，如果 import_diagram_from_json 逻辑正确，不应该出现这种情况。
+        #         self.status_message.emit(f"警告: 无法加载线条 {line.id}，顶点缺失。")
 
-        self.selected_item = None # 清除任何之前的选择
+        # self.selected_item = None # 清除任何之前的选择
 
-        # 3. 通知所有相关组件模型已更新并重新绘制
-        # self.diagram_updated.emit()
-        # self.selection_changed.emit(self.selected_item)
-        self.update_all_views(canvas_options={'auto_scale': True})
+        # # 3. 通知所有相关组件模型已更新并重新绘制
+        # # self.diagram_updated.emit()
+        # # self.selection_changed.emit(self.selected_item)
+        # self.update_all_views(canvas_options={'auto_scale': True})
+        pass
 
     def _on_tool_mode_changed(self, mode: str):
         """当工具模式改变时，更新 MainController 内部状态。"""
@@ -207,9 +208,10 @@ class MainController(QObject):
         # 这里不需要 update_all_views()，因为 __init__ 的最后会调用
 
     def update_all_views(self, picture_model = False,
-                         canvas_options: Optional[Dict[str, Any]] = None, 
-                         vertex_options: Optional[Dict[str, Any]] = None, 
-                         line_options: Optional[Dict[str, Any]] = None
+                            canvas_options: Optional[Dict[str, Any]] = None, 
+                            vertex_options: Optional[Dict[str, Any]] = None, 
+                            line_options: Optional[Dict[str, Any]] = None,
+                            other_texts_options: Optional[Dict[str, Any]] = None
                         ):
         """
         强制所有视图重新绘制，并更新列表。
@@ -221,14 +223,14 @@ class MainController(QObject):
         canvas_opts = canvas_options if canvas_options is not None else {}
         vertex_opts = vertex_options if vertex_options is not None else {}
         line_opts = line_options if line_options is not None else {}
-        
+        other_texts_options = other_texts_options if other_texts_options is not None else {}
 
         
         # 将这些字典解包为关键字参数，传递给对应的控制器方法
         self.canvas_controller.update_canvas(**canvas_opts)
         self.vertex_controller.update_vertex_list(**vertex_opts)
         self.line_controller.update_line_list(**line_opts)
-        
+        self.other_texts_controller.update_text_list(**other_texts_options)
         # 更新其他可能需要刷新的 UI 元素，例如属性面板等
         self.status_message.emit("视图已更新。")
 
@@ -398,54 +400,55 @@ class MainController(QObject):
         # CanvasController 会收集点击的顶点，然后通过 line_creation_completed 信号调用 MainController 的 add_line_between_vertices
 
     def add_line_between_vertices(self, initial_start_vertex_id: str = None):
-        """
-        弹出对话框，允许用户选择两个顶点并添加一条线条。
-        Args:
-            initial_start_vertex_id (str, optional): 如果提供，将预设对话框中的起始顶点。
-        """
-        # Pass the initial_start_vertex_id to the dialog
-        # The AddLineDialog constructor needs to be updated to accept this.
-        dialog = AddLineDialog(
-            vertices_data=self.diagram_model.vertices,
-            parent=self.main_window,
-            initial_start_vertex_id=initial_start_vertex_id # <--- Pass the new argument
-        )
-
-        if dialog.exec() == QDialog.Accepted:
-            line_info = dialog.get_line_data()
-            if line_info:
-                final_v_start = line_info['v_start']
-                final_v_end = line_info['v_end']
-
-                if final_v_start == final_v_end:
-                    QMessageBox.warning(self.main_window, "输入错误", "起始顶点和结束顶点不能相同！")
-                    self.status_message.emit("线条添加失败: 起始顶点和结束顶点相同。")
-                    return
-                try:
-                    new_line = self.diagram_model.add_line(
-                        v_start=final_v_start,
-                        v_end=final_v_end,
-                        label=line_info.get('label', ''),
-                        line_type=line_info['line_type']
-                    )
-                    self.status_message.emit(f"已添加线条: {new_line.id} 连接 {final_v_start.id} 和 {final_v_end.id}")
-                    self.update_all_views()
-                    self.select_item(new_line)
-                    self.picture_model()
-                except ValueError as e:
-                    self.status_message.emit(f"添加线条失败: {e}")
-                    QMessageBox.warning(self.main_window, "添加线条错误", f"添加线条失败: {e}")
-                except Exception as e:
-                    self.status_message.emit(f"添加线条时发生未知错误: {e}")
-                    QMessageBox.critical(self.main_window, "添加线条错误", f"添加线条时发生未知错误: {e}")
-            else:
-                # self.status_message.emit("线条添加已取消。")
-                print("线条添加已取消。")
-        else:
-            # self.status_message.emit("线条添加已取消。")
-            print("线条添加已取消。")
+            """
+            弹出对话框，允许用户选择两个顶点并添加一条线条。
             
-        self.canvas_controller.reset_line_creation_state()
+            Args:
+                initial_start_vertex_id (str, optional): 如果提供，将预设对话框中的起始顶点。
+            """
+            dialog = AddLineDialog(
+                vertices_data=self.diagram_model.vertices,
+                parent=self.main_window,
+                initial_start_vertex_id=initial_start_vertex_id
+            )
+
+            if dialog.exec() == QDialog.Accepted:
+                line_info = dialog.get_line_data()
+                if line_info:
+                    final_v_start = line_info['v_start']
+                    final_v_end = line_info['v_end']
+                    
+                    # `AddLineDialog` 的 `get_line_data()` 方法已经处理了
+                    # `start_vertex == end_vertex` 的警告，并返回了 None。
+                    # 所以在这里我们只需检查 `line_info` 是否为 None 即可。
+
+                    try:
+                        new_line = self.diagram_model.add_line(
+                            v_start=final_v_start,
+                            v_end=final_v_end,
+                            label=line_info.get('label', ''),
+                            line_type=line_info['line_type'],
+                            loop=line_info.get('loop', False),
+                        )
+                        self.status_message.emit(f"已添加线条: {new_line.id} 连接 {final_v_start.id} 和 {final_v_end.id}")
+                        self.update_all_views()
+                        self.select_item(new_line)
+                        self.picture_model()
+                    except ValueError as e:
+                        self.status_message.emit(f"添加线条失败: {e}")
+                        QMessageBox.warning(self.main_window, "添加线条错误", f"添加线条失败: {e}")
+                        print(f"添加线条失败: {e}")  # 调试打印
+                    except Exception as e:
+                        self.status_message.emit(f"添加线条时发生未知错误: {e}")
+                        QMessageBox.critical(self.main_window, "添加线条错误", f"添加线条时发生未知错误: {e}")
+                else:
+                    # 当 get_line_data() 返回 None 时，表示用户输入无效
+                    print("线条添加已取消。")
+            else:
+                # 当用户点击取消按钮时
+                print("线条添加已取消。")
+                
+            self.canvas_controller.reset_line_creation_state()
 
 
     def delete_selected_vertex(self, vertex_to_delete: Optional[Vertex] = None):

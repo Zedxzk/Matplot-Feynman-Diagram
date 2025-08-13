@@ -45,7 +45,7 @@ class OtherTextsController(QObject):
         self.other_texts_widget.add_new_text_requested.connect(self._on_request_add_new_text)
         other_texts_print("连接设置完毕。")
 
-    def update_text_list(self):
+    def update_text_list(self, **other_texts_options):
         """
         根据本控制器私有的 text_elements 刷新文本列表视图。
         文本按其唯一标识符 (ID) 升序排序。
@@ -55,11 +55,10 @@ class OtherTextsController(QObject):
 
         self.other_texts_widget.clear_list()
 
-        sorted_texts = sorted(self.text_elements, key=lambda text: text.id) # 从私有列表获取
+        sorted_texts = sorted(self.main_controller.diagram_model.texts, key=lambda text: text.id) # 从私有列表获取
 
         for text_elem in sorted_texts:
             self.other_texts_widget.add_text_item(text_elem) 
-
             # 如果当前有全局选中项，且是这个文本，则同步视图
             # 注意：这里直接访问 self.main_controller.selected_item 假设 MainController 在外部已正确处理选择逻辑
             # 最佳实践是 MainController 应该有一个 get_selected_item() 方法来获取当前选中项
@@ -170,7 +169,7 @@ class OtherTextsController(QObject):
                                      f"确定要删除文本 '{text_element.text}' (ID: {text_element.id}) 吗？",
                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.Yes:
-            self.text_elements = [t for t in self.text_elements if t.id != text_element.id] # 从私有列表移除
+            self.main_controller.diagram_model.remove_text(text_element.id) # 从图模型中删除文本
 
             if self.main_controller.get_selected_item() is text_element: # 如果删除的是当前选中项，则清除全局选中
                 self.main_controller.select_item(None)
@@ -212,13 +211,12 @@ class OtherTextsController(QObject):
         
         # 调用 get_text_properties() 方法，它会返回一个字典或 None
         text_properties = dialog.get_text_properties()
-
         # 检查返回的字典是否有效（用户是否点击了“确定”）
         if text_properties:
             # 使用 TextElement.from_dict() 类方法创建新的 TextElement
             new_text_elem = TextElement.from_dict(text_properties)
-            self.text_elements.append(new_text_elem)
-            
+            self.main_controller.diagram_model.add_text(text_element_instance=new_text_elem)
+
             self.update_text_list()
             self.main_controller.select_item(new_text_elem)
             
@@ -227,6 +225,7 @@ class OtherTextsController(QObject):
             
             self.main_controller.status_message.emit(f"成功添加新文本：{new_text_elem.id}")
             other_texts_print(f"新文本已添加到私有集合：{new_text_elem}")
+            self.main_controller.picture_model()
         else:
             self.main_controller.status_message.emit("添加新文本操作已取消。")
             other_texts_print("添加新文本操作已取消。")
@@ -235,18 +234,18 @@ class OtherTextsController(QObject):
         """一个通用的更新方法，在需要时由 MainController 调用。"""
         self.update_text_list()
 
-    # 新增方法: 绘制文本到Matplotlib画布
-    def draw_texts_on_canvas(self, ax):
-        """
-        将此控制器管理的文本元素绘制到给定的 Matplotlib 轴上。
+    # # 新增方法: 绘制文本到Matplotlib画布
+    # def draw_texts_on_canvas(self, ax):
+    #     """
+    #     将此控制器管理的文本元素绘制到给定的 Matplotlib 轴上。
         
-        Args:
-            ax (matplotlib.axes.Axes): 用于绘制的 Matplotlib 轴对象。
-        """
-        other_texts_print("在画布上绘制文本元素。")
-        for text_elem in self.text_elements:
-            color = 'red' if text_elem.is_selected else text_elem.color
-            font_weight = 'bold' if text_elem.is_selected else 'normal'
-            # 根据你的图表布局调整位置和对齐方式
-            ax.text(** text_elem.to_matplotlib_kwargs()) # clip_on=True 确保文本保持在轴边界内
-        other_texts_print(f"完成绘制 {len(self.text_elements)} 个文本元素。")
+    #     Args:
+    #         ax (matplotlib.axes.Axes): 用于绘制的 Matplotlib 轴对象。
+    #     """
+    #     other_texts_print("在画布上绘制文本元素。")
+    #     for text_elem in self.text_elements:
+    #         color = 'red' if text_elem.is_selected else text_elem.color
+    #         font_weight = 'bold' if text_elem.is_selected else 'normal'
+    #         # 根据你的图表布局调整位置和对齐方式
+    #         ax.text(** text_elem.to_matplotlib_kwargs()) # clip_on=True 确保文本保持在轴边界内
+    #     other_texts_print(f"完成绘制 {len(self.text_elements)} 个文本元素。")

@@ -1,6 +1,6 @@
 import numpy as np  
 
-def find_closest_intersection_point(central_point, radius, path):
+def find_closest_intersection_point(central_point, radius, path, loop=False):
     """
     找路径中距离圆最近（即最接近圆周）的一个点。
     返回 (index, vector)：索引和交点相对中心点的向量
@@ -10,9 +10,28 @@ def find_closest_intersection_point(central_point, radius, path):
     distances = np.linalg.norm(path - center, axis=1)
     diff = np.abs(distances - radius)
 
-    idx = np.argmin(diff)
-    vec = - path[idx] + center  # 向量从路径点指向中心点
-    return idx, vec
+    if not loop:
+        idx = np.argmin(diff)
+        vec = - path[idx] + center  # 向量从路径点指向中心点
+        return idx, vec
+    else:
+        # 找到路径的前半段和后半段中距离圆最近的点
+        mid_point = len(path) // 2
+
+        # 前半段
+        diff_front = diff[:mid_point]
+        idx_front = np.argmin(diff_front)
+        vec_front = - path[idx_front] + center
+
+        # 后半段
+        diff_back = diff[mid_point:]
+        idx_back = np.argmin(diff_back) + mid_point
+        vec_back = - path[idx_back] + center
+
+        return (idx_front, vec_front), (idx_back, vec_back)
+
+
+
 
 
 def compute_path_length(path):
