@@ -29,7 +29,7 @@ from feynplot.core.line import (
 from feynplot.drawing.plot_functions import (
     draw_structured_vertex, draw_point_vertex,
     draw_gluon_line, draw_photon_wave, draw_WZ_zigzag_line, draw_fermion_line,
-    get_diagram_view_limits , convert_props_from_data
+    get_diagram_view_limits , convert_props_from_data, draw_text_element
 )
 class FeynmanDiagramCanvas:
     _render_call_count = 0 # Class-level counter for render calls
@@ -162,19 +162,7 @@ class FeynmanDiagramCanvas:
         # 如果有额外的文本，也进行绘制
         if texts:
             for text in texts:
-                kwargs = text.to_matplotlib_kwargs()
-                kwargs = convert_props_from_data(self.ax, kwargs, use_relative_unit=use_relative_unit)
-                # 这里还需要检查额外文本的可见性
-                # 注意：transform=self.ax.transAxes 意味着坐标是相对的 [0,1]
-                # 所以这里需要一个不同的逻辑来判断可见性
-                x_coord = kwargs.get('x', 0)
-                y_coord = kwargs.get('y', 0)
-                
-                # transAxes 的坐标范围是 [0, 1]，所以只要 x 和 y 在这个范围内，就认为是可见的
-                is_visible = (0 <= x_coord <= 1 and 0 <= y_coord <= 1)
-                
-                drawn_text = self.ax.text(**kwargs, transform=self.ax.transAxes, visible=is_visible)
-                self._drawn_texts.append(drawn_text)
+                self._draw_text(text, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
 
         # 保持网格等其他设置
         if self.grid_on:
@@ -217,6 +205,14 @@ class FeynmanDiagramCanvas:
         else:
             drawn_vetex, drawn_text = draw_point_vertex(self.ax, vertex, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
         return drawn_vetex, drawn_text
+
+    def _draw_text(self, text: TextElement, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs) -> Text:
+        """
+        绘制额外的文本元素。
+        """
+        drwan_text = draw_text_element(self.ax, text, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
+        return drwan_text
+
 
     def savefig(self, filename, **kwargs):
         print(f"Saving diagram to {filename}, kwargs: {kwargs}")

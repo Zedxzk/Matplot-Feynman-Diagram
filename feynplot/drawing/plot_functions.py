@@ -608,6 +608,37 @@ def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_t
         return drawn_text
 
 
+def draw_text_element(ax: plt.Axes, text_element: TextElement, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs) -> Text:
+    """
+    绘制 TextElement 对象的文本标签。
+
+    Args:
+        ax: Matplotlib Axes 对象。
+        text_element: TextElement 对象，包含文本内容和位置。
+        zoom_times: 缩放倍数，用于调整文本大小。
+        use_relative_unit: 是否使用相对单位进行尺寸转换。
+        **kwargs: 其他绘图参数。
+
+    Returns:
+        绘制的 Text 对象。
+    """
+    
+    if not text_element.text :
+        return None
+
+
+    # 获取当前文本属性并转换单位
+    current_text_props = text_element.to_matplotlib_kwargs()
+    current_text_props = convert_props_from_data(ax, current_text_props, use_relative_unit=use_relative_unit)
+
+    if text_element.is_selected:
+        # 如果有缩放倍数，调整字体大小
+        current_text_props = get_highlighted_props(current_text_props)
+
+    drawn_text = ax.text(**current_text_props)
+    return drawn_text
+
+
 
 
 def convert_props_from_data(ax: plt.Axes, props: dict, use_relative_unit : bool = True) -> dict:
@@ -660,7 +691,60 @@ def convert_props_from_data(ax: plt.Axes, props: dict, use_relative_unit : bool 
         # 其他尺寸转换：数据单位 -> 像素
         elif key in other_size_keys:
             # 标记大小、线宽等，Matplotlib 默认单位是 pt，但像素值更直观，且可以直接使用
+            # print(f"原始值: {value}")
+            if not isinstance(value, (int, float)):
+                # 如果值不是数字类型，跳过转换
+                continue
             size_px = value * px_per_data
             adjusted_props[key] = size_px
 
     return adjusted_props
+
+
+def get_highlighted_props(original_props: dict) -> dict:
+    """
+    根据原始属性字典，智能地生成一个用于高亮的新属性字典。
+    
+    Args:
+        original_props: 包含原始绘图属性的字典。
+        
+    Returns:
+        一个新字典，包含用于高亮的调整后属性。
+    """
+    # 定义高亮的颜色，你可以根据需要修改
+    highlight_color = 'red' 
+
+    highlighted_props = original_props.copy()
+    
+    # 所有元素都通用的高亮属性
+    highlighted_props['color'] = highlight_color
+    highlighted_props['zorder'] = original_props.get('zorder', 1) + 10
+    
+    # 针对不同元素类型，智能调整高亮效果
+    # 增加线宽
+    if 'linewidth' in original_props:
+        highlighted_props['linewidth'] = original_props.get('linewidth', 1.5) * 1.5 + 3
+    
+    # 增加散点图标记大小，或将字符串变为粗体
+    if 's' in original_props:
+        # 检查s是数值（用于scatter）还是字符串（用于文本）
+        s_value = original_props['s']
+        if isinstance(s_value, (int, float)):
+            highlighted_props['s'] = s_value * 1.5 + 20
+        elif isinstance(s_value, str):
+            # 将字体变为粗体
+            highlighted_props['fontweight'] = 'bold'
+    
+    # 增加常规标记大小
+    if 'markersize' in original_props:
+        highlighted_props['markersize'] = original_props.get('markersize', 6) * 1.5 + 3
+        
+    # 增加字体大小
+    if 'fontsize' in original_props:
+        highlighted_props['fontsize'] = original_props.get('fontsize', 10) * 1.2
+    
+    # 增加边缘线宽
+    if 'markeredgewidth' in original_props:
+        highlighted_props['markeredgewidth'] = original_props.get('markeredgewidth', 1) * 1.5 + 1.5
+    
+    return highlighted_props
