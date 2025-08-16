@@ -3,11 +3,12 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QCheckBox, QGroupBox, QRadioButton, QButtonGroup,
-    QWidget, # Important for base class if it manages a QWidget
+    QWidget,
 )
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtCore import Qt
 import numpy as np
+from typing import Optional
 
 # 基类，提供通用的辅助方法和 UI 结构
 class LineEditBase(QWidget):
@@ -15,7 +16,7 @@ class LineEditBase(QWidget):
         # 这个类不直接是 QDialog，它是一个混合类 (mixin) 或者一个组件提供者
         # 它需要访问 QDialog 的一些属性，比如 self（dialog 实例）
         pass
-
+    
     def _create_spinbox_row(self, label_text: str, initial_value: float, min_val: float = -999.0, max_val: float = 999.0, step: float = 1.0, is_int: bool = False):
         """Helper function to create a label and QSpinBox/QDoubleSpinBox in a horizontal layout."""
         h_layout = QHBoxLayout()
@@ -34,12 +35,14 @@ class LineEditBase(QWidget):
         h_layout.addWidget(spinbox)
         return h_layout, spinbox
 
-    def _pick_color(self, button: QPushButton, color_attr_name: str):
+    def _pick_color(self, button: QPushButton, color_attr_name: str, parent: Optional[QWidget] = None):
         """Opens a color dialog, sets the button's background color, and stores the selected color."""
         initial_color_str = getattr(self, color_attr_name)
         initial_qcolor = QColor(initial_color_str)
-        # Assuming 'self' refers to the QDialog instance
-        color = QColorDialog.getColor(initial_qcolor, self) 
+
+        # Use the provided parent widget
+        color = QColorDialog.getColor(initial_qcolor, parent) 
+
         if color.isValid():
             hex_color = color.name()
             self._set_button_color(button, hex_color)
@@ -86,3 +89,34 @@ class LineEditBase(QWidget):
             return target_type(val)
         except (ValueError, TypeError): # Conversion failed, use default
             return target_type(default_val)
+
+    def _create_color_picker_row(self, label_text: str, initial_color_str: str):
+        """
+        创建一个包含标签和颜色选择按钮的水平布局。
+        
+        参数:
+        - label_text (str): 标签的文本。
+        - initial_color_str (str): 初始颜色字符串，如 '#RRGGBB'。
+        
+        返回:
+        - tuple: 包含 QHBoxLayout 和 QPushButton 的元组，方便在外部使用。
+        """
+        h_layout = QHBoxLayout()
+        h_layout.addWidget(QLabel(label_text))
+        
+        # 创建按钮并设置动态属性
+        color_button = QPushButton(f"选择颜色 ({initial_color_str})")
+        color_prop_name = f"_{label_text.replace(' ', '_').lower()}"
+        color_button.setProperty("i", color_prop_name)
+        
+        # 设置按钮的初始颜色和类实例的属性
+        self._set_button_color(color_button, initial_color_str)
+        setattr(self, color_prop_name, initial_color_str)
+
+        # 连接信号
+        color_button.clicked.connect(lambda: self._pick_color(
+            color_button, color_button.property("color_attr_name")
+        ))
+        
+        h_layout.addWidget(color_button)
+        return h_layout, color_button

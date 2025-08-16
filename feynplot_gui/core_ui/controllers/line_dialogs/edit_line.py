@@ -25,7 +25,7 @@ from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.fermion
 from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.photon_line_editor import PhotonLineEditor
 from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.gluon_line_editor import GluonLineEditor
 from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.wz_boson_line_editor import WZBosonLineEditor
-
+from feynplot_gui.core_ui.controllers.line_dialogs.specific_linestyle_editors.hollow_line_editor import HollowLineEditor
 
 def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widget=None) -> bool:
     """
@@ -166,13 +166,24 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
 
             # --- 9. Matplotlib 线型 (linestyle) ---
             self.mpl_linestyle_combo = QComboBox(self)
-            mpl_line_styles = ['-', '--', '-.', ':', 'None', ' ', '']  # Matplotlib 常见的线条样式
+            mpl_line_styles = ['-', '--', '-.', ':', 'None', 'Hollow', '']  # Matplotlib 常见的线条样式
             for style_str in mpl_line_styles:
                 self.mpl_linestyle_combo.addItem(style_str if style_str != '' else '(空)')
 
             current_mpl_ls = self.line.linestyle if self.line.linestyle is not None else '-'
             self.mpl_linestyle_combo.setCurrentText(current_mpl_ls if current_mpl_ls != '' else '(空)')
             self.main_form_layout.addRow("Matplotlib 线型:", self.mpl_linestyle_combo)
+
+
+            self.hollow_line_editor  = HollowLineEditor(self.main_form_layout, self.line)
+            self.line_style_editors = {
+                'hollow': self.hollow_line_editor,
+                'Hollow': self.hollow_line_editor,
+            }
+
+            self.mpl_linestyle_combo.currentTextChanged.connect(self._on_line_style_changed)
+            self._on_line_style_changed(self.mpl_linestyle_combo.currentText())
+
 
             # --- 10. Z-order ---
             initial_zorder = self.line.zorder
@@ -275,6 +286,18 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
         def _update_color_label(self):
             """更新线条颜色按钮的背景色"""
             self.color_button.setStyleSheet(f"background-color: {self._line_color_picked_color}; border: 1px solid black;")
+
+        def _on_line_style_changed(self, style_str: str):
+            """
+            根据下拉框选择的线型，显示或隐藏对应的编辑器。
+            """
+            for style_name, editor_widget in self.line_style_editors.items():
+                # 检查当前线型是否与字典中的键匹配
+                if style_str == style_name:
+                    editor_widget.group_box.show()
+                else:
+                    editor_widget.group_box.hide()
+
 
         def _select_color(self):
             """打开颜色选择器，更新线条颜色"""
@@ -411,6 +434,10 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
                 self.line._angleOut = common_kwargs['angleOut']
 
                 # 通过特定编辑器更新其独有属性
+                if self.line.linestyle in ['Hollow', 'hollow']:
+                    current_editor = self.line_style_editors[self.line.linestyle]
+                    current_editor.apply_properties(self.line)
+
                 if selected_particle_class in self.specific_editors:
                     current_editor = self.specific_editors[selected_particle_class]
                     current_editor.apply_properties(self.line)

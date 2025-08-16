@@ -14,6 +14,9 @@ from matplotlib.collections import PathCollection
 from feynplot.default_settings.default_settings import renderer_default_settings
 import numpy as np
 from matplotlib.transforms import Bbox
+import matplotlib.patches as mpatches
+import feynplot.drawing.styles.arrow_styles
+
 
 scale_factor = renderer_default_settings['DEFAULT_SCALE_FACTOR']
 
@@ -176,6 +179,7 @@ class FeynmanDiagramCanvas:
 
     def _draw_line(self, line: Line, zoom_times : int = 0, use_relative_unit : bool = True, **kwargs):
         line_plot_options = line.get_plot_properties()
+        # print(f"渲染线条: {line}, 绘制选项: {line_plot_options}, 额外参数: {kwargs}")
         label_text_options = line.get_label_properties()
         drawn_line, drawn_texts = None, None
         if 'pre_render' in kwargs and kwargs['pre_render']:
@@ -260,7 +264,7 @@ class FeynmanDiagramCanvas:
                 kwargs = text.to_matplotlib_kwargs()
                 # 将 transform 参数从 transAxes 改为 transData
                 drawn_text = self._draw_text(text, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
-                print(f"绘制额外文本: {drawn_text}")
+                # print(f"绘制额外文本: {drawn_text}")
                 if 'text' not in temp_drawn_objects:
                     temp_drawn_objects['text'] = []
                 temp_drawn_objects['text'].append(drawn_text)
@@ -278,11 +282,12 @@ class FeynmanDiagramCanvas:
                             not any(np.isinf([bbox.x0, bbox.x1, bbox.y0, bbox.y1])):
                             all_bboxes.append(bbox)
                         else:
+                            # pass
                             print(f"bbox {bbox} is invalid, skipping.")
                     except Exception as e:
                         print(f"警告：无法获取对象 {obj} 的边界框。错误: {e}")
-                        pass
-                    print(f"{key} 对象的边界框: {bbox.transformed(self.ax.transData.inverted())}")
+                        # pass
+                    # print(f"{key} 对象的边界框: {bbox.transformed(self.ax.transData.inverted())}")
                 else:
                     print(f"警告：对象 {obj} 没有有效的边界框方法，跳过。")
         # 2. 【核心修改】估算顶点的边界框，不再进行绘制
@@ -312,7 +317,7 @@ class FeynmanDiagramCanvas:
         
         for bbox in all_bboxes:
             transformed_bbox = bbox.transformed(self.ax.transData.inverted())
-            print(f"Transformed bbox: {transformed_bbox}")
+            # print(f"Transformed bbox: {transformed_bbox}")
 
 
         # 合并所有边界框（现在包括了线条、文本和估算的顶点）

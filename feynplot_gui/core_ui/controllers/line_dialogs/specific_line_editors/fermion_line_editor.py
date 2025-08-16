@@ -30,7 +30,7 @@ class FermionLineEditor(LineEditBase):
         self.fermion_arrow_position_layout, self.fermion_arrow_position_input = \
             self._create_spinbox_row("箭头位置 (0-1):", 0.5, min_val=0.0, max_val=1.0, step=0.01)
         self.fermion_arrow_size_layout, self.fermion_arrow_size_input = \
-            self._create_spinbox_row("箭头大小:", 10.0, min_val=1.0, max_val=50.0, step=1.0, is_int=True)
+            self._create_spinbox_row("箭头大小:", 50.0, min_val=0.0, max_val=9999.0, step=1.0, is_int=True)
         self.fermion_arrow_line_width_layout, self.fermion_arrow_line_width_input = \
             self._create_spinbox_row("箭头线宽:", 1.0, min_val=0.1, max_val=10.0, step=0.1)
         self.fermion_arrow_reversed_checkbox = QCheckBox(self.tr("箭头反向"))
@@ -64,7 +64,7 @@ class FermionLineEditor(LineEditBase):
         self.fermion_arrow_checkbox.setChecked(self._get_value_or_default(self.line, 'arrow', True, bool))
         self.fermion_arrow_filled_checkbox.setChecked(self._get_value_or_default(self.line, 'arrow_filled', False, bool))
         self.fermion_arrow_position_input.setValue(self._get_value_or_default(self.line, 'arrow_position', 0.5, float))
-        self.fermion_arrow_size_input.setValue(self._get_value_or_default(self.line, 'arrow_size', 10.0, float))
+        self.fermion_arrow_size_input.setValue(self._get_value_or_default(self.line, 'mutation_scale', 10.0, float))
         self.fermion_arrow_line_width_input.setValue(self._get_value_or_default(self.line, 'arrow_line_width', 1.0, float))
         self.fermion_arrow_reversed_checkbox.setChecked(self._get_value_or_default(self.line, 'arrow_reversed', False, bool))
 
@@ -74,7 +74,7 @@ class FermionLineEditor(LineEditBase):
             line.arrow = self.fermion_arrow_checkbox.isChecked()
             line.arrow_filled = self.fermion_arrow_filled_checkbox.isChecked()
             line.arrow_position = float(self.fermion_arrow_position_input.value())
-            line.arrow_size = float(self.fermion_arrow_size_input.value())
+            line.mutation_scale = float(self.fermion_arrow_size_input.value())
             line.arrow_line_width = float(self.fermion_arrow_line_width_input.value())
             line.arrow_reversed = self.fermion_arrow_reversed_checkbox.isChecked()
         else:
@@ -82,14 +82,16 @@ class FermionLineEditor(LineEditBase):
 
     def get_specific_kwargs(self) -> dict:
         """返回用于创建线条的特定关键字参数字典。"""
-        return {
+        specific_kwargs = {
             'arrow': self.fermion_arrow_checkbox.isChecked(),
             'arrow_filled': self.fermion_arrow_filled_checkbox.isChecked(),
             'arrow_position': float(self.fermion_arrow_position_input.value()),
-            'arrow_size': float(self.fermion_arrow_size_input.value()),
+            'mutation_scale': float(self.fermion_arrow_size_input.value()),
             'arrow_line_width': float(self.fermion_arrow_line_width_input.value()),
             'arrow_reversed': self.fermion_arrow_reversed_checkbox.isChecked(),
         }
+        print(f"获取特定关键字参数: {specific_kwargs}")
+        return specific_kwargs
 
     def set_visible(self, visible: bool):
         """设置特定属性组的可见性。"""

@@ -1,0 +1,48 @@
+import matplotlib.pyplot as plt
+
+# 创建一个图表
+fig, ax = plt.subplots(figsize=(8, 8))
+
+# 绘制一个背景形状，以便更好地展示箭头
+# 这里使用一个简单的圆形，只是为了让图表不那么空
+circle = plt.Circle((0, 0), 5, color='lightblue', alpha=0.5)
+ax.add_artist(circle)
+ax.set_aspect('equal', adjustable='box')
+
+# 箭头头部
+ax.annotate(
+    '箭头',  # 注释文本，可以留空
+    xy=(4, 4),  # 箭头指向的点
+    xytext=(-4, -4),  # 箭头起始点
+    arrowprops=dict(
+        arrowstyle='-|>',  # 箭头样式，'->' 或 '-|>' 都可
+        mutation_scale=20,  # 箭头大小
+        lw=2,  # 线条宽度
+        fc='black',  # 填充颜色
+        ec='black'  # 边缘颜色
+    )
+)
+
+# 箭头尾部（模拟收缩效果）
+ax.annotate(
+    '',  # 这里不需要文本
+    xy=(-3.8, -4.2),  # 这个点需要微调，使其在起始点附近，并模拟收缩
+    xytext=(-4, -4),  # 箭头起始点
+    arrowprops=dict(
+        arrowstyle='<-',  # 使用反向箭头
+        mutation_scale=10,  # 尾部通常比头部小
+        lw=2,
+        fc='black',
+        ec='black'
+    )
+)
+
+
+# 设置图表属性
+ax.set_xlim(-6, 6)
+ax.set_ylim(-6, 6)
+ax.set_title('使用 annotate 绘制的弓箭头')
+ax.grid(True)
+
+# 显示图表
+plt.show()

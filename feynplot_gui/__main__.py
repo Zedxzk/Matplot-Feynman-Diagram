@@ -52,13 +52,15 @@ def main():
         # 定义翻译文件存放的基础路径
         # 假设你的 .qm 文件位于项目根目录下的 'locale/<language_code>/LC_MESSAGES/'
         # 例如 'locale/zh_CN/LC_MESSAGES/feynplot_gui.qm'
-        translations_base_path = "locale" 
+        translations_base_path = r"F:\Research\pyfeynplot\feynplot_gui\locale" 
 
         # 应用程序自身的翻译文件名
         app_qm_filename = f"feynplot_gui.qm" 
 
         # 2. 尝试加载应用程序自身的翻译文件
         # 首先尝试加载当前系统语言的翻译文件
+        cwd = sys.path[0]  # 获取当前工作目录
+        print(f"当前工作目录: {cwd} (检查 .qm 文件路径是否正确)")
         if translator_app.load(app_qm_filename, f"{translations_base_path}/{system_locale_name}/"):
             QApplication.installTranslator(translator_app)
             print(f"成功为系统语言 {system_locale_name} 加载了应用程序翻译。")

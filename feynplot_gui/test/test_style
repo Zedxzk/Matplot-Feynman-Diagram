@@ -1,0 +1,28 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+# 创建一些示例数据
+x = np.linspace(0, 2 * np.pi, 400)
+y = np.sin(x)
+
+# 绘制曲线
+plt.figure(figsize=(8, 6))
+
+# 绘制内层白色曲线（较粗）
+# 注意：zorder 参数确保这条曲线在底部
+plt.plot(x, y, color='white', linewidth=6, zorder=1)
+
+# 绘制外层彩色曲线（较细）
+# zorder 确保这条线在白色曲线之上
+plt.plot(x, y, color='dodgerblue', linewidth=3, zorder=2)
+
+# 添加标题和标签
+plt.title('双层曲线')
+plt.xlabel('X轴')
+plt.ylabel('Y轴')
+
+# 显示网格
+plt.grid(True)
+
+# 显示图表
+plt.show()

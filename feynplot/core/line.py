@@ -79,18 +79,29 @@ class Line:
         self.a = None
         self.b = None
         self.angular_direction = None
+        self.inner_linewidth = None
+        self.inner_color = None
+        self.outer_linewidth = None
+        self.outer_color = None
+        self.inner_zorder = None
+        self.outer_zorder = None
+        self.linestyle = kwargs.pop('linestyle', linestyle) 
+        self._init_hollow_line(**kwargs)
+
         if self.loop:
-            print(f"DEBUG(Line_init): Loop is enabled for line ID '{self.id}'")
+            # print(f"DEBUG(Line_init): Loop is enabled for line ID '{self.id}'")
             self.a = kwargs.pop('a', 1.0)  # 长半轴
             self.b = kwargs.pop('b', 1.0)  # 短半轴
             self.angular_direction = kwargs.pop('angular_direction', 90.0)  # 默认角度
+
+
+
 
         # --- Direct Line Plotting Attributes ---
         self.linewidth = kwargs.pop('linewidth', linewidth)
         self.color = kwargs.pop('color', color)
         # If linestyle wasn't explicitly passed, use the default based on the initial style.
         # This will be overridden by style_properties_defaults in get_plot_properties if no style.
-        self.linestyle = kwargs.pop('linestyle', linestyle) 
         self.alpha = kwargs.pop('alpha', alpha)
         self.zorder = kwargs.pop('zorder', zorder)
         self.highlighted = kwargs.pop('highlighted', False)
@@ -138,7 +149,7 @@ class Line:
         if self._angleOut is None or self._angleIn is None:
             self.set_vertices(v_start, v_end)
         
-        print(f"DEBUG(Line_init): ID='{self.id}', Color='{self.color}', Linewidth='{self.linewidth}', Style='{self.style.name}'")
+        # print(f"DEBUG(Line_init): ID='{self.id}', Color='{self.color}', Linewidth='{self.linewidth}', Style='{self.style.name}'")
     def hide_label(self):
         self.hidden_label = True
 
@@ -190,9 +201,8 @@ class Line:
             return self.plot_points
     
     def set_plot_points(self, xs, ys):
-        self.plot_points = [(x, y) for x, y in zip(xs, ys)]
-        
-
+        self.plot_points = np.array(list(zip(xs, ys)))
+        print(type(self.plot_points))
 
     @staticmethod
     def _calc_angle(p1, p2):
@@ -258,7 +268,7 @@ class Line:
         # Add any extra properties stored in metadata (if they are valid plot properties)
         # This could be more sophisticated by checking against a list of valid kwargs for Line2D
         # For now, we'll just add them to the properties
-        final_properties.update(self.metadata)
+        # final_properties.update(self.metadata)
 
         return final_properties
     
@@ -354,6 +364,16 @@ class Line:
         from feynplot.io.diagram_io import _line_from_dict
         return _line_from_dict(data, vertices_map)
 
+    def _init_hollow_line(self, **kwargs):
+            self.inner_linewidth = kwargs.pop('inner_linewidth', 1.0)
+            self.inner_color = kwargs.pop('inner_color', 'white')
+            self.outer_linewidth = kwargs.pop('outer_linewidth', 1.5)
+            self.outer_color = kwargs.pop('outer_color', 'black')
+            self.inner_zorder = kwargs.pop('inner_zorder', 5)
+            self.outer_zorder = kwargs.pop('outer_zorder', 4)
+            self.hollow_line_initialized = True  # Flag to indicate hollow line initialization
+
+
 # --- Subclasses ---
 
 class FermionLine(Line):
@@ -375,11 +395,50 @@ class FermionLine(Line):
         super().__init__(v_start, v_end, style=style_to_pass, loop=loop_to_pass, **kwargs)
         # FermionLine manages its own arrow properties
         self.arrow = arrow
+        self.arrow_style = "fishtail"  # Default arrow style for FermionLine
+        self.arrow_angle = kwargs.pop('arrow_angle', 60)  # Default angle for fishtail arrow
+        self.arrow_tail_angle = kwargs.pop('arrow_tail_angle', 20)  # Default tail angle for fishtail arrow
+        self.arrow_offset_ratio = kwargs.pop('arrow_offset_ratio', 0.0) # Default offset ratio for fishtail arrow
+        self.arrow_facecolor = kwargs.pop('arrow_facecolor', 'black')  # Default arrow fill color
+        self.arrow_edgecolor = kwargs.pop('arrow_edgecolor', 'black')
+        self.mutation_scale = kwargs.pop('mutation_scale', 50)  # Default mutation scale for arrow size
         self.arrow_filled = arrow_filled
         self.arrow_position = arrow_position
         self.arrow_size = arrow_size
         self.arrow_line_width = arrow_line_width
         self.arrow_reversed = arrow_reversed
+
+
+    def get_arrow_properties(self) -> Dict[str, Any]:
+        """
+        Returns a dictionary of arrow properties suitable for Matplotlib ArrowStyle.
+        """
+        # 构造 arrowstyle 字符串，将所有自定义参数打包进去
+        arrowstyle_str = (
+            f"{self.arrow_style},"
+            f"arrow_angle={self.arrow_angle},"
+            f"tail_angle={self.arrow_tail_angle},"
+            f"offset_ratio={self.arrow_offset_ratio}"
+        )
+
+        # 构建 arrowprops 字典
+        arrow_properties = {
+            'arrowstyle': arrowstyle_str,
+            'facecolor': self.arrow_facecolor,
+            'edgecolor': self.arrow_edgecolor,
+            'mutation_scale': self.mutation_scale,
+            'linewidth': self.arrow_line_width if self.arrow_line_width is not None else self.linewidth
+        }
+
+        # 处理填充逻辑：如果 arrow_filled 为 False，则不填充
+        if not self.arrow_filled:
+            arrow_properties['facecolor'] = 'none'
+
+        return arrow_properties
+    
+
+
+
 
 class AntiFermionLine(FermionLine):
     def __init__(

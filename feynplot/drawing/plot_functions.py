@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
+import matplotlib.patches as mpatches
 from feynplot_gui.debug_utils import cout
 from feynplot.shared.common_functions import str2latex
 from feynplot.core.extra_text_element import TextElement
@@ -151,8 +152,8 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
     x, y = fermion_path[:, 0], fermion_path[:, 1]
 
     # 绘制费米子线本身
-    drawn_line = ax.plot(x, y, **current_line_plot_options)[0]
     line.set_plot_points(x, y)
+    drawn_line = draw_line(ax, line, current_line_plot_options)
     # from pprint import pprint
     # points = line.get_line_plot_points()[:10]
     # formatted_points = [f"({x:.3f}, {y:.3f})" for (x, y) in points]
@@ -189,28 +190,35 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
             xy = p_tip
             xytext = p_base
 
-        if arrow_filled:
-            arrowstyle_str = f'-|>,head_width={0.06*arrow_size},head_length={0.1*arrow_size}'
-        else:
-            arrowstyle_str = f'->,head_width={0.04*arrow_size},head_length={0.08*arrow_size}'
+        arrow_style_str = line.get_arrow_properties()
 
         arrow_lw = arrow_line_width if arrow_line_width is not None else \
                            current_line_plot_options.get('linewidth', 1.5)
 
         arrow_props = dict(
-            arrowstyle=arrowstyle_str,
+            arrowstyle=arrow_style_str,
             linewidth=arrow_lw,
             color=current_line_plot_options.get('color', 'black'),
             zorder=current_line_plot_options.get('zorder', 1) + 1,
             alpha=label_text_options.get('alpha', 1.0) # 将 alpha 添加到这里
         )
 
-        ax.annotate(
-            '',
-            xy=xy,
-            xytext=xytext,
-            arrowprops=arrow_props,
-        )
+        # ax.annotate(
+        #     '',
+        #     xy=xy,
+        #     xytext=xytext,
+        #     arrowprops=arrow_props,
+        # )
+
+        draw_arrow(ax, xy, xytext,
+            linewidth=arrow_lw,
+            arrow_props=arrow_props,
+            color=current_line_plot_options.get('color', 'black'),
+            zorder=current_line_plot_options.get('zorder', 1) + 1,
+            alpha=label_text_options.get('alpha', 1.0), # 将 alpha 添加到这里 ,
+            is_selected=line.is_selected,
+            mutation_scale=line.mutation_scale,
+            )
 
     drawn_text = draw_line_label(ax, line, label_text_options, zoom_times, use_relative_unit=use_relative_unit, **kwargs) # 绘制标签
     return drawn_line, drawn_text
@@ -751,3 +759,72 @@ def get_highlighted_props(original_props: dict) -> dict:
         highlighted_props['markeredgewidth'] = original_props.get('markeredgewidth', 1) * 1.5 + 1.5
     
     return highlighted_props
+
+
+def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float],
+               arrow_filled: bool = False, arrow_size: float = 1.0,
+               arrow_line_width: Optional[float] = None, arrow_style = 'fishtail', **kwargs):
+    """
+    在给定的 Axes 上绘制一个箭头。
+    """
+    if start == end:
+        return  # 如果起点和终点相同，则不绘制箭头
+
+
+        
+    zorder = kwargs.get('zorder', 10)  # 获取 zorder，默认为 10
+    facecolor = kwargs.get('facecolor', 'black')  # 箭头填充颜色
+    edgecolor = kwargs.get('edgecolor', 'black')  # 箭头边框颜色
+    is_selected = kwargs.get('is_selected', False)  # 是否被选中
+    mutation_scale = kwargs.get('mutation_scale', 50)  # 箭头大小缩放比例
+    if is_selected:
+        facecolor = highlight_color  # 如果被选中，使用高亮颜色
+        edgecolor = highlight_color
+        mutation_scale = mutation_scale * 1.5  # 增加箭头大小
+
+    if arrow_style == 'fishtail':
+        arrow_angle = kwargs.get('arrow_angle', 60)  
+        tail_angle = kwargs.get('tail_angle', 20)
+        offset_ratio = kwargs.get('offset_ratio', 0.0)
+        ax.annotate('', xy=end, xytext=start, zorder=zorder,
+                    ha='center', va='center', fontsize=12,
+                    arrowprops=dict(
+                        arrowstyle=mpatches.ArrowStyle("fishtail", 
+                                                        arrow_angle=arrow_angle, 
+                                                        tail_angle=tail_angle,
+                                                        offset_ratio=offset_ratio,
+                                                        ),
+                        facecolor=facecolor,
+                        edgecolor=edgecolor,
+                        mutation_scale=mutation_scale, 
+                        shrinkA=0,  # 关闭起点收缩
+                        shrinkB=0   # 关闭终点收缩
+                        ))
+        
+
+def draw_line(ax: plt.Axes, line : Line, line_plot_options: dict, **kwargs):
+    if line.linestyle == "Hollow" or line.linestyle == 'hollow':
+        # 绘制空心线条
+        draw_hollow_line(ax, line, line_plot_options, line.get_label_properties(), line_plot_options, **kwargs)
+    elif line.linestyle in ['-', '--', '-.', ':']:
+        # 绘制实线、虚线等
+        ax.plot(line.plot_points[:, 0], line.plot_points[:, 1], **line_plot_options)
+
+def draw_hollow_line(ax: plt.Axes, line: Line, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):   
+    if not line.hollow_line_initialized:
+        line._init_hollow_line(**kwargs)
+    inner_line_zorder = line.inner_zorder if line.inner_zorder is not None else 5
+    outer_line_zorder = line.outer_zorder if line.outer_zorder is not None else 4
+    inner_color = line.inner_color if line.inner_color is not None else 'white'
+    outer_color = line.outer_color if line.outer_color is not None else 'black'
+    inner_linewidth = line.inner_linewidth if line.inner_linewidth is not None else 1.5
+    outer_linewidth = line.outer_linewidth if line.outer_linewidth is not None else 2.0
+
+    inner_line = ax.plot(line.plot_points[:, 0], line.plot_points[:, 1],
+            color=inner_color, linewidth=inner_linewidth, linestyle='-', zorder=inner_line_zorder, **kwargs)
+    
+    # 绘制外层线条
+    outer_line = ax.plot(line.plot_points[:, 0], line.plot_points[:, 1],
+            color=outer_color, linewidth=outer_linewidth, linestyle='-', zorder=outer_line_zorder, **kwargs)
+    
+    return (inner_line[0], outer_line[0])

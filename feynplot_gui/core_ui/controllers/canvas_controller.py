@@ -428,7 +428,7 @@ class CanvasController(QObject):
         # --- 遍历线条进行点击检测 ---
         for line in self.diagram_model.lines:
             # 确保线条有 plot_points 且至少包含两个点以构成线段
-            if not hasattr(line, 'plot_points') or not line.plot_points or len(line.plot_points) < 2:
+            if not hasattr(line, 'plot_points') or len(line.plot_points) == 0 or len(line.plot_points) < 2:
                 continue # 跳过没有有效绘制路径的线条
 
             num_plot_points = len(line.plot_points)

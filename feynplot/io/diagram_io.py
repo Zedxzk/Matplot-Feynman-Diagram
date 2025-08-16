@@ -168,6 +168,13 @@ def _line_to_dict(line: Line) -> Dict[str, Any]:
         'a': line.a,  # 如果是自环，存储长半轴
         'b': line.b,  # 如果是自环，存储短半轴
         'angular_direction': line.angular_direction,  # 如果是自环，存储角度
+        'hollow_line_initialized': line.hollow_line_initialized,
+        'inner_linewidth': line.inner_linewidth,
+        'inner_color': line.inner_color,
+        'outer_linewidth': line.outer_linewidth,
+        'outer_color': line.outer_color,
+        'inner_zorder': line.inner_zorder,
+        'outer_zorder': line.outer_zorder,
         'metadata': line.metadata # 存储未处理的 kwargs
     }
 
@@ -179,7 +186,14 @@ def _line_to_dict(line: Line) -> Dict[str, Any]:
         data['arrow_size'] = line.arrow_size
         data['arrow_line_width'] = line.arrow_line_width
         data['arrow_reversed'] = line.arrow_reversed
-    
+        data['mutation_scale'] = line.mutation_scale # 添加 mutation_scale
+        data['offset_ratio'] = line.arrow_offset_ratio # 添加 offset_ratio
+        data['tail_angle'] = line.arrow_tail_angle # 添加 tail_angle
+        data['arrow_angle'] = line.arrow_angle # 添加 arrow_angle
+        data['arrow_style'] = line.arrow_style # 添加 arrow_style
+        data['facecolor'] = line.arrow_facecolor # 添加 facecolor
+        data['edgecolor'] = line.arrow_edgecolor # 添加 edgecolor
+
     # 处理 PhotonLine 特有的属性
     if isinstance(line, PhotonLine):
         data['amplitude'] = line.amplitude
@@ -252,6 +266,13 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
     init_kwargs['a'] = data_copy.pop('a', None)  # 如果是自环，长半轴
     init_kwargs['b'] = data_copy.pop('b', None)  # 如果是自环，短半轴
     init_kwargs['angular_direction'] = data_copy.pop('angular_direction', None)
+    init_kwargs['hollow_line_initialized'] = data_copy.pop('hollow_line_initialized', False)
+    init_kwargs['inner_linewidth'] = data_copy.pop('inner_linewidth', 1.0)
+    init_kwargs['inner_color'] = data_copy.pop('inner_color', 'black')
+    init_kwargs['outer_linewidth'] = data_copy.pop('outer_linewidth', 1.0)
+    init_kwargs['outer_color'] = data_copy.pop('outer_color', 'black')
+    init_kwargs['inner_zorder'] = data_copy.pop('inner_zorder', 5)
+    init_kwargs['outer_zorder'] = data_copy.pop('outer_zorder', 4)
     init_kwargs['metadata'] = data_copy.pop('metadata', {})
 
     # 处理 FermionLine 及其子类特有的属性
@@ -262,6 +283,13 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
         init_kwargs['arrow_size'] = data_copy.pop('arrow_size', 10.0)
         init_kwargs['arrow_line_width'] = data_copy.pop('arrow_line_width', None)
         init_kwargs['arrow_reversed'] = data_copy.pop('arrow_reversed', False) # AntiFermionLine会设置其为True
+        init_kwargs['mutation_scale'] = data_copy.pop('mutation_scale', 50) # 添加 mutation_scale
+        init_kwargs['offset_ratio'] = data_copy.pop('offset_ratio', 0.0) # 添加 offset_ratio
+        init_kwargs['tail_angle'] = data_copy.pop('tail_angle', 60) # 添加 tail_angle
+        init_kwargs['arrow_angle'] = data_copy.pop('arrow_angle', 20.0)
+        init_kwargs['arrow_style'] = data_copy.pop('arrow_style', 'default') # 添加 arrow_style
+        init_kwargs['arrow_facecolor'] = data_copy.pop('arrow_facecolor', 'black') # 添加 facecolor
+        init_kwargs['arrow_edgecolor'] = data_copy.pop('arrow_edgecolor', 'black') # 添加 edgecolor
 
     # 处理 PhotonLine 特有的属性
     if issubclass(line_class, PhotonLine):
