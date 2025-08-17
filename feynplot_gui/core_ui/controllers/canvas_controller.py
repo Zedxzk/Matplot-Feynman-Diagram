@@ -10,7 +10,7 @@ from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line
 from feynplot_gui.core_ui.controllers.other_texts_controller import TextElement
-from feynplot_gui.default.default_settings import canvas_controller_default_settings
+from feynplot_gui.default.default_settings import CANVAS_CONTROLLER_DEFAULTS
 # from debug_utils import cout3 
 
 import numpy as np 
@@ -39,7 +39,7 @@ class CanvasController(QObject):
         self._first_vertex_for_line = None
         # Current canvas operation mode, set by MainController
         self._current_canvas_mode = "select"
-        self.only_allow_grid_points = canvas_controller_default_settings['ONLY_ALLOW_GRID_POINTS']
+        self.only_allow_grid_points = CANVAS_CONTROLLER_DEFAULTS['ONLY_ALLOW_GRID_POINTS']
         # Connect CanvasWidget's user interaction signals to CanvasController's slots
         self.canvas_widget.canvas_clicked.connect(self._handle_canvas_click)
         self.canvas_widget.object_selected.connect(self._handle_object_selected_on_canvas_widget)
@@ -64,9 +64,10 @@ class CanvasController(QObject):
         self._is_panning_active = False
         self._pan_start_data_pos = None
         self.zoom_times = 0
-        self.relative_size_unit = canvas_controller_default_settings['use_relative_unit']
+        self.relative_size_unit = CANVAS_CONTROLLER_DEFAULTS['USE_RELATIVE_UNIT']
         self._motion_cid: Optional[int] = None # Stores Matplotlib event connection ID
         self._release_cid: Optional[int] = None # Stores Matplotlib event connection ID
+        self.transparent_background = CANVAS_CONTROLLER_DEFAULTS['TRANSPARENT_BACKGROUND']
 
     def get_fig(self):
         return self.canvas_widget.get_figure()
@@ -134,7 +135,7 @@ class CanvasController(QObject):
             # self.main_controller.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
 
             # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
-            # self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvas_instance.ax) 
+            # self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvaps_instance.ax) 
             # self.get_ax().grid(True)
             self.canvas_widget.draw_idle_canvas() 
             self.main_controller._update_canvas_range_on_navigation_bar()
@@ -215,7 +216,7 @@ class CanvasController(QObject):
                 # 检查是否需要对齐到网格
                 if self.only_allow_grid_points:
                     # 获取网格大小（假设 self.grid_size 存在）
-                    grid_size = canvas_controller_default_settings['GRID_SIZE']
+                    grid_size = CANVAS_CONTROLLER_DEFAULTS['GRID_SIZE']
                     
                     # 计算最近的网格点
                     # 使用 round() 进行四舍五入
@@ -417,7 +418,7 @@ class CanvasController(QObject):
             y_coverage = (y_limits[1] - y_limits[0])
             width = max(x_coverage , y_coverage)
             # 使用容差来决定是否命中，这里我们直接比较距离
-            tolarence_scaling_factor = canvas_controller_default_settings["SCALING_FACTOR_FOR_TOLERANCE"]
+            tolarence_scaling_factor = CANVAS_CONTROLLER_DEFAULTS["SCALING_FACTOR_FOR_TOLERANCE"]
             hit_tolerance_vertex_sq = (tolarence_scaling_factor  *  width) ** 2
             # hit_tolerance_vertex_sq = 0.5**2  # 顶点的点击容差
             if dist_sq < min_dist_sq and dist_sq < hit_tolerance_vertex_sq:
@@ -432,7 +433,7 @@ class CanvasController(QObject):
                 continue # 跳过没有有效绘制路径的线条
 
             num_plot_points = len(line.plot_points)
-            shorted_points_number = canvas_controller_default_settings['NUMBER_OF_COMPARISON_POINTS']
+            shorted_points_number = CANVAS_CONTROLLER_DEFAULTS['NUMBER_OF_COMPARISON_POINTS']
             if num_plot_points <= shorted_points_number:
                 indices_to_check = range(num_plot_points - 1)
             else:
@@ -623,3 +624,12 @@ class CanvasController(QObject):
         if self.only_allow_grid_points:
             self.main_controller.toolbox_controller._on_auto_grid_adjustment_requested()
             pass
+
+    def toggle_transparent_background(self):
+        """
+        切换画布的透明背景状态。
+        """
+        self.transparent_background = not self.transparent_background
+        self._canvas_instance.change_transparent_background_state(self.transparent_background)
+        print(f"Transparent background toggled. Current state: {self.transparent_background}")
+        self.main_controller.update_all_views(canvas_options={"auto_scale": False})

@@ -5,7 +5,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, Callable
-from feynplot_gui.default.default_settings import canvas_widget_default_settings as default_settings
+from feynplot_gui.default.default_settings import CANVAS_WIDGET_DEFAULTS as default_settings
 
 class CanvasWidget(QWidget):
     # Various user interaction signals
@@ -13,7 +13,7 @@ class CanvasWidget(QWidget):
     object_selected = Signal(str, str)
     object_double_clicked = Signal(str, str)
     object_moved = Signal(str, QPointF)
-    selection_cleared = Signal()
+    selection_cleared = Signal()    
     key_delete_pressed = Signal()
     blank_double_clicked = Signal(QPointF)
     # Pan and zoom signals

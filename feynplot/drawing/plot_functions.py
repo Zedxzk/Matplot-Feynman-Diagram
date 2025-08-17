@@ -5,9 +5,12 @@ import matplotlib.patches as mpatches
 from feynplot_gui.debug_utils import cout
 from feynplot.shared.common_functions import str2latex
 from feynplot.core.extra_text_element import TextElement
+import matplotlib.colors as mcolors # 新增：导入颜色模块
 from matplotlib.text import Text
 from matplotlib.axes import Axes
 from feynplot.default_settings.default_settings import renderer_default_settings
+from typing import Union
+
 
 scaling_factor = renderer_default_settings["DEFAULT_SCALE_FACTOR"]
 
@@ -28,7 +31,7 @@ from typing import List, Tuple, Optional, Any, Dict
 
 highlight_color = 'red'
 
-def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict,  use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
@@ -52,13 +55,13 @@ def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_o
     x_wave, y_wave = wave_path[:, 0], wave_path[:, 1]
 
     # 绘制光子波的路径，使用调整后的属性
-    drawn_line = ax.plot(x_wave, y_wave, **current_line_plot_options, **kwargs)[0]
     line.set_plot_points(x_wave, y_wave)
-    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times=zoom_times, **kwargs) # 绘制标签
+    drawn_line = draw_line(ax, line=line, line_plot_options=current_line_plot_options, use_relative_unit=use_relative_unit, **kwargs)
+    drawn_text = draw_line_label(ax, line, label_text_options,  **kwargs) # 绘制标签
     return drawn_line, drawn_text
 
 
-def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_options: dict,  use_relative_unit: bool = True, **kwargs):
     # print('Detected GluonLine') # 可以保留用于调试
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
@@ -81,14 +84,14 @@ def draw_gluon_line(ax, line: GluonLine, line_plot_options: dict, label_text_opt
     x_helix, y_helix = helix_path[:, 0], helix_path[:, 1]
 
     # 绘制胶子线的路径
-    drawn_line = ax.plot(x_helix, y_helix, **current_line_plot_options)[0]
     line.set_plot_points(x_helix, y_helix)
+    drawn_line = draw_line(ax, line, current_line_plot_options)
 
-    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times=zoom_times, **kwargs) # 绘制标签
-    return drawn_line, drawn_text
+    drawn_text = draw_line_label(ax, line, label_text_options, **kwargs) # 绘制标签
+    return drawn_line, drawn_text 
 
 
-def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_options: dict,  use_relative_unit: bool = True, **kwargs):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
@@ -119,20 +122,20 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
 
     # --- 绘制锯齿路径 (主要线条) ---
     x_zig, y_zig = zigzag_path[:, 0], zigzag_path[:, 1]
-    drawn_line = ax.plot(x_zig, y_zig, **current_line_plot_options)[0]
     line.set_plot_points(x_zig, y_zig)
-    
+    drawn_line = draw_line(ax, line, current_line_plot_options)
+     
 
-    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times=zoom_times, **kwargs) # 绘制标签
+    drawn_text = draw_line_label(ax, line, label_text_options, **kwargs) # 绘制标签
     return drawn_line, drawn_text
 
 
-def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text_options: dict, use_relative_unit: bool = True, **kwargs):
     current_line_plot_options = line_plot_options.copy()
     current_label_text_options = label_text_options.copy()
 
-    cout(f"current_line_plot_options: {current_line_plot_options}")
-    cout(f"current_label_text_options: {current_label_text_options}")
+    # print(f"\n\n Drawing Fermion DEBUG: current_line_plot_options: {current_line_plot_options}\n")
+    # print(f"\n Drawing Fermion DEBUG: current_label_text_options: {current_label_text_options}")
 
     original_linewidth = current_line_plot_options.get('linewidth', 1.5)
     original_color = current_line_plot_options.get('color', 'black')
@@ -153,12 +156,13 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
     # 绘制费米子线本身
     line.set_plot_points(x, y)
+    # print(f"DEBUG: 绘制费米子线: {line}, 绘制选项: {current_line_plot_options}")
     drawn_line = draw_line(ax, line, current_line_plot_options)
     # from pprint import pprint
     # points = line.get_line_plot_points()[:10]
     # formatted_points = [f"({x:.3f}, {y:.3f})" for (x, y) in points]
     # pprint(f"fermion_path: {formatted_points}")
-
+    # print(f"DEBUG, 绘制费米子线: {line}, arrow={line.arrow}"    )
     # --- 绘制箭头 ---
     if line.arrow and len(x) > 1:
         arrow_filled = getattr(line, 'arrow_filled', False)
@@ -194,7 +198,10 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
         arrow_lw = arrow_line_width if arrow_line_width is not None else \
                            current_line_plot_options.get('linewidth', 1.5)
-
+        # if current_label_text_options['alpha']  == 0:
+        #     # 如果标签的 alpha 为 0，则不绘制箭头
+        #     arrow_style_str
+        # print(f"\n\n DEBUG : arrow alpha {label_text_options.get('alpha', 1.0)}， label_text_options: {label_text_options}")
         arrow_props = dict(
             arrowstyle=arrow_style_str,
             linewidth=arrow_lw,
@@ -210,7 +217,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
         #     arrowprops=arrow_props,
         # )
 
-        draw_arrow(ax, xy, xytext,
+        drawn_arrow = draw_arrow(ax, xy, xytext,
             linewidth=arrow_lw,
             arrow_props=arrow_props,
             color=current_line_plot_options.get('color', 'black'),
@@ -220,11 +227,11 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
             mutation_scale=line.mutation_scale,
             )
 
-    drawn_text = draw_line_label(ax, line, label_text_options, zoom_times, use_relative_unit=use_relative_unit, **kwargs) # 绘制标签
-    return drawn_line, drawn_text
+    drawn_text = draw_line_label(ax, line, label_text_options, use_relative_unit=use_relative_unit, **kwargs) # 绘制标签
+    return drawn_line, drawn_text, drawn_arrow
 
 
-def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_point_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     drawn_vertex, drawn_text = None, None
     current_scatter_props = vertex.get_scatter_properties().copy()
@@ -271,33 +278,12 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex, zoom_times: int = 0, use_rel
         drawn_vertex = ax.scatter(vertex.x, vertex.y, **current_scatter_props, **kwargs)
 
     # 绘制标签
-    drawn_text = draw_vertex_label(ax, vertex, current_label_props, zoom_times, use_relative_unit=use_relative_unit, **kwargs)
+    drawn_text = draw_vertex_label(ax, vertex, current_label_props, use_relative_unit=use_relative_unit, **kwargs)
 
-    # if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
-    #     label_x = vertex.x + vertex.label_offset[0]
-    #     label_y = vertex.y + vertex.label_offset[1]
-
-    #     # --- 新增的可见性检查 ---
-    #     xlim = ax.get_xlim()
-    #     ylim = ax.get_ylim()
-    #     # print(f"xlim: {xlim}")
-    #     if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-    #         # 如果标签位置不在当前视图范围内，则跳过绘制
-    #         return
-    #     # ------------------------
-
-    #     label_in_latex = str2latex(vertex.label)
-    #     drawn_text = ax.text(
-    #         label_x,
-    #         label_y,
-    #         label_in_latex ,
-    #         **current_label_props # 使用调整后的标签属性
-    #     )
-    #     return drawn_text
     return drawn_vertex, drawn_text
 
 
-def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     current_circle_props = vertex.get_circle_properties().copy()
     current_custom_hatch_props = vertex.get_custom_hatch_properties().copy()
@@ -391,169 +377,14 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex, zoom_times : int = 0, u
             line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
     # 3. 绘制标签
-    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, zoom_times=zoom_times, use_relative_unit=use_relative_unit, **kwargs)
-    # if (vertex.label and not vertex.hidden_label and not vertex.hidden_vertex) or  vertex.is_selected: # 只有当圆圈可见时才绘制标签
-    #     label_x = vertex.x + vertex.label_offset[0]
-    #     label_y = vertex.y + vertex.label_offset[1]
+    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, use_relative_unit=use_relative_unit, **kwargs)
 
-    #     # --- 新增的可见性检查 (针对标签) ---
-    #     # 即使圆圈可见，标签自身也可能超出视图，所以这里再检查一次更精确
-    #     xlim = ax.get_xlim()
-    #     ylim = ax.get_ylim()
-    #     if not (xlim[0] <= label_x <= xlim[1] and ylim[0] <= label_y <= ylim[1]):
-    #         return # 如果标签位置不在当前视图范围内，则跳过绘制
-    #     # ------------------------
-        
-    #     label_in_latex = str2latex(vertex.label)
-    #     drawn_text = ax.text(
-    #         label_x,
-    #         label_y,
-    #         label_in_latex,
-    #         **current_label_props
-    #     )
     return drawn_text
 
-def get_diagram_view_limits(
-    ax: plt.Axes, # Axes 对象仍然需要，尽管我们不直接用它来测量文本尺寸
-    vertices: List[Vertex],
-    lines: List[Line],
-    drawn_texts : Optional[List[Text]] = None
-) -> Tuple[Tuple[float, float], Tuple[float, float]]:
-    """
-    根据顶点和线列表，计算并返回合适的画布视图范围 (xlim, ylim)。
-    遍历所有顶点、线的完整路径以及标签的锚点位置，找到 x 和 y 的最小/最大值。
-    """
-    all_x: List[float] = []
-    all_y: List[float] = []
-
-    # 1. 考虑所有顶点的中心坐标
-    for v in vertices:
-        all_x.append(v.x)
-        all_y.append(v.y)
-        
-        # Determine label properties for the current vertex (still useful for drawing later)
-        # vertex_label_props = v.get_label_properties() # This line is no longer strictly needed for limits calculation
-        
-        # If StructuredVertex, consider its radius
-        if hasattr(v, 'structured_radius') and v.structured_radius is not None and v.is_structured:
-            radius = v.structured_radius
-            all_x.extend([v.x - radius, v.x + radius])
-            all_y.extend([v.y - radius, v.y + radius])
-        size2pix = 0.002
-        if not v.hidden_vertex:
-            # print("v.size", v.size)
-            all_x.extend([v.x + float(v.size) * size2pix, v.x - float(v.size) * size2pix])
-            all_y.extend([v.y + float(v.size) * size2pix, v.y - float(v.size) * size2pix])
-
-        # 考虑顶点的标签锚点位置
-        if v.label and not v.hidden_label:
-            label_origin_x = v.x + v.label_offset[0]
-            label_origin_y = v.y + v.label_offset[1]
-            
-            # **核心修改：只添加标签的锚点位置**
-            all_x.append(label_origin_x)
-            all_y.append(label_origin_y)
-
-    # 2. 考虑所有线条的完整路径点
-    for line in lines:
-        path = np.array([]) # Initialize as empty path
-
-        # Get path points based on line type
-        if isinstance(line, PhotonLine):
-            path = generate_photon_wave(line)
-        elif isinstance(line, GluonLine):
-            _, path = line.get_plot_path()
-        elif isinstance(line, (WPlusLine, WMinusLine, ZBosonLine)):
-            path, _, _ = generate_WZ_zigzag(line, start_up=True)
-        elif isinstance(line, FermionLine):
-            path = generate_fermion_line(line)
-        else: # Default straight line or other unknown line type
-            # Assuming line.v_start and line.v_end are Vertex objects (not just IDs)
-            start_v = next((v_item for v_item in vertices if v_item.id == line.v_start.id), None)
-            end_v = next((v_item for v_item in vertices if v_item.id == line.v_end.id), None)
-            if start_v and end_v:
-                path = np.array([[start_v.x, start_v.y],
-                                 [end_v.x, end_v.y]])
-
-        if path.size > 0:
-            all_x.extend(path[:, 0])
-            all_y.extend(path[:, 1])
-
-        # 考虑线的标签锚点位置
-        if line.label and not line.hidden_label:
-            # 标签的基准位置通常是线的中点加上偏移
-            mid_point_x, mid_point_y = 0, 0
-            if path.size > 0:
-                mid_point_x = path[:, 0].mean()
-                mid_point_y = path[:, 1].mean()
-            elif start_v and end_v: # If path is empty, fall back to midpoint of line endpoints
-                mid_point_x = (start_v.x + end_v.x) / 2
-                mid_point_y = (start_v.y + end_v.y) / 2
-            # else: mid_point_x, mid_point_y remain 0,0 - not ideal, but fallback for unlinked lines
-
-            label_origin_x = mid_point_x + line.label_offset[0]
-            label_origin_y = mid_point_y + line.label_offset[1]
-
-            # **核心修改：只添加标签的锚点位置**
-            all_x.append(label_origin_x)
-            all_y.append(label_origin_y)
-
-
-    # --- 【新增】3. 处理已绘制的文本对象 ---
-    # if drawn_texts:
-    #     for text_obj in drawn_texts:
-    #         # 获取文本对象的边界框
-    #         # 必须先绘制 canvas 才能获得正确的边界框
-    #         bbox = text_obj.get_window_extent().transformed(ax.transData.inverted())
-    #         # print("bbox:", bbox.x0, bbox.x1, bbox.y0, bbox.y1)
-    #         # for corner_name, (x, y) in corners.items():
-    #         # 将边界框的四个角点坐标加入列表
-    #         all_x.append(bbox.x0)
-    #         all_x.append(bbox.x1)
-    #         all_y.append(bbox.y0)
-    #         all_y.append(bbox.y1)
-
-
-    # If no elements, return default view
-    if not all_x or not all_y:
-        return (-5.0, 5.0), (-5.0, 5.0)
-
-    min_x, max_x = min(all_x), max(all_x)
-    min_y, max_y = min(all_y), max(all_y)
-
-    # Add a margin to prevent elements from touching the border
-    padding_ratio = 0.02
-    
-    # Calculate current content width and height
-    content_width = max_x - min_x
-    content_height = max_y - min_y
-
-    # Ensure a minimum size for the content, even if it's just a single point
-    min_content_size = 2.0 
-    if content_width < min_content_size:
-        mid_x = (max_x + min_x) / 2
-        min_x = mid_x - min_content_size / 2
-        max_x = mid_x + min_content_size / 2
-        content_width = min_content_size # Update width for padding calculation
-
-    if content_height < min_content_size:
-        mid_y = (max_y + min_y) / 2
-        min_y = mid_y - min_content_size / 2
-        max_y = mid_y + min_content_size / 2
-        content_height = min_content_size # Update height for padding calculation
-
-    # Apply padding
-    padding_x = content_width * padding_ratio
-    padding_y = content_height * padding_ratio
-
-    new_xlim = (min_x - padding_x, max_x + padding_x)
-    new_ylim = (min_y - padding_y, max_y + padding_y)
-    
-    return new_xlim, new_ylim
 
 
 
-def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom_times : int = 0, use_relative_unit : bool = True, **kwargs):
+def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, use_relative_unit : bool = True, **kwargs):
     if not line.label or line.hidden_label:
         if not line.label:            # print(f"Line {line.id} has no label, skipping")
             return
@@ -563,6 +394,8 @@ def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom
     if 'pre_render' in kwargs and kwargs['pre_render']:
         current_label_text_options['alpha'] = 0
         kwargs.pop('pre_render', None)
+
+
 
     # 绘制光子线的标签
     if line.label and not line.hidden_label:
@@ -583,7 +416,11 @@ def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom
         #     print(f"Label {line.label} out of range, skipping")
         #     return
         # ------------------------
-        
+        if line.is_selected:
+            current_label_text_options['color'] = highlight_color
+            current_label_text_options['zorder'] = current_label_text_options.get('zorder', 1) + 10
+            current_label_text_options['fontsize'] = current_label_text_options.get('fontsize', 12) * 1.5 # 增大字体
+
         label_in_latex = str2latex(line.label)
         current_label_text_options = convert_props_from_data(ax, current_label_text_options, use_relative_unit=use_relative_unit)
         drawn_text = ax.text(label_x,
@@ -593,7 +430,7 @@ def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, zoom
         return drawn_text
 
 
-def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_times : int = 0, use_relative_unit: bool = True, **kwargs):
+def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props,  use_relative_unit: bool = True, **kwargs):
     # 绘制标签
     if (vertex.label and not vertex.hidden_vertex and not vertex.hidden_label) or vertex.is_selected:
         label_x = vertex.x + vertex.label_offset[0]
@@ -619,14 +456,13 @@ def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props, zoom_t
         return drawn_text
 
 
-def draw_text_element(ax: plt.Axes, text_element: TextElement, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs) -> Text:
+def draw_text_element(ax: plt.Axes, text_element: TextElement, use_relative_unit: bool = True,alpha=1, **kwargs) -> Text:
     """
     绘制 TextElement 对象的文本标签。
 
     Args:
         ax: Matplotlib Axes 对象。
         text_element: TextElement 对象，包含文本内容和位置。
-        zoom_times: 缩放倍数，用于调整文本大小。
         use_relative_unit: 是否使用相对单位进行尺寸转换。
         **kwargs: 其他绘图参数。
 
@@ -646,70 +482,85 @@ def draw_text_element(ax: plt.Axes, text_element: TextElement, zoom_times: int =
         # 如果有缩放倍数，调整字体大小
         current_text_props = get_highlighted_props(current_text_props)
 
-    drawn_text = ax.text(**current_text_props)
+    drawn_text = ax.text(alpha=alpha, **current_text_props)
     return drawn_text
 
 
 
 
-def convert_props_from_data(ax: plt.Axes, props: dict, use_relative_unit : bool = True) -> dict:
+def convert_props_from_data(ax: plt.Axes, props: Union[Dict[str, Any], float, int], prop_name : Optional[str] = None, use_relative_unit: bool = True) -> Union[Dict[str, Any], float, int]:
     """
-    自动将字典中所有表示尺寸的属性从数据单位转换为 Matplotlib 的绘图单位。
+    自动将指定的尺寸属性从数据单位转换为 Matplotlib 的绘图单位。
+    此函数可以处理单个属性值或一个属性字典。
 
     Args:
         ax: Matplotlib Axes 对象。
-        props: 包含需要转换的属性（数据单位）的字典。
+        props: 包含需要转换的属性（数据单位）的字典，或者一个需要转换的浮点/整数值。
+        use_relative_unit: 如果为 False，则直接返回原始值，不进行转换。
 
     Returns:
-        一个新字典，包含转换后的属性。
+        一个包含转换后属性的新字典，或者一个转换后的值，取决于输入类型。
     """
     if not use_relative_unit:
-        # 如果不使用相对单位，直接返回原始属性
         return props
 
-    # 定义所有需要自动转换的属性键
-    # 这里我们只区分字体相关和非字体相关的属性
-    fontsize_keys = {'fontsize', 'size'}
-    other_size_keys = {'s', 'markersize', 'linewidth', 'markeredgewidth', 'elinewidth'}
-
-    adjusted_props = props.copy()
+    # 判断输入是字典还是单个值
+    is_dict = isinstance(props, dict)
+    
+    # 获取转换因子（每数据单位对应的像素数）
     fig = ax.figure
     if fig is None:
-        return adjusted_props
-
-    # 获取每个数据单位对应的像素数
+        return props
+    
     bbox = ax.get_position()
     fig_width_inch, _ = fig.get_size_inches()
     dpi = fig.dpi
     ax_width_px = bbox.width * fig_width_inch * dpi
     xlim = ax.get_xlim()
     data_range_x = xlim[1] - xlim[0]
+    # print(f"ax_width_px: {ax_width_px}, data_range_x: {data_range_x}, dpi: {dpi}")
+    
+    # 避免除以零的错误
     if data_range_x == 0:
-        return adjusted_props
+        return props
+        
     px_per_data = ax_width_px / data_range_x
+    scale_factor = px_per_data / dpi  # 每数据单位对应的像素数除以 DPI 得到每数据单位对应的 pt
+    # print(f"px_per_data: {px_per_data}, dpi: {dpi}")
 
-    # 遍历传入的属性字典，智能转换
-    for key, value in adjusted_props.items():
-        if value is None:
-            continue
+    # 定义需要转换的属性键
+    # 这里我们只区分字体相关和非字体相关的属性
+    fontsize_keys = {'fontsize', 'size'}
+    other_size_keys = {'s', 'markersize', 'linewidth', 'markeredgewidth', 'elinewidth', 'mutation_scale', 'inner_linewidth',
+                       'outer_linewidth'}
+    
+    def _convert_value(key: str, value: Union[float, int]):
+        """内部函数，用于执行单个值的转换"""
+        if value is None or not isinstance(value, (int, float)):
+            return value
+        if key in fontsize_keys or key in other_size_keys:
+            # print(f"Converting {key}: {value} -> {value * scale_factor} (scale factor: {scale_factor})")
+            return value * scale_factor
+        else:
+            # 如果不是需要转换的属性，直接返回原值
+            # print(f"DEBUG: Skipping conversion for {key}: {value} (not a size property)")
+            return value
 
-        # 字体大小转换：数据单位 -> 像素 -> pt
-        if key in fontsize_keys:
-            fontsize_px = value * px_per_data
-            fontsize_pt = fontsize_px   / dpi
-            adjusted_props[key] = fontsize_pt
-            
-        # 其他尺寸转换：数据单位 -> 像素
-        elif key in other_size_keys:
-            # 标记大小、线宽等，Matplotlib 默认单位是 pt，但像素值更直观，且可以直接使用
-            # print(f"原始值: {value}")
-            if not isinstance(value, (int, float)):
-                # 如果值不是数字类型，跳过转换
-                continue
-            size_px = value * px_per_data
-            adjusted_props[key] = size_px
+    if is_dict:
+        # 如果输入是字典，遍历每个键值对并转换
+        adjusted_props = props.copy()
+        for key, value in adjusted_props.items():
+            adjusted_props[key] = _convert_value(key, value)
 
-    return adjusted_props
+        return adjusted_props
+    else:
+        # 如果输入是单个值，我们假设它是 'linewidth' 类型
+        # 你可以根据实际情况修改这个假设，或者要求调用者提供类型信息
+        if prop_name is not None:
+            return _convert_value(prop_name, props)
+        else:
+            print(f'Single Item Should have prop_name, but got None')
+            return props
 
 
 def get_highlighted_props(original_props: dict) -> dict:
@@ -762,55 +613,73 @@ def get_highlighted_props(original_props: dict) -> dict:
 
 
 def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float],
-               arrow_filled: bool = False, arrow_size: float = 1.0,
+               arrow_filled: bool = False, arrow_size: float = 1.0, alpha: float = 1.0,
                arrow_line_width: Optional[float] = None, arrow_style = 'fishtail', **kwargs):
     """
     在给定的 Axes 上绘制一个箭头。
     """
     if start == end:
-        return  # 如果起点和终点相同，则不绘制箭头
+        return
+    
+    # print(f"DEBUG: draw_arrow() start: {start}, end: {end}, arrow_style: {arrow_style}, arrow_alpha: {alpha}")
+    
+    # 从 kwargs 获取参数，并设置默认值
+    zorder = kwargs.get('zorder', 10)
+    base_facecolor = kwargs.get('facecolor', 'black')
+    base_edgecolor = kwargs.get('edgecolor', 'black')
+    is_selected = kwargs.get('is_selected', False)
+    mutation_scale = kwargs.get('mutation_scale', 50)
+    
+    mutation_scale = convert_props_from_data(ax, mutation_scale, prop_name='mutation_scale', use_relative_unit=True)
 
-
-        
-    zorder = kwargs.get('zorder', 10)  # 获取 zorder，默认为 10
-    facecolor = kwargs.get('facecolor', 'black')  # 箭头填充颜色
-    edgecolor = kwargs.get('edgecolor', 'black')  # 箭头边框颜色
-    is_selected = kwargs.get('is_selected', False)  # 是否被选中
-    mutation_scale = kwargs.get('mutation_scale', 50)  # 箭头大小缩放比例
+    # 如果选中，应用高亮颜色和大小变化
     if is_selected:
-        facecolor = highlight_color  # 如果被选中，使用高亮颜色
-        edgecolor = highlight_color
-        mutation_scale = mutation_scale * 1.5  # 增加箭头大小
+        highlight_color = 'red'  # 假设高亮颜色是红色
+        base_facecolor = highlight_color
+        base_edgecolor = highlight_color
+        mutation_scale = mutation_scale * 1.5
+
+    # 核心改动：将 alpha 值应用到颜色上
+    # mcolors.to_rgba() 将颜色值和 alpha 值组合成 RGBA 格式
+    facecolor = mcolors.to_rgba(base_facecolor, alpha)
+    edgecolor = mcolors.to_rgba(base_edgecolor, alpha)
 
     if arrow_style == 'fishtail':
-        arrow_angle = kwargs.get('arrow_angle', 60)  
+        arrow_angle = kwargs.get('arrow_angle', 60)
         tail_angle = kwargs.get('tail_angle', 20)
         offset_ratio = kwargs.get('offset_ratio', 0.0)
-        ax.annotate('', xy=end, xytext=start, zorder=zorder,
-                    ha='center', va='center', fontsize=12,
-                    arrowprops=dict(
-                        arrowstyle=mpatches.ArrowStyle("fishtail", 
-                                                        arrow_angle=arrow_angle, 
-                                                        tail_angle=tail_angle,
-                                                        offset_ratio=offset_ratio,
-                                                        ),
-                        facecolor=facecolor,
-                        edgecolor=edgecolor,
-                        mutation_scale=mutation_scale, 
-                        shrinkA=0,  # 关闭起点收缩
-                        shrinkB=0   # 关闭终点收缩
-                        ))
+        
+        drawn_arrow = ax.annotate(
+            '', xy=end, xytext=start, zorder=zorder,
+            ha='center', va='center',
+            arrowprops=dict(
+                arrowstyle=mpatches.ArrowStyle("fishtail",
+                                               arrow_angle=arrow_angle,
+                                               tail_angle=tail_angle,
+                                               offset_ratio=offset_ratio),
+                facecolor=facecolor,
+                edgecolor=edgecolor,
+                mutation_scale=mutation_scale, 
+                shrinkA=0,  # 关闭起点收缩
+                shrinkB=0   # 关闭终点收缩
+            )
+        )
+        return drawn_arrow
+    
         
 
-def draw_line(ax: plt.Axes, line : Line, line_plot_options: dict, **kwargs):
+def draw_line(ax: plt.Axes, line : Line, line_plot_options: dict, use_relative_unit: bool = True, **kwargs):
+    line_plot_options = convert_props_from_data(ax, line_plot_options, use_relative_unit=use_relative_unit)
+    # print(f"DEBUG : line_plot_options: {line_plot_options}")
     if line.linestyle == "Hollow" or line.linestyle == 'hollow':
         # 绘制空心线条
-        draw_hollow_line(ax, line, line_plot_options, line.get_label_properties(), line_plot_options, **kwargs)
+        draw_hollow_line(ax, line, line_plot_options, line_plot_options, **kwargs)
     elif line.linestyle in ['-', '--', '-.', ':']:
         # 绘制实线、虚线等
+        # print(f"DEBUG : draw_line() : line_plot_options: {line_plot_options}")
         ax.plot(line.plot_points[:, 0], line.plot_points[:, 1], **line_plot_options)
 
-def draw_hollow_line(ax: plt.Axes, line: Line, line_plot_options: dict, label_text_options: dict, zoom_times: int = 0, use_relative_unit: bool = True, **kwargs):   
+def draw_hollow_line(ax: plt.Axes, line: Line, line_plot_options: dict, use_relative_unit: bool = True, **kwargs):   
     if not line.hollow_line_initialized:
         line._init_hollow_line(**kwargs)
     inner_line_zorder = line.inner_zorder if line.inner_zorder is not None else 5
@@ -819,12 +688,22 @@ def draw_hollow_line(ax: plt.Axes, line: Line, line_plot_options: dict, label_te
     outer_color = line.outer_color if line.outer_color is not None else 'black'
     inner_linewidth = line.inner_linewidth if line.inner_linewidth is not None else 1.5
     outer_linewidth = line.outer_linewidth if line.outer_linewidth is not None else 2.0
-
+    inner_linewidth = convert_props_from_data(ax, inner_linewidth, use_relative_unit=use_relative_unit, prop_name='inner_linewidth')
+    outer_linewidth = convert_props_from_data(ax, outer_linewidth, use_relative_unit=use_relative_unit, prop_name='outer_linewidth')
+    alpha = line_plot_options.get('alpha', 1.0)
+    if line.is_selected:
+        # 如果线被选中，调整绘图属性
+        inner_color = 'white'  # 内层线条颜色
+        outer_color = highlight_color
+        inner_linewidth *= 1.5
+        outer_linewidth *= 1.5 
+        inner_line_zorder += 10
+        outer_line_zorder += 10
     inner_line = ax.plot(line.plot_points[:, 0], line.plot_points[:, 1],
-            color=inner_color, linewidth=inner_linewidth, linestyle='-', zorder=inner_line_zorder, **kwargs)
-    
+            color=inner_color, linewidth=inner_linewidth, linestyle='-', zorder=inner_line_zorder, alpha=alpha, **kwargs)
+
     # 绘制外层线条
     outer_line = ax.plot(line.plot_points[:, 0], line.plot_points[:, 1],
-            color=outer_color, linewidth=outer_linewidth, linestyle='-', zorder=outer_line_zorder, **kwargs)
-    
+            color=outer_color, linewidth=outer_linewidth, linestyle='-', zorder=outer_line_zorder, alpha=alpha, **kwargs)
+
     return (inner_line[0], outer_line[0])

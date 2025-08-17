@@ -213,6 +213,8 @@ def _line_to_dict(line: Line) -> Dict[str, Any]:
     if isinstance(line, (WPlusLine, WMinusLine, ZBosonLine)):
         data['zigzag_amplitude'] = line.zigzag_amplitude
         data['zigzag_frequency'] = line.zigzag_frequency
+        data['initial_phase'] = line.initial_phase
+        data['final_phase'] = line.final_phase
 
     return data
 
@@ -308,6 +310,8 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
     if issubclass(line_class, (WPlusLine, WMinusLine, ZBosonLine)):
         init_kwargs['zigzag_amplitude'] = data_copy.pop('zigzag_amplitude', 0.2)
         init_kwargs['zigzag_frequency'] = data_copy.pop('zigzag_frequency', 2.0)
+        init_kwargs['initial_phase'] = data_copy.pop('initial_phase', 0)
+        init_kwargs['final_phase'] = data_copy.pop('final_phase', 0)
     # 对于 HiggsLine，如果它没有特殊的构造函数参数，则不需要额外处理
 
     # 将所有剩余的键值对（如果存在）合并到 init_kwargs，这包括原始 kwargs 中未被明确 pop 的部分

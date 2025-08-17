@@ -1,12 +1,19 @@
-from PySide6.QtWidgets import QMessageBox, QWidget, QVBoxLayout, QPushButton, QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, QCheckBox, QDoubleSpinBox, QHBoxLayout # Import QSpinBox and QLabel
+from PySide6.QtWidgets import (
+    QMessageBox, QWidget, QVBoxLayout, QPushButton, 
+    QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, 
+    QCheckBox, QDoubleSpinBox, QHBoxLayout, QScrollArea, QGraphicsOpacityEffect  
+ ) # Import QSpinBox and QLabel
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from typing import Optional
-from feynplot_gui.default.default_settings import canvas_widget_default_settings as cw_default_settings
-from feynplot_gui.default.default_settings import canvas_controller_default_settings as cc_default_settings
-from feynplot_gui.default.default_settings import navigation_widget_default_settings as nw_default_settings
-
-
+from PySide6.QtGui import QFontMetrics
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QRect, QPoint, QSequentialAnimationGroup, QEasingCurve 
+from PySide6.QtCore import QSize
+from feynplot_gui.default.default_settings import CANVAS_WIDGET_DEFAULTS as cw_default_settings
+from feynplot_gui.default.default_settings import CANVAS_CONTROLLER_DEFAULTS as cc_default_settings
+from feynplot_gui.default.default_settings import NAVIGATION_WIDGET_DEFAULTS as nw_default_settings
+from feynplot_gui.default.default_settings import TIPS
+import random
 
 class NavigationBarWidget(QWidget):
     # 定义信号，这些信号将被 MainController 或 NavigationBarController 监听
@@ -39,7 +46,7 @@ class NavigationBarWidget(QWidget):
     toggle_auto_scale_requested = Signal() 
     toggle_gride_points_mode = Signal() 
     toggle_use_relative_unit = Signal() # <--- **新增信号：切换相对单位使用状态**
-
+    toggle_transparent_background = Signal() # <--- **新增信号：切换透明背景状态**
 
     # --- 【新增】画布更新间隔调整信号 ---
     # 当用户通过UI（QSpinBox）改变间隔时，NavigationBarWidget发出此信号
@@ -68,8 +75,10 @@ class NavigationBarWidget(QWidget):
         
         # --- 【新增】画布更新间隔的QSpinBox属性 ---
         self.canvas_update_interval_spinbox: Optional[QSpinBox] = None
-
-
+        self.language = 'zh_CN'  # 默认语言设置
+        self.tips = TIPS.get(self.language, TIPS['en'])  # 从默认设置中获取提示列表
+        self.unplayed_tips = self.tips.copy()  # 复制一份未播放的提示列表
+        self.current_tip_index = 0
         self.init_ui()
 
     def init_ui(self):
@@ -223,10 +232,78 @@ class NavigationBarWidget(QWidget):
         
         self.tool_bar.addWidget(self.relative_units_checkbox)
 
-        self.relative_units_checkbox.setChecked(nw_default_settings['use_relative_unit'])
+        self.relative_units_checkbox.setChecked(nw_default_settings['USE_RELATIVE_UNIT'])
         self.relative_units_checkbox.stateChanged.connect(self._on_relative_units_toggled)
 
+        self.tool_bar.addSeparator() # 添加分隔符，使UI更整洁
+        self.tool_bar.addWidget(QLabel("透明背景:", self)) # 添加标签
+
+        # 添加一个选项框（QCheckBox）用于切换透明背景
+        self.transparent_background_checkbox = QCheckBox(self)
+        self.tool_bar.addWidget(self.transparent_background_checkbox)
+
+        # 设置默认状态和关联信号
+        self.transparent_background_checkbox.setChecked(cc_default_settings['TRANSPARENT_BACKGROUND'])
+        self.transparent_background_checkbox.toggled.connect(self._on_transparent_background_toggled)
+
+        # ----------------------------------------------------
+        # 关键步骤：添加一个可伸展的间隔
+        # ----------------------------------------------------
+        spacer_widget = QWidget(self)
+        spacer_layout = QHBoxLayout(spacer_widget)
+        spacer_layout.setContentsMargins(0, 0, 0, 0)
+        spacer_layout.addStretch(1)
+        self.tool_bar.addWidget(spacer_widget)
+
+        # --- 关键改动：让QLabel根据内容自动调整尺寸 ---
+        self.tool_bar.addWidget(QLabel("小贴士:", self))
         
+        # --- 关键改动: 增加一个用于背景的 QLabel ---
+        # 容器 widget，用于放置背景和滚动区域
+        self.tip_display_container = QWidget(self)
+        self.tip_display_container.setFixedSize(400, 28) # 固定尺寸
+        # self.tip_display_container.setStyleSheet("background-color: transparent; border: 1px solid #ccc;")
+        self.tip_display_container.setStyleSheet("background-color: transparent; border: none;")
+        # 可滚动区域
+        self.tip_scroll_area = QScrollArea(self.tip_display_container)
+        self.tip_scroll_area.setGeometry(QRect(1, 1, 398, 26)) # 留出边框
+        self.tip_scroll_area.setFrameShape(QScrollArea.NoFrame)
+        self.tip_scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.tip_scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # 修改：确保滚动区域也是透明的
+        self.tip_scroll_area.setStyleSheet("background-color: transparent; border: none;")
+
+        # 内部 QLabel，用于显示可滚动的文本
+        self.tip_label = QLabel(self.tip_scroll_area)
+        self.tip_label.setWordWrap(False)
+        self.tip_label.setStyleSheet("padding: 5px; background-color: transparent;")
+        
+        # 将 QLabel 设置为 QScrollArea 的内部控件
+        self.tip_scroll_area.setWidget(self.tip_label)
+        self.tip_scroll_area.setWidgetResizable(False)
+        
+        # 创建透明度效果
+        self.opacity_effect = QGraphicsOpacityEffect(self.tip_label)
+        self.tip_label.setGraphicsEffect(self.opacity_effect)
+        
+        self.tool_bar.addWidget(self.tip_display_container)
+        
+        # 创建一个主定时器来切换提示文本
+        self.tip_timer = QTimer(self)
+        self.tip_timer.setInterval(5000)
+        self.tip_timer.timeout.connect(self.start_fade_animation)
+        
+        # 动画组和动画
+        self.animation_group = QSequentialAnimationGroup(self)
+        self.forward_animation = QPropertyAnimation(self.tip_label, b"pos") # 动画作用于 tip_label
+        self.backward_animation = QPropertyAnimation(self.tip_label, b"pos") # 动画作用于 tip_label
+        self.forward_animation.setEasingCurve(QEasingCurve.Linear)
+        self.backward_animation.setEasingCurve(QEasingCurve.Linear)
+        self.animation_group.addAnimation(self.forward_animation)
+        self.animation_group.addAnimation(self.backward_animation)
+        
+        self.update_tip_text()
+        # self.tip_timer.start()
 
         # 创建一个容器小部件来放置
         # 数值框
@@ -544,6 +621,132 @@ class NavigationBarWidget(QWidget):
         self.canvas_set_range.emit(x_min, x_max, y_min, y_max)
 
 
+    def _on_transparent_background_toggled(self, checked: bool):
+        """
+        当“透明背景”复选框状态改变时被调用。
+        更新 canvas_controller 中的 transparent_background 属性。
+        """
+        self.toggle_transparent_background.emit()
+        
+
+    def update_tip_text(self):
+        """
+        随机更新标签的文本，确保在一个周期内所有提示不重复地播放完毕。
+        """
+        # 检查主列表是否为空
+        if not self.tips:
+            self.tip_label.setText("没有可用的提示信息。")
+            return
+            
+        # --- 关键改动：随机播放逻辑 ---
+        # 1. 如果未播放列表为空，说明一个周期已经结束，需要重新填充
+        if not self.unplayed_tips:
+            # 从主列表复制所有提示，开始新一轮的播放
+            self.unplayed_tips = self.tips.copy()
+
+        # 2. 从未播放列表中随机选择一个提示的索引
+        random_index = random.randint(0, len(self.unplayed_tips) - 1)
+        # print(f"Selected random index: {random_index}")  # 调试输出，查看随机索引
+        # 3. 使用 .pop() 获取该提示并将其从未播放列表中移除
+        tip_text = self.unplayed_tips.pop(random_index)
+        
+        self.tip_label.setText(tip_text)
+        
+        # --- 以下部分保持不变，用于调整UI ---
+        # 根据文本内容调整 QLabel 的宽度
+        font_metrics = QFontMetrics(self.tip_label.font())
+        # 增加一点额外的边距，确保文本不会紧贴边缘
+        text_width = font_metrics.horizontalAdvance(self.tip_label.text()) + 10
+        
+        self.tip_label.setFixedWidth(text_width)
+        
+        # 每次文本更新后，检查是否需要滚动
+        self.setup_scrolling_animation()
+
+    def setup_scrolling_animation(self):
+        """设置滚动动画，如果文本超出容器宽度。"""
+        # 先停止主定时器，等动画结束后再重新启动
+        self.tip_timer.stop()
+        
+        container_width = self.tip_scroll_area.width()
+        content_width = self.tip_label.width()
+
+        if content_width > container_width:
+            self.forward_animation.setStartValue(QPoint(0, 0))
+            self.forward_animation.setEndValue(QPoint(container_width - content_width, 0))
+            self.forward_animation.setDuration(int(content_width * 10)) # 速度可以根据需要调整
+
+            self.backward_animation.setStartValue(QPoint(container_width - content_width, 0))
+            self.backward_animation.setEndValue(QPoint(0, 0))
+            self.backward_animation.setDuration(int(content_width * 10))
+            
+            # 设置动画组为单次循环（一个完整的来回）
+            self.animation_group.setLoopCount(1)
+            self.animation_group.start()
+            
+            # 连接动画组完成信号到重启定时器的槽函数
+            self.animation_group.finished.connect(self.restart_tip_timer)
+            
+        else:
+            self.animation_group.stop()
+            self.tip_label.move(0, 0)
+            # 如果不需要滚动，直接重启5秒定时器
+            self.restart_tip_timer()
+
+    def restart_tip_timer(self):
+        """滚动动画结束后重新启动5秒定时器"""
+        # 断开信号连接，避免重复连接
+        try:
+            self.animation_group.finished.disconnect(self.restart_tip_timer)
+        except:
+            pass
+        
+        # 重新启动5秒定时器
+        self.tip_timer.start(5000)
+
+    def start_fade_animation(self):
+        """启动淡出-淡入动画。"""
+        if self.tips:
+            # 停止定时器，避免在动画过程中再次触发
+            self.tip_timer.stop()
+            
+            # 1. 创建动画
+            self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+            self.fade_animation.setDuration(500) # 动画时长0.5秒
+            
+            # 2. 设置动画关键帧
+            # 淡出 (1.0 -> 0.0)
+            self.fade_animation.setStartValue(1.0)
+            self.fade_animation.setEndValue(0.0)
+            
+            # 当淡出动画完成时，立即切换文本并开始淡入
+            self.fade_animation.finished.connect(self.change_text_and_fade_in)
+            self.fade_animation.start()
+
+    def change_text_and_fade_in(self):
+        """
+        淡出动画结束后调用，用于更换文本并开始淡入动画。
+        """
+        # 断开淡出动画的信号连接
+        try:
+            self.fade_animation.finished.disconnect(self.change_text_and_fade_in)
+        except:
+            pass
+        
+        # 1. 更新索引和文本
+        self.current_tip_index += 1
+        if self.current_tip_index >= len(self.tips):
+            self.current_tip_index = 0
+        self.update_tip_text()  # 这会自动处理滚动动画和定时器重启
+        
+        # 2. 创建淡入动画
+        self.fade_in_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_in_animation.setDuration(500) # 动画时长0.5秒
+        self.fade_in_animation.setStartValue(0.0)
+        self.fade_in_animation.setEndValue(1.0)
+        
+        # 3. 启动淡入动画
+        self.fade_in_animation.start()
 
 
     def _show_about_dialog(self):

@@ -202,7 +202,7 @@ class Line:
     
     def set_plot_points(self, xs, ys):
         self.plot_points = np.array(list(zip(xs, ys)))
-        print(type(self.plot_points))
+        # print(type(self.plot_points))
 
     @staticmethod
     def _calc_angle(p1, p2):
@@ -373,6 +373,14 @@ class Line:
             self.outer_zorder = kwargs.pop('outer_zorder', 4)
             self.hollow_line_initialized = True  # Flag to indicate hollow line initialization
 
+    def __repr__(self):
+        return (f"Line(id={self.id}, v_start=({self.v_start.x}, {self.v_start.y}), "
+                f"v_end=({self.v_end.x}, {self.v_end.y}), "
+                f"style={self.style.name}, "
+                f"linewidth={self.linewidth}, color='{self.color}', "
+                f"label='{self.label}', hidden_label={self.hidden_label})")
+
+
 
 # --- Subclasses ---
 
@@ -407,6 +415,7 @@ class FermionLine(Line):
         self.arrow_size = arrow_size
         self.arrow_line_width = arrow_line_width
         self.arrow_reversed = arrow_reversed
+
 
 
     def get_arrow_properties(self) -> Dict[str, Any]:

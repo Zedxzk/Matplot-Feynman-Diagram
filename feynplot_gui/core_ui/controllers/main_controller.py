@@ -138,53 +138,6 @@ class MainController(QObject):
         根据新加载的Diagram对象更新当前的diagram_model。
         方法：清空现有模型内容，然后将加载的元素逐一添加到现有模型中。
         """
-        # if not isinstance(loaded_diagram,FeynmanDiagram):
-        #     raise TypeError("loaded_diagram 必须是 feynplot.core.diagram.Diagram 的实例。")
-
-        # # 1. 清空当前模型的所有内容
-        # # 重要：先移除线条，因为线条依赖顶点
-        # for line in list(self.diagram_model.lines): # 使用list()创建副本以安全迭代
-        #     self.diagram_model.remove_line(line)
-        # for vertex in list(self.diagram_model.vertices): # 使用list()创建副本以安全迭代
-        #     self.diagram_model.remove_vertex(vertex)
-
-        # # 2. 将加载的顶点和线条逐一添加到现有模型
-        # # 注意：这里需要确保添加线条时，其引用的顶点是当前模型中的顶点实例。
-        # # 最稳妥的方法是，先添加所有顶点，然后根据ID映射来连接线条。
-        
-        # # 建立旧顶点ID到新顶点实例的映射（如果ID是唯一且稳定的）
-        # # 或者，如果loaded_diagram中的顶点是全新的实例，我们直接添加它们
-        # vertex_map = {} # 用于存储新旧顶点ID的映射，以便重新连接线条
-        
-        # for vertex in loaded_diagram.vertices:
-        #     # 假设 add_vertex 方法会处理将顶点添加到 self.diagram_model
-        #     # 并且返回添加后的顶点实例（可能是同一个，也可能是拷贝后的新实例）
-        #     # 我们需要保存这个新实例的引用，如果需要通过ID重新连接线条。
-        #     self.diagram_model.add_vertex(vertex) # 直接添加新实例
-        #     vertex_map[vertex.id] = vertex # 假设vertex.id是唯一的
-
-        # for line in loaded_diagram.lines:
-        #     # 确保线条连接的是当前模型中的顶点实例
-        #     start_v = vertex_map.get(line.start_vertex.id)
-        #     end_v = vertex_map.get(line.end_vertex.id)
-        #     line_type = vertex_map.get(line.line_type)
-
-        #     if start_v and end_v:
-        #         # 重新创建线条，确保它引用的是当前模型中的顶点对象
-        #         new_line_instance = Line(start_vertex=start_v, end_vertex=end_v, **line.get_properties())
-        #         print(new_line_instance)
-        #         self.diagram_model.add_line(line=new_line_instance)
-        #     else:
-        #         print(f"警告: 无法为线条 {line.id} 找到对应的顶点，跳过此线条。")
-        #         # 理论上，如果 import_diagram_from_json 逻辑正确，不应该出现这种情况。
-        #         self.status_message.emit(f"警告: 无法加载线条 {line.id}，顶点缺失。")
-
-        # self.selected_item = None # 清除任何之前的选择
-
-        # # 3. 通知所有相关组件模型已更新并重新绘制
-        # # self.diagram_updated.emit()
-        # # self.selection_changed.emit(self.selected_item)
-        # self.update_all_views(canvas_options={'auto_scale': True})
         pass
 
     def _on_tool_mode_changed(self, mode: str):
@@ -593,7 +546,7 @@ class MainController(QObject):
             self.main_window, # Parent widget for the dialog
             "保存费曼图图像",  # Dialog title
             "",               # Default directory (empty means current)
-            "PDF Files (*.pdf);;PNG Images (*.png);;JPEG Images (*.jpg);;All Files (*)" 
+            "PDF Files (*.pdf);;PNG Images (*.png);;JPEG Images (*.jpg);;SVG Images (*.svg);;All Files (*)" 
         )
         
         if not file_path:
@@ -606,7 +559,8 @@ class MainController(QObject):
             extension_mapping = {
                 "PDF Files (*.pdf)": ".pdf",
                 "PNG Images (*.png)": ".png",
-                "JPEG Images (*.jpg)": ".jpg"
+                "JPEG Images (*.jpg)": ".jpg",
+                "SVG Images (*.svg)": ".svg",
             }
             # 默认为 .png，以防用户选择 "All Files (*)" 且未输入扩展名
             extension = extension_mapping.get(selected_filter, ".png") 

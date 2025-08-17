@@ -1,5 +1,6 @@
 from PySide6.QtGui import QColor
 from typing import Optional
+import traceback
 
 class TextElement:
     """
@@ -38,7 +39,21 @@ class TextElement:
         self.is_selected = is_selected  # 用于UI同步选择状态
 
     def __repr__(self):
-        return f"TextElement(id={self.id}, text='{self.text}', x={self.x}, y={self.y})"
+        # 获取调用栈，深度为2，以获取调用 __repr__ 的那一行
+        stack = traceback.extract_stack(limit=2)
+        
+        # 栈的倒数第二项就是调用 __repr__ 的那一行
+        caller_frame = stack[0]
+        
+        caller_file = caller_frame.filename
+        caller_line = caller_frame.lineno
+        
+        # 原始的字符串表示
+        base_repr = f"TextElement(id={self.id}, text='{self.text}', x={self.x}, y={self.y})"
+        
+        # 添加调用者信息
+        return f"{base_repr} called from: {caller_file}:{caller_line}"
+
 
     def update_from_dict(self, data: dict):
         """

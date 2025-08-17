@@ -1,7 +1,9 @@
 # feynplot_gui/widgets/main_window.py
 
+import os
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QLabel, QToolBar
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon  # 新增: 导入 QIcon
 
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
 from feynplot_gui.core_ui.widgets.navigation_bar_widget import NavigationBarWidget
@@ -92,3 +94,23 @@ class MainWindow(QMainWindow):
         self.vertex_list_widget_instance = self.vertex_list_widget
         self.line_list_widget_instance = self.line_list_widget
         self.navigation_bar_widget_instance = self.navigation_bar_widget
+        self.set_window_icon()  # 设置窗口图标
+
+    def set_window_icon(self):
+        """为窗口设置应用程序图标。"""
+        # 使用 os.path.join 确保路径在不同操作系统上都能正确工作
+        cwd = os.path.dirname(os.path.abspath(__file__))
+        print(f"当前工作目录: {cwd}")
+        files = os.listdir(os.path.join(cwd, "..", "..", "icon"))
+        print(f"图标目录内容: {files}")
+        icon_path = os.path.join(cwd, "..", "..", "icon", "bhabha_scattering.png")
+
+        # 验证文件路径是否存在
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            self.setWindowIcon(icon)
+            print(f"成功加载图标: {os.path.abspath(icon_path)}")
+        else:
+            print(f"警告：找不到图标文件 '{icon_path}'")
+            # 如果找不到文件，你可以在这里设置一个默认图标或者不设置
+            # self.setWindowIcon(QIcon.fromTheme("default-icon"))

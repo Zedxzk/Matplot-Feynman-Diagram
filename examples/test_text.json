@@ -152,13 +152,31 @@
             "label_va": "bottom",
             "style": "fermion",
             "is_selected": false,
+            "loop": false,
+            "a": null,
+            "b": null,
+            "angular_direction": null,
+            "hollow_line_initialized": true,
+            "inner_linewidth": 1.0,
+            "inner_color": "white",
+            "outer_linewidth": 1.5,
+            "outer_color": "black",
+            "inner_zorder": 5,
+            "outer_zorder": 4,
             "metadata": {},
             "arrow": true,
             "arrow_filled": false,
             "arrow_position": 0.5,
             "arrow_size": 10.0,
             "arrow_line_width": null,
-            "arrow_reversed": false
+            "arrow_reversed": false,
+            "mutation_scale": 50,
+            "offset_ratio": 0.0,
+            "tail_angle": 20,
+            "arrow_angle": 60,
+            "arrow_style": "fishtail",
+            "facecolor": "black",
+            "edgecolor": "black"
         },
         {
             "__type__": "PhotonLine",
@@ -184,6 +202,17 @@
             "label_va": "bottom",
             "style": "photon",
             "is_selected": false,
+            "loop": false,
+            "a": null,
+            "b": null,
+            "angular_direction": null,
+            "hollow_line_initialized": true,
+            "inner_linewidth": 1.0,
+            "inner_color": "white",
+            "outer_linewidth": 1.5,
+            "outer_color": "black",
+            "inner_zorder": 5,
+            "outer_zorder": 4,
             "metadata": {},
             "amplitude": 0.1,
             "wavelength": 0.5,
@@ -191,26 +220,6 @@
             "final_phase": 0
         }
     ],
-    "texts": [
-        {
-            "id": "t_1",
-            "text": "New Text",
-            "x": 0.0,
-            "y": 0.0,
-            "size": 12.0,
-            "color": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "bold": false,
-            "italic": false,
-            "ha": "center",
-            "va": "center",
-            "clip_on": true,
-            "is_selected": true
-        }
-    ],
+    "texts": [],
     "metadata": {}
 }

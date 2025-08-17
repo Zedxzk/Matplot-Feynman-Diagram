@@ -116,7 +116,7 @@ class OtherTextsWidget(QListWidget):
             text_data: The actual TextElement object.
         """
         # Display text content, ID, and coordinates
-        print(text_data)
+        # print(text_data)
         item_text = rf"[{text_data.id}] 文本: '{text_data.text[:20]}...' ({text_data.x:.2f}, {text_data.y:.2f})" \
                     if len(text_data.text) > 20 else rf"[{text_data.id}] 文本: '{text_data.text}' ({text_data.x:.2f}, {text_data.y:.2f})"
         

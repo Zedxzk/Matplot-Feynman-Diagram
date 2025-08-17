@@ -84,6 +84,7 @@ class NavigationBarController(QObject):
         # 后端设置菜单动作
         self.navigation_bar_widget.show_matplotlib_settings_triggered.connect(self._on_show_matplotlib_settings_ui_triggered)
         self.navigation_bar_widget.toggle_use_relative_unit.connect(self._on_toggle_use_relative_unit_ui_triggered)
+        self.navigation_bar_widget.toggle_transparent_background.connect(self._on_toggle_transparent_background_ui_triggered)
         try:
             self.main_controller.selection_changed.connect(self._on_main_controller_selection_changed)
         except AttributeError:
@@ -389,4 +390,15 @@ class NavigationBarController(QObject):
         self.main_controller.canvas_controller.relative_size_unit = not self.main_controller.canvas_controller.relative_size_unit
         self.status_message.emit(f"已切换相对单位使用状态: {self.main_controller.canvas_controller.relative_size_unit}")
         print(f"当前相对单位状态: {self.main_controller.canvas_controller.relative_size_unit}")
+        self.main_controller.update_all_views(canvas_options={'auto_scale': True})
+
+    def _on_toggle_transparent_background_ui_triggered(self):
+        """
+        当用户在导航栏中切换“透明背景”复选框时调用。
+        更新 canvas_controller 的 transparent_background 属性，并通知 MainController 更新所有视图。
+        """
+        print("触发切换透明背景的UI事件。")
+        self.main_controller.canvas_controller.toggle_transparent_background()
+        self.status_message.emit(f"已切换透明背景状态: {self.main_controller.canvas_controller.transparent_background}")
+        print(f"当前透明背景状态: {self.main_controller.canvas_controller.transparent_background}")
         self.main_controller.update_all_views(canvas_options={'auto_scale': True})
