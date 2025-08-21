@@ -1,35 +1,46 @@
 # Matplot-Feynman-Diagram
 
+A Python package for drawing Feynman diagrams with Matplotlib.
+
 # Welcome! Please choose your language:
 - [English](README.md)
-- [中文](README.zh.md)
-
-# Matplot-Feynman-Diagram
-
-A Python package to draw Feynman diagrams using Matplotlib.
+- [简体中文](README.zh.md)
 
 ## Features
 
-- Customizable arrows, vertices, loops
-- Easy LaTeX-like syntax
-- Publication-ready quality
+- Customizable arrows, vertices, and loop diagrams
+- LaTeX-like concise syntax
+- SCI paper publication-level high-quality graphics
+
+## Requirements
+
+Python $\ge$ 3.10
+
+requirements.txt
 
 ## Usage
 
-Open a terminal and navigate to the root directory (where this README file is located). Enter the following command:
-```bash
-pip install -e .
-```
-Then, confirm if the installation was successful. If it was, you will see the following message:
-```bash
-    <......>
-    <Other Messages>
-Successfully installed pyfeynplot-0.1.0
-```
-After that, enter the following command:
-```bash
-feynplot-gui
-```
-This will display the GUI interface, as shown in the image below:
+### Launch from terminal (conda environment supported，multi-os way )
 
-![alt text](README.assets/zh_CN/UI_example.png)
+1. Prepare a Python environment $\ge3.10$
+
+2.  pip install requirements.txt
+3. Then run `python starUI/launcher.py`
+
+### Launch via executable (Windows and Ubuntu supported)
+
+#### Windows
+
+Ensure Python $\ge3.10$ is in the system environment variables.
+
+Double-click `launcher.exe` in the root directory. It will automatically detect the environment; if not installed, it will ask for installation. After installation, it will start automatically.
+
+#### Ubuntu
+
+Ensure Python $\ge3.10$ is in the system environment variables.
+
+In the root directory, run `./launcher`. It will automatically detect the environment; if not installed, it will ask for installation. After installation, it will start automatically.
+
+## Examples
+
+![image-20250811175954496](README.zh.assets/image-20250811175954496.png)

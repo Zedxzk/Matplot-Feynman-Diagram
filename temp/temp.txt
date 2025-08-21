@@ -1,0 +1,52 @@
+Checking for Python environment...
+Conda prefix not found in environment.
+Searching for python in PATH...
+Found python in PATH: D:\Apps\Python\python.EXE
+Python environment found: D:\Apps\Python\python.EXE
+
+Environment info:
+
+Checking for pip tool...
+pip tool available: D:\Apps\Python\python.EXE -m pip
+Verifying Python and pip compatibility...
+Python and pip environments are compatible.
+Checking if pyfeynplot is installed...
+DEBUG: pip show pyfeynplot output: Name: pyfeynplot
+Version: 0.1.0
+Summary: Matplot-Feynman-Diagram
+Home-page: https://github.com/Zedxzk/Matplot-Feynman-Diagram/tree/main
+Author: Zedxzk
+Author-email: Zedxzk <Zedxzk@gmail.com>
+License: MIT
+Location: D:\Apps\Python\Lib\site-packages
+Requires: matplotlib, mplhep, numpy, Pygments, PySide6, PySide6-Addons, PySide6-Essentials
+Required-by:
+, error:
+pyfeynplot is already installed.
+Starting pyfeynplot...
+Running in a bundled EXE.
+--- Starting Process ---
+Executable: D:\Apps\Python\python.EXE
+Command: D:\Apps\Python\python.EXE -m feynplot_gui
+Project Root (CWD): F:\Research\pyfeynplot
+------------------------
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "F:\Research\pyfeynplot\feynplot_gui\__main__.py", line 10, in <module>
+    from feynplot_gui.core_ui.controllers.main_controller import MainController
+  File "F:\Research\pyfeynplot\feynplot_gui\core_ui\controllers\main_controller.py", line 9, in <module>
+    from .canvas_controller import CanvasController
+  File "F:\Research\pyfeynplot\feynplot_gui\core_ui\controllers\canvas_controller.py", line 8, in <module>
+    from feynplot.drawing.renderer import FeynmanDiagramCanvas
+  File "F:\Research\pyfeynplot\feynplot\drawing\renderer.py", line 32, in <module>
+    from feynplot.drawing.plot_functions import (
+    ...<3 lines>...
+    )
+  File "F:\Research\pyfeynplot\feynplot\drawing\plot_functions.py", line 23, in <module>
+    from feynplot.core.gluon_methods import generate_gluon_helix
+  File "F:\Research\pyfeynplot\feynplot\core\gluon_methods.py", line 5, in <module>
+    from feynplot.core.circle import oval_circle
+  File "F:\Research\pyfeynplot\feynplot\core\circle.py", line 3, in <module>
+    from scipy.interpolate import interp1d
+ModuleNotFoundError: No module named 'scipy'

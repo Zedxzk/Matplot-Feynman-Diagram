@@ -19,13 +19,14 @@ setup(
     install_requires=[
         "matplotlib>=3.7.2",
         "mplhep>=0.3.59",
-        "numpy>=1.23",
+        "numpy>=2.2.1",
         "Pygments>=2.19",
         "PySide6>=6.9",
         "PySide6-Addons>=6.9",
         "PySide6-Essentials>=6.9",
+        "scipy>=1.11.3",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     entry_points={
         "console_scripts": [
             "feynplot-gui = feynplot_gui.__main__:main",

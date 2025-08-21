@@ -126,7 +126,7 @@ def draw_WZ_zigzag_line(ax, line: Line, line_plot_options: dict, label_text_opti
     drawn_line = draw_line(ax, line, current_line_plot_options)
      
 
-    drawn_text = draw_line_label(ax, line, label_text_options, **kwargs) # 绘制标签
+    drawn_text = draw_line_label(ax, line, label_text_options, use_relative_unit=use_relative_unit, **kwargs) # 绘制标签
     return drawn_line, drawn_text
 
 

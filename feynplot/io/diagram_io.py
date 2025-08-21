@@ -4,7 +4,6 @@ import json
 import os
 import numpy as np # 如果用到numpy，也需要导入
 
-# 【关键修正点】确保导入所有必要的FeynPlot核心类
 from feynplot.core.vertex import Vertex, VertexType
 from feynplot.core.line import (
     LineStyle, 
