@@ -95,8 +95,6 @@ class Line:
             self.angular_direction = kwargs.pop('angular_direction', 90.0)  # 默认角度
 
 
-
-
         # --- Direct Line Plotting Attributes ---
         self.linewidth = kwargs.pop('linewidth', linewidth)
         self.color = kwargs.pop('color', color)
@@ -314,11 +312,11 @@ class Line:
         """
         for key, value in kwargs.items():
             # Handle aliases first, mapping them to the actual attribute names
-            if key == 'lw': 
+            if key == 'lw' or key == 'linewidth':
                 self.linewidth = value
-            elif key == 'c': 
+            elif key == 'c' or key == 'color':
                 self.color = value
-            elif key == 'ls': 
+            elif key == 'ls' or key == 'linestyle':
                 self.linestyle = value
             elif key == 'label_size': 
                 self.label_fontsize = value
@@ -404,8 +402,8 @@ class FermionLine(Line):
         # FermionLine manages its own arrow properties
         self.arrow = arrow
         self.arrow_style = "fishtail"  # Default arrow style for FermionLine
-        self.arrow_angle = kwargs.pop('arrow_angle', 60)  # Default angle for fishtail arrow
-        self.arrow_tail_angle = kwargs.pop('arrow_tail_angle', 20)  # Default tail angle for fishtail arrow
+        self.arrow_angle = kwargs.pop('arrow_angle', 20)  # Default angle for fishtail arrow
+        self.arrow_tail_angle = kwargs.pop('arrow_tail_angle', 60)  # Default tail angle for fishtail arrow
         self.arrow_offset_ratio = kwargs.pop('arrow_offset_ratio', 0.0) # Default offset ratio for fishtail arrow
         self.arrow_facecolor = kwargs.pop('arrow_facecolor', 'black')  # Default arrow fill color
         self.arrow_edgecolor = kwargs.pop('arrow_edgecolor', 'black')

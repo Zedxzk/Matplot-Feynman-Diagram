@@ -11,7 +11,8 @@ class FishtailArrow(mpatches.ArrowStyle._Base):
     - arrow_angle: 箭头尖端的一半角度 (弧度或度数)。
     - tail_angle: 鱼尾部分的一半角度 (弧度或度数)。
     """
-    def __init__(self, arrow_angle=60, tail_angle=30, offset_ratio : float = 0, use_degrees=True):
+    def __init__(self, arrow_angle=20, tail_angle=60, offset_ratio : float = 0, use_degrees=True, **kwargs):
+        print(f"初始化 FishtailArrow: arrow_angle={arrow_angle}, tail_angle={tail_angle}, offset_ratio={offset_ratio}")
         super().__init__()
         if use_degrees:
             self.arrow_angle = math.radians(float(arrow_angle))
@@ -28,13 +29,13 @@ class FishtailArrow(mpatches.ArrowStyle._Base):
         offset_ratio = self.offset_ratio
 
         dx, dy = x1 - x0, y1 - y0
-        axis_length = 1
+        standard_length = 1
         
-        axis_length *= mutation_size / 10
+        standard_length *= mutation_size / 10
         offset_ratio /= 100
-        self.axis_length = axis_length
-        if axis_length == 0:
-            return Path([(x1, y1), (x1, y1)], [Path.MOVETO, Path.LINETO]), True
+        self.axis_length = standard_length
+        # if axis_length == 0:
+        #     return Path([(x1, y1), (x1, y1)], [Path.MOVETO, Path.LINETO]), True
 
         angle = math.atan2(dy, dx)
         self.third_angle = self.tail_angle - self.arrow_angle
@@ -43,17 +44,17 @@ class FishtailArrow(mpatches.ArrowStyle._Base):
         verts = [
             (0, 0),
             (tail_length * math.cos(math.pi - self.tail_angle + angle), tail_length * math.sin(math.pi - self.tail_angle + angle)),
-            (axis_length * math.cos(angle), axis_length * math.sin(angle)),
+            (standard_length * math.cos(angle), standard_length * math.sin(angle)),
             (tail_length * math.cos(angle - math.pi + self.tail_angle), tail_length * math.sin(angle - math.pi + self.tail_angle)),
             (0, 0),
         ]
 
-        main_axis = (axis_length * math.cos(angle), axis_length * math.sin(angle))
+        main_axis = (standard_length * math.cos(angle), standard_length * math.sin(angle))
         final_verts = []
         
         for x, y in verts:
             final_verts.append((x + x0 + offset_ratio * main_axis[0], y + y0 + offset_ratio * main_axis[1]))
-        
+
         codes = [Path.MOVETO, Path.LINETO, Path.LINETO, Path.LINETO, Path.CLOSEPOLY]
         return Path(final_verts, codes), True
 

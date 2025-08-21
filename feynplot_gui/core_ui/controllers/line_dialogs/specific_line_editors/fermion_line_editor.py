@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QGroupBox, QVBoxLayout, QCheckBox, QHBoxLayout,
-    QFormLayout, QSizePolicy, QWidget
+    QFormLayout, QSizePolicy, QWidget, QMessageBox
 )
 from PySide6.QtCore import Qt
 from feynplot.core.line import FermionLine, AntiFermionLine
@@ -27,21 +27,30 @@ class FermionLineEditor(LineEditBase):
         # 创建 UI 元素
         self.fermion_arrow_checkbox = QCheckBox(self.tr("显示箭头"))
         self.fermion_arrow_filled_checkbox = QCheckBox(self.tr("箭头填充"))
+        self.fermion_arrow_reversed_checkbox = QCheckBox(self.tr("箭头反向"))
         self.fermion_arrow_position_layout, self.fermion_arrow_position_input = \
             self._create_spinbox_row("箭头位置 (0-1):", 0.5, min_val=0.0, max_val=1.0, step=0.01)
         self.fermion_arrow_size_layout, self.fermion_arrow_size_input = \
             self._create_spinbox_row("箭头大小:", 50.0, min_val=0.0, max_val=9999.0, step=1.0, is_int=True)
         self.fermion_arrow_line_width_layout, self.fermion_arrow_line_width_input = \
-            self._create_spinbox_row("箭头线宽:", 1.0, min_val=0.1, max_val=10.0, step=0.1)
-        self.fermion_arrow_reversed_checkbox = QCheckBox(self.tr("箭头反向"))
+            self._create_spinbox_row("箭头线宽:", 1.0, min_val=0.1, max_val=1000.0, step=0.1)
+        self.fermion_arrow_tail_angle_layout, self.fermion_arrow_tail_angle_input = \
+            self._create_spinbox_row("箭头尾部角度:", 20.0, min_val=0.0, max_val=180.0, step=1.0)
+        self.fermion_arrow_arrow_angle_layout, self.fermion_arrow_arrow_angle_input = \
+            self._create_spinbox_row("箭头角度（的一半）:", 60.0, min_val=0.0, max_val=180.0, step=1.0)
+        self.fermion_arrow_offset_ratio_layout, self.fermion_arrow_offset_ratio_input = \
+            self._create_spinbox_row("箭头平移(%):", 0.0, min_val=-1000, max_val=1000.0, step=0.01)
 
         # 添加组件到 GroupBox 内部布局
         self.layout.addWidget(self.fermion_arrow_checkbox)
         self.layout.addWidget(self.fermion_arrow_filled_checkbox)
+        self.layout.addWidget(self.fermion_arrow_reversed_checkbox)
         self.layout.addLayout(self.fermion_arrow_position_layout)
         self.layout.addLayout(self.fermion_arrow_size_layout)
         self.layout.addLayout(self.fermion_arrow_line_width_layout)
-        self.layout.addWidget(self.fermion_arrow_reversed_checkbox)
+        self.layout.addLayout(self.fermion_arrow_tail_angle_layout)
+        self.layout.addLayout(self.fermion_arrow_arrow_angle_layout)
+        self.layout.addLayout(self.fermion_arrow_offset_ratio_layout)
         self.layout.addStretch(1)  # 顶部对齐
 
         # --- 创建包装 QWidget 以插入 QFormLayout 的一整行 ---
@@ -66,7 +75,10 @@ class FermionLineEditor(LineEditBase):
         self.fermion_arrow_position_input.setValue(self._get_value_or_default(self.line, 'arrow_position', 0.5, float))
         self.fermion_arrow_size_input.setValue(self._get_value_or_default(self.line, 'mutation_scale', 10.0, float))
         self.fermion_arrow_line_width_input.setValue(self._get_value_or_default(self.line, 'arrow_line_width', 1.0, float))
+        self.fermion_arrow_tail_angle_input.setValue(self._get_value_or_default(self.line, 'arrow_tail_angle', 20.0, float))
+        self.fermion_arrow_arrow_angle_input.setValue(self._get_value_or_default(self.line, 'arrow_angle', 60.0, float))
         self.fermion_arrow_reversed_checkbox.setChecked(self._get_value_or_default(self.line, 'arrow_reversed', False, bool))
+        self.fermion_arrow_offset_ratio_input.setValue(self._get_value_or_default(self.line, 'arrow_offset_ratio', 0.0, float))
 
     def apply_properties(self, line: FermionLine):
         """将 UI 值应用到给定的 line 对象。"""
@@ -77,6 +89,18 @@ class FermionLineEditor(LineEditBase):
             line.mutation_scale = float(self.fermion_arrow_size_input.value())
             line.arrow_line_width = float(self.fermion_arrow_line_width_input.value())
             line.arrow_reversed = self.fermion_arrow_reversed_checkbox.isChecked()
+            line.arrow_offset_ratio = float(self.fermion_arrow_offset_ratio_input.value())
+            line.arrow_tail_angle = float(self.fermion_arrow_tail_angle_input.value())
+            line.arrow_angle = float(self.fermion_arrow_arrow_angle_input.value())
+            if line.arrow_tail_angle <= line.arrow_angle:
+                print("警告：箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。")
+                QMessageBox.warning(
+                    self.group_box, "警告",
+                    "箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。"
+                )
+
+
+
         else:
             print(f"警告：尝试将费米子线属性应用于非费米子线对象: {type(line)}")
 
@@ -89,6 +113,9 @@ class FermionLineEditor(LineEditBase):
             'mutation_scale': float(self.fermion_arrow_size_input.value()),
             'arrow_line_width': float(self.fermion_arrow_line_width_input.value()),
             'arrow_reversed': self.fermion_arrow_reversed_checkbox.isChecked(),
+            'arrow_offset_ratio': float(self.fermion_arrow_offset_ratio_input.value()),
+            'arrow_tail_angle': float(self.fermion_arrow_tail_angle_input.value()),
+            'arrow_angle': float(self.fermion_arrow_arrow_angle_input.value()),
         }
         print(f"获取特定关键字参数: {specific_kwargs}")
         return specific_kwargs

@@ -1,6 +1,7 @@
 # feynplot_gui/widgets/main_window.py
 
 import os
+from feynplot_gui.shared.shared import resource_path  # 确保导入 resource_path 函数
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QLabel, QToolBar
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon  # 新增: 导入 QIcon
@@ -99,11 +100,7 @@ class MainWindow(QMainWindow):
     def set_window_icon(self):
         """为窗口设置应用程序图标。"""
         # 使用 os.path.join 确保路径在不同操作系统上都能正确工作
-        cwd = os.path.dirname(os.path.abspath(__file__))
-        print(f"当前工作目录: {cwd}")
-        files = os.listdir(os.path.join(cwd, "..", "..", "icon"))
-        print(f"图标目录内容: {files}")
-        icon_path = os.path.join(cwd, "..", "..", "icon", "bhabha_scattering.png")
+        icon_path = resource_path("../icon/bhabha_scattering.png")
 
         # 验证文件路径是否存在
         if os.path.exists(icon_path):

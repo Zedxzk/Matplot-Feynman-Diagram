@@ -10,7 +10,7 @@ from matplotlib.text import Text
 from matplotlib.axes import Axes
 from feynplot.default_settings.default_settings import renderer_default_settings
 from typing import Union
-
+from feynplot.drawing.styles.arrow_styles import FishtailArrow
 
 scaling_factor = renderer_default_settings["DEFAULT_SCALE_FACTOR"]
 
@@ -136,7 +136,7 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 
     # print(f"\n\n Drawing Fermion DEBUG: current_line_plot_options: {current_line_plot_options}\n")
     # print(f"\n Drawing Fermion DEBUG: current_label_text_options: {current_label_text_options}")
-
+    drawn_text, drawn_arrow, drawn_line = None, None, None
     original_linewidth = current_line_plot_options.get('linewidth', 1.5)
     original_color = current_line_plot_options.get('color', 'black')
     original_zorder = current_line_plot_options.get('zorder', 1)
@@ -225,6 +225,9 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
             alpha=label_text_options.get('alpha', 1.0), # 将 alpha 添加到这里 ,
             is_selected=line.is_selected,
             mutation_scale=line.mutation_scale,
+            arrow_angle=line.arrow_angle,
+            arrow_tail_angle=line.arrow_tail_angle,
+            arrow_offset_ratio=line.arrow_offset_ratio
             )
 
     drawn_text = draw_line_label(ax, line, label_text_options, use_relative_unit=use_relative_unit, **kwargs) # 绘制标签
@@ -253,24 +256,25 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: bool = T
         current_scatter_props['s'] = current_scatter_props.pop('size')
 
 
-    original_size = current_scatter_props.get('s', 100)
-    original_color = current_scatter_props.get('c', 'blue')
-    original_edgecolor = current_scatter_props.get('edgecolor', original_color)
-    original_linewidth = current_scatter_props.get('linewidth', 1.0)
-    original_zorder = current_scatter_props.get('zorder', 2) # 顶点的默认 zorder 为 2
+    # original_size = current_scatter_props.get('s', 100)
+    # original_color = current_scatter_props.get('c', 'blue')
+    # original_edgecolor = current_scatter_props.get('edgecolor', original_color)
+    # original_linewidth = current_scatter_props.get('linewidth', 1.0)
+    # original_zorder = current_scatter_props.get('zorder', 2) # 顶点的默认 zorder 为 2
+
+    current_scatter_props = convert_props_from_data(ax, current_scatter_props, use_relative_unit=use_relative_unit)
 
     # 如果顶点被选中，调整绘图属性
     if vertex.is_selected:
-        current_scatter_props['s'] = original_size * 1.5 # 放大
+        current_scatter_props['s'] *= 1.5 # 放大
         current_scatter_props['c'] = highlight_color # 变色
         current_scatter_props['edgecolor'] = highlight_color
-        current_scatter_props['linewidth'] = original_linewidth + 1.0
-        current_scatter_props['zorder'] = original_zorder + 10 # 提高 Z-order
+        current_scatter_props['linewidth'] += 1.0
+        current_scatter_props['zorder'] += 10 # 提高 Z-order
 
         # 标签也可能需要调整
         current_label_props['color'] = highlight_color
-        current_label_props['zorder'] = original_zorder + 11
-
+        current_label_props['zorder'] = current_scatter_props.get('zorder', 2) + 10 # 提高标签的 Z-order
     # --- 绘制点状顶点 ---
     # print(f"kwargs: {kwargs}")
     if not vertex.hidden_vertex or vertex.is_selected:
@@ -295,6 +299,8 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: boo
 
     if vertex.hidden_vertex and not vertex.is_selected:
         return
+
+    current_circle_props = convert_props_from_data(ax, current_circle_props, use_relative_unit=use_relative_unit)
 
     # 如果顶点被选中，调整绘图属性
     if vertex.is_selected:
@@ -331,7 +337,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: boo
             (vertex.x, vertex.y),
             **current_circle_props
         )
-        ax.add_patch(circle, **kwargs)
+        drawn_vertex = ax.add_patch(circle, **kwargs)
     else:
         # 如果圆圈不可见，则其阴影线和标签也不需要绘制
         return
@@ -379,7 +385,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: boo
     # 3. 绘制标签
     drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, use_relative_unit=use_relative_unit, **kwargs)
 
-    return drawn_text
+    return drawn_vertex, drawn_text
 
 
 
@@ -618,9 +624,9 @@ def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float
     """
     在给定的 Axes 上绘制一个箭头。
     """
-    if start == end:
-        return
-    
+    # if start == end:
+    #     return None
+    drawn_arrow = None
     # print(f"DEBUG: draw_arrow() start: {start}, end: {end}, arrow_style: {arrow_style}, arrow_alpha: {alpha}")
     
     # 从 kwargs 获取参数，并设置默认值
@@ -644,19 +650,21 @@ def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float
     facecolor = mcolors.to_rgba(base_facecolor, alpha)
     edgecolor = mcolors.to_rgba(base_edgecolor, alpha)
 
-    if arrow_style == 'fishtail':
-        arrow_angle = kwargs.get('arrow_angle', 60)
-        tail_angle = kwargs.get('tail_angle', 20)
-        offset_ratio = kwargs.get('offset_ratio', 0.0)
-        
+    if arrow_style == 'fishtail' or arrow_style == None:
+        arrow_angle = kwargs.get('arrow_angle', 20)
+        tail_angle = kwargs.get('arrow_tail_angle', 60)
+        offset_ratio = kwargs.get('arrow_offset_ratio', 0.0)
+        print(f"DEBUG: draw_arrow() arrow_angle: {arrow_angle}, tail_angle: {tail_angle}, offset_ratio: {offset_ratio}")
+
         drawn_arrow = ax.annotate(
             '', xy=end, xytext=start, zorder=zorder,
             ha='center', va='center',
             arrowprops=dict(
-                arrowstyle=mpatches.ArrowStyle("fishtail",
-                                               arrow_angle=arrow_angle,
-                                               tail_angle=tail_angle,
-                                               offset_ratio=offset_ratio),
+                arrowstyle=FishtailArrow(
+                    arrow_angle=arrow_angle,
+                    tail_angle=tail_angle,
+                    offset_ratio=offset_ratio
+                ),
                 facecolor=facecolor,
                 edgecolor=edgecolor,
                 mutation_scale=mutation_scale, 
@@ -664,7 +672,7 @@ def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float
                 shrinkB=0   # 关闭终点收缩
             )
         )
-        return drawn_arrow
+    return drawn_arrow
     
         
 

@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
     QMessageBox, QWidget, QVBoxLayout, QPushButton, 
     QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, 
-    QCheckBox, QDoubleSpinBox, QHBoxLayout, QScrollArea, QGraphicsOpacityEffect  
+    QCheckBox, QDoubleSpinBox, QHBoxLayout, QScrollArea, QGraphicsOpacityEffect, QSizePolicy, QDialog
  ) # Import QSpinBox and QLabel
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtGui import QIcon, QAction, QPixmap, QFont
 from PySide6.QtCore import Qt, Signal, QTimer
 from typing import Optional
 from PySide6.QtGui import QFontMetrics
@@ -14,6 +14,8 @@ from feynplot_gui.default.default_settings import CANVAS_CONTROLLER_DEFAULTS as 
 from feynplot_gui.default.default_settings import NAVIGATION_WIDGET_DEFAULTS as nw_default_settings
 from feynplot_gui.default.default_settings import TIPS
 import random
+import os
+from feynplot_gui.shared.shared import resource_path
 
 class NavigationBarWidget(QWidget):
     # 定义信号，这些信号将被 MainController 或 NavigationBarController 监听
@@ -79,6 +81,7 @@ class NavigationBarWidget(QWidget):
         self.tips = TIPS.get(self.language, TIPS['en'])  # 从默认设置中获取提示列表
         self.unplayed_tips = self.tips.copy()  # 复制一份未播放的提示列表
         self.current_tip_index = 0
+        self.about_window = None
         self.init_ui()
 
     def init_ui(self):
@@ -753,10 +756,69 @@ class NavigationBarWidget(QWidget):
         """
         显示“关于”对话框。
         """
-        QMessageBox.about(self, "关于 FeynPlot GUI",
-                          "这是一个用于绘制费曼图的简单GUI应用。\n"
-                          "版本: 1.0   Release date: 2025.6.14\n"
-                          "作者: ZED(武汉大学->香港中文大学)\n"
-                          "邮箱：zedxzk@gmail.com\n"
-                          "GitHub: https://github.com/Zedxzk/Matplot-Feynman-Diagram\n"
-                          )
+        # QMessageBox.about(self, "关于 FeynPlot GUI",
+        #                   "这是一个用于绘制费曼图的简单GUI应用。\n"
+        #                   "版本: 1.0   Release date: 2025.6.14\n"
+        #                   "作者: ZED(武汉大学->香港中文大学)\n"
+        #                   "邮箱：zedxzk@gmail.com\n"
+        #                   "GitHub: https://github.com/Zedxzk/Matplot-Feynman-Diagram\n"
+        #                   )
+
+        """
+        显示“关于”对话框。
+        """
+        # 仅在第一次点击时创建窗口实例
+        if self.about_window is None:
+            # 使用 QDialog 代替 QWidget
+            self.about_window = QDialog(self) 
+            self.about_window.setWindowTitle("关于 FeynPlot GUI")
+            self.about_window.setFixedWidth(450)
+
+            # 创建主垂直布局，并以 about_window 作为父级
+            main_layout = QVBoxLayout(self.about_window)
+
+            # 顶部水平布局，用于放置图标和标题
+            top_layout = QHBoxLayout()
+            top_layout.setSpacing(20)
+
+            # 创建并设置图标
+            icon_label = QLabel()
+            icon_path = resource_path('../icon/bhabha_scattering(1).png')
+            if not os.path.exists(icon_path):
+                print("Icon file not found, using default icon.")
+                pixmap = QPixmap() # 创建一个空的 QPixmap，避免崩溃
+            else:
+                pixmap = QPixmap(icon_path)
+
+            icon_label.setPixmap(pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            icon_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+            top_layout.addWidget(icon_label, alignment=Qt.AlignCenter)
+
+            # 创建标题标签
+            title_label = QLabel("FeynPlot GUI")
+            title_label.setFont(QFont("Arial", 16, QFont.Bold))
+            top_layout.addWidget(title_label, alignment=Qt.AlignCenter)
+
+            main_layout.addLayout(top_layout)
+
+            # 信息文本
+            info_text = (
+                "这是一个用于绘制费曼图的简单GUI应用。\n"
+                "版本: 1.0  Release date: 2025.6.14\n"
+                "作者: ZED(武汉大学->香港中文大学)\n"
+                "邮箱：zedxzk@gmail.com\n"
+                "GitHub: https://github.com/Zedxzk/Matplot-Feynman-Diagram"
+            )
+            info_label = QLabel(info_text)
+            info_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            info_label.setOpenExternalLinks(True)
+            main_layout.addWidget(info_label)
+
+            # 底部按钮
+            ok_button = QPushButton("确定")
+            # 使用 QDialog 的 accept() 方法关闭
+            ok_button.clicked.connect(self.about_window.accept)
+            main_layout.addWidget(ok_button, alignment=Qt.AlignRight)
+
+        # 每次调用时，直接执行已创建的实例
+        self.about_window.exec()

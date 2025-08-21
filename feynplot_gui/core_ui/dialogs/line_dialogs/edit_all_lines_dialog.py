@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QDoubleValidator, QIntValidator, QColor
 from PySide6.QtCore import Qt, Signal
-
+from feynplot.core.line import Line
 import enum
 
 class LineStyle(enum.Enum):
@@ -20,27 +20,27 @@ class LineStyle(enum.Enum):
     GLUON = 'gluon'
     WZ = 'wz'
 
-class Line:
-    """Minimal mock Line class for demonstration."""
-    def __init__(self, id, **kwargs):
-        self.id = id
-        self.label = kwargs.get('label', '')
-        self.label_offset = kwargs.get('label_offset', (0.5, 0.0))
-        self.linewidth = kwargs.get('linewidth', 1.0)
-        self.color = kwargs.get('color', 'black')
-        self.linestyle = kwargs.get('linestyle', '-')
-        self.alpha = kwargs.get('alpha', 1.0)
-        self.zorder = kwargs.get('zorder', 1)
-        self.label_fontsize = kwargs.get('label_fontsize', 30)
-        self.label_color = kwargs.get('label_color', 'black')
-        self.label_ha = kwargs.get('label_ha', 'center')
-        self.label_va = kwargs.get('label_va', 'center')
-        self.bezier_offset = kwargs.get('bezier_offset', 0.3)
-        self.style = kwargs.get('style', LineStyle.STRAIGHT)
+# class Line:
+#     """Minimal mock Line class for demonstration."""
+#     def __init__(self, id, **kwargs):
+#         self.id = id
+#         self.label = kwargs.get('label', '')
+#         self.label_offset = kwargs.get('label_offset', (0.5, 0.0))
+#         self.linewidth = kwargs.get('linewidth', 1.0)
+#         self.color = kwargs.get('color', 'black')
+#         self.linestyle = kwargs.get('linestyle', '-')
+#         self.alpha = kwargs.get('alpha', 1.0)
+#         self.zorder = kwargs.get('zorder', 1)
+#         self.label_fontsize = kwargs.get('label_fontsize', 30)
+#         self.label_color = kwargs.get('label_color', 'black')
+#         self.label_ha = kwargs.get('label_ha', 'center')
+#         self.label_va = kwargs.get('label_va', 'center')
+#         self.bezier_offset = kwargs.get('bezier_offset', 0.3)
+#         self.style = kwargs.get('style', LineStyle.STRAIGHT)
 
-    def update_properties(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+#     def update_properties(self, **kwargs):
+#         for key, value in kwargs.items():
+#             setattr(self, key, value)
 
 def cout(message: str):
     """A simple debug output function."""
@@ -95,7 +95,7 @@ class EditAllLinesDialog(QDialog):
         form_layout.setLabelAlignment(Qt.AlignRight)
 
         # Placeholder text for fields that should not be changed
-        unchanged_placeholder = "--- (保持不变)"
+        unchanged_placeholder = "--- (保持不变) ---"
 
         for prop_name, details in self._editable_properties.items():
             label_text = prop_name.replace('_', ' ').title()
@@ -148,7 +148,7 @@ class EditAllLinesDialog(QDialog):
                 input_widget.color_value = None # No color selected by default
 
                 def choose_color(display=color_display, prop_widget=input_widget):
-                    initial_color = QColor(details['default'])
+                    initial_color = QColor('black') if not prop_widget.color_value else QColor(prop_widget.color_value)
                     color = QColorDialog.getColor(initial_color, self, "选择颜色")
                     if color.isValid():
                         color_name = color.name()

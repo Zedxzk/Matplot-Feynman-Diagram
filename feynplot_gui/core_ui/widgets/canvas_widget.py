@@ -1,6 +1,7 @@
 from PySide6.QtCore import QPointF, Signal, Qt, QTime, QLineF
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QMenu
 from PySide6.QtGui import QAction
+from PySide6.QtCore import QSize
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -30,6 +31,7 @@ class CanvasWidget(QWidget):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.figure = Figure(figsize=(10, 10), dpi=100)
+        self.setMinimumSize(QSize(720, 500))  # 例如，设置为 720x500 像素
         self.axes = self.figure.add_subplot(111)
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.canvas.setParent(self)
