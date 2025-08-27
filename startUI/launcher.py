@@ -77,7 +77,7 @@ def check_requirements_native():
         print("目标 Python 环境缺少必要的依赖包或版本不兼容。")
         print("请运行以下命令来安装或更新它们:")
         
-        packages_to_install = [req.split('>=')[0] for req in requirements]
+        packages_to_install = "pip intall -r requirements.txt".split()
         print(f"\n  pip install --upgrade {' '.join(packages_to_install)}\n")
         
         print("问题详情:")
@@ -381,6 +381,8 @@ def check_and_run_pyfeynplot():
         if install_choice == 'y':
             print(current_text['installing'])
             script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+            if script_dir.endswith('startUI'):
+                script_dir = os.path.dirname(script_dir)
             try:
                 print(f"{current_text['changing_dir']} -> {script_dir}")
                 os.chdir(script_dir)
@@ -413,6 +415,8 @@ def check_and_run_pyfeynplot():
             # sys.argv[0] 在这种情况下指向 launcher.py
             print("Running as a .py script.")
             script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+            if script_dir.endswith('startUI'):
+                script_dir = os.path.dirname(script_dir)
             project_root = os.path.dirname(script_dir)
         
         # --- 修改结束 ---
