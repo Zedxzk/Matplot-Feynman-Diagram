@@ -22,7 +22,7 @@ class MatplotlibSettingsDialog(QDialog):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setWindowTitle("Matplotlib 后端设置")
+        self.setWindowTitle(self.tr("Matplotlib 后端设置"))
         self.setMinimumWidth(500)
         print(f"当前 rcParams['savefig.dpi'] 的值为: {plt.rcParams['savefig.dpi']}")
 
@@ -44,7 +44,7 @@ class MatplotlibSettingsDialog(QDialog):
 
         font_size_layout = QHBoxLayout()
         self.font_size_edit = QLineEdit()
-        self.font_size_edit.setPlaceholderText("例如: 12.0")
+        self.font_size_edit.setPlaceholderText(self.tr("例如: 12.0"))
         self.font_size_edit.setValidator(QDoubleValidator(0.1, 100.0, 2, self))
         font_size_layout.addWidget(self.font_size_edit)
         font_size_layout.addWidget(QLabel(self.tr("pt")))
@@ -74,7 +74,7 @@ class MatplotlibSettingsDialog(QDialog):
 
         line_width_layout = QHBoxLayout()
         self.lines_linewidth_edit = QLineEdit()
-        self.lines_linewidth_edit.setPlaceholderText("例如: 1.5")
+        self.lines_linewidth_edit.setPlaceholderText(self.tr("例如: 1.5"))
         self.lines_linewidth_edit.setValidator(QDoubleValidator(0.1, 10.0, 2, self))
         line_width_layout.addWidget(self.lines_linewidth_edit)
         line_width_layout.addWidget(QLabel(self.tr("pt")))
@@ -95,7 +95,7 @@ class MatplotlibSettingsDialog(QDialog):
 
         marker_size_layout = QHBoxLayout()
         self.lines_markersize_edit = QLineEdit()
-        self.lines_markersize_edit.setPlaceholderText("例如: 6.0")
+        self.lines_markersize_edit.setPlaceholderText(self.tr("例如: 6.0"))
         self.lines_markersize_edit.setValidator(QDoubleValidator(0.1, 50.0, 2, self))
         marker_size_layout.addWidget(self.lines_markersize_edit)
         marker_size_layout.addWidget(QLabel(self.tr("pt")))
@@ -153,7 +153,7 @@ class MatplotlibSettingsDialog(QDialog):
 
         figure_width_layout = QHBoxLayout()
         self.figure_width_edit = QLineEdit()
-        self.figure_width_edit.setPlaceholderText("例如: 6.4")
+        self.figure_width_edit.setPlaceholderText(self.tr("例如: 6.4"))
         self.figure_width_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_width_layout.addWidget(self.figure_width_edit)
         figure_width_layout.addWidget(QLabel(self.tr("英寸")))
@@ -161,14 +161,14 @@ class MatplotlibSettingsDialog(QDialog):
 
         figure_height_layout = QHBoxLayout()
         self.figure_height_edit = QLineEdit()
-        self.figure_height_edit.setPlaceholderText("例如: 4.8")
+        self.figure_height_edit.setPlaceholderText(self.tr("例如: 4.8"))
         self.figure_height_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_height_layout.addWidget(self.figure_height_edit)
         figure_height_layout.addWidget(QLabel(self.tr("英寸")))
         figure_save_layout.addRow("图像高度:", figure_height_layout)
 
         self.savefig_dpi_edit = QLineEdit()
-        self.savefig_dpi_edit.setPlaceholderText("例如: 300")
+        self.savefig_dpi_edit.setPlaceholderText(self.tr("例如: 300"))
         self.savefig_dpi_edit.setValidator(QIntValidator(50, 1200, self))
         figure_save_layout.addRow("保存图片DPI:", self.savefig_dpi_edit)
 
@@ -449,7 +449,7 @@ class MatplotlibSettingsDialog(QDialog):
         if not validation_errors:
             new_settings = self.get_settings_from_ui()
             self.settings_applied.emit(new_settings)
-            QMessageBox.information(self, "设置已应用", "Matplotlib 设置已应用。")
+            QMessageBox.information(self, self.tr("设置已应用"), self.tr("Matplotlib 设置已应用。"))
         else:
             error_message = "以下字段输入无效，请修正：\n\n" + "\n".join(validation_errors)
             QMessageBox.warning(self, "输入错误", error_message)

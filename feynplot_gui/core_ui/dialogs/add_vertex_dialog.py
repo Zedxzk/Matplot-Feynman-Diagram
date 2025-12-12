@@ -15,7 +15,7 @@ from feynplot.core.diagram import FeynmanDiagram # <-- 确保导入了你的模�
 class AddVertexDialog(QDialog):
     def __init__(self, initial_x: float = 0.0, initial_y: float = 0.0, diagram: FeynmanDiagram = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("添加顶点")
+        self.setWindowTitle(self.tr("添加顶点"))
         self.setMinimumWidth(300)
 
         self.diagram = diagram # 保存 diagram 引用，以便生成唯一 ID
@@ -60,5 +60,5 @@ class AddVertexDialog(QDialog):
             # 如果标签为空，使用自动生成的默认标签，否则使用用户输入的标签
             return x, y, label if label else diagram._generate_unique_vertex_id() 
         except ValueError:
-            QMessageBox.warning(self, "输入错误", "X 和 Y 坐标必须是数字。")
+            QMessageBox.warning(self, self.tr("输入错误"), self.tr("X 和 Y 坐标必须是数字。"))
             return None

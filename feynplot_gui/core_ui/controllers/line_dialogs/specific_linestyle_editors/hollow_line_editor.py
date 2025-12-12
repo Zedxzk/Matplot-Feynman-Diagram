@@ -31,24 +31,24 @@ class HollowLineEditor(LineEditBase):
             self._create_spinbox_row("内线宽度:", 1.0, min_val=0.1, max_val=10.0, step=0.1)
         
         # --- 手动创建内线颜色按钮 ---
-        self.inner_color_button = QPushButton("选择颜色")
+        self.inner_color_button = QPushButton(self.tr("选择颜色"))
         self._inner_color_picked_color = self._get_value_or_default(self.line, 'inner_color', '#FFFFFF', target_type=str)
         self._set_button_color(self.inner_color_button, self._inner_color_picked_color)
         self.inner_color_button.clicked.connect(lambda: self._pick_color(self.inner_color_button, '_inner_color_picked_color', parent=self._dialog_parent))
         self.inner_color_layout = QHBoxLayout()
-        self.inner_color_layout.addWidget(QLabel("内线颜色:"))
+        self.inner_color_layout.addWidget(QLabel(self.tr("内线颜色:")))
         self.inner_color_layout.addWidget(self.inner_color_button)
 
         self.outer_linewidth_layout, self.outer_linewidth_input = \
             self._create_spinbox_row("外线宽度:", 1.0, min_val=0.1, max_val=10.0, step=0.1) 
         
         # --- 手动创建外线颜色按钮 ---
-        self.outer_color_button = QPushButton("选择颜色")
+        self.outer_color_button = QPushButton(self.tr("选择颜色"))
         self._outer_color_picked_color = self._get_value_or_default(self.line, 'outer_color', '#000000', target_type=str)
         self._set_button_color(self.outer_color_button, self._outer_color_picked_color)
         self.outer_color_button.clicked.connect(lambda: self._pick_color(self.outer_color_button, '_outer_color_picked_color', parent=self._dialog_parent))
         self.outer_color_layout = QHBoxLayout()
-        self.outer_color_layout.addWidget(QLabel("外线颜色:"))
+        self.outer_color_layout.addWidget(QLabel(self.tr("外线颜色:")))
         self.outer_color_layout.addWidget(self.outer_color_button)
 
         self.inner_zorder_layout, self.inner_zorder_input = \

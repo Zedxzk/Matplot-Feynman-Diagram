@@ -34,7 +34,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
     """
     # 确保 line 参数是一个 Line 实例，因为现在只处理编辑模式
     if not isinstance(line, Line):
-        QMessageBox.critical(parent_widget, "错误", "提供的对象不是一个有效的线条，无法编辑。")
+        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的线条，无法编辑。"))
         return False
 
     class _InternalEditLineDialog(QDialog, LineEditBase):
@@ -195,8 +195,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             # --- 11. 标签字体大小 (label_fontsize) ---
             initial_label_fontsize = self.line.label_fontsize
             self.label_fontsize_layout, self.label_fontsize_input = self._create_spinbox_row(
-                "标签字体大小:", initial_label_fontsize, min_val=1.0, max_val=72.0, step=0.5, is_int=True
-            )
+                "标签字体大小:", initial_label_fontsize, min_val=0.0, max_val=1000, step=0.5,             )
             self.main_form_layout.addRow(self.label_fontsize_layout)
 
             # --- 12. 标签颜色 (label_color) ---

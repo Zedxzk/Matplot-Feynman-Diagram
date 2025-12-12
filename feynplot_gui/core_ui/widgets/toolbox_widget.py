@@ -52,7 +52,7 @@ class ToolboxWidget(QFrame):
         super().__init__(parent)
         self.ctrl = controller_instance # 假设这是 MainController 的实例
 
-        self.setWindowTitle("工具箱")
+        self.setWindowTitle(self.tr("工具箱"))
         self.setFixedWidth(300)
 
         self.setFrameShape(QFrame.StyledPanel)

@@ -16,7 +16,7 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
     This function now includes the complete implementation of EditVertexDialog.
     """
     if not isinstance(vertex, Vertex):
-        QMessageBox.critical(parent_widget, "错误", "提供的对象不是一个有效的顶点。")
+        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的顶点。"))
         return False
 
     class _InternalEditVertexDialog(QDialog):

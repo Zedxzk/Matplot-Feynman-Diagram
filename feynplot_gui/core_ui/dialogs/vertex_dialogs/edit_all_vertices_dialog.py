@@ -18,7 +18,7 @@ class EditAllVerticesDialog(QDialog):
 
     def __init__(self, all_vertices: list[Vertex], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("编辑所有顶点属性")
+        self.setWindowTitle(self.tr("编辑所有顶点属性"))
         self.setGeometry(100, 100, 500, 600)
 
         self.all_vertices = all_vertices
@@ -33,7 +33,7 @@ class EditAllVerticesDialog(QDialog):
     def init_ui(self):
         main_layout = QVBoxLayout(self)
 
-        tip_label = QLabel("提示：勾选要修改的属性，然后设置新值。未勾选的属性将保持不变。")
+        tip_label = QLabel(self.tr("提示：勾选要修改的属性，然后设置新值。未勾选的属性将保持不变。"))
         tip_font = QFont()
         tip_font.setPointSize(9)
         tip_label.setFont(tip_font)
@@ -55,7 +55,7 @@ class EditAllVerticesDialog(QDialog):
         label_prefix_layout.addWidget(QLabel(self.tr("新名称:")))
         self.label_prefix_input = QLineEdit()
         # CHANGED: Placeholder text is simpler. An empty field means no change.
-        self.label_prefix_input.setPlaceholderText("留空不修改，输入一个空格来清空名称")
+        self.label_prefix_input.setPlaceholderText(self.tr("留空不修改，输入一个空格来清空名称"))
         label_prefix_layout.addWidget(self.label_prefix_input)
         self.content_layout.addLayout(label_prefix_layout)
         self.content_layout.addSpacing(10)
@@ -115,6 +115,41 @@ class EditAllVerticesDialog(QDialog):
         self.color_preview_button.clicked.connect(self._select_vertex_color)
         self.current_vertex_color = None # None means no change
         self.content_layout.addWidget(self.color_preview_button)
+        self.content_layout.addSpacing(10)
+        # --- Z-order (Z轴顺序) ---
+        self._create_spinbox_property("Z轴顺序 (Z-order):", "zorder_spinbox", -100, 100, 0)
+        # --- 标签对齐 ---
+        # horizontal alignment (label_ha)
+        ha_layout = QHBoxLayout()
+        ha_label = QLabel(self.tr("标签水平对齐 (Label HA):"))
+        self.label_ha_combobox = QComboBox()
+        self.label_ha_combobox.addItems(["不修改", "left", "right", "center"])
+        ha_layout.addWidget(ha_label)
+        ha_layout.addWidget(self.label_ha_combobox)
+        self.content_layout.addLayout(ha_layout)
+        self.content_layout.addSpacing(10)
+        # vertical alignment (label_va)
+        va_layout = QHBoxLayout()
+        va_label = QLabel(self.tr("标签垂直对齐 (Label VA):"))
+        self.label_va_combobox = QComboBox()
+        self.label_va_combobox.addItems(["不修改", "top", "bottom", "center", "baseline", "center_baseline"])
+        va_layout.addWidget(va_label)
+        va_layout.addWidget(self.label_va_combobox)
+        self.content_layout.addLayout(va_layout)
+        self.content_layout.addSpacing(10)
+    # -- 隐藏顶点/隐藏标签 --
+        self.content_layout.addWidget(QLabel(self.tr("可见性与高亮 (Visibility / Highlight):")))
+        vis_layout = QHBoxLayout()
+        self.hidden_vertex_combobox = QComboBox()
+        self.hidden_vertex_combobox.addItems(["不修改", "隐藏", "显示"])  # map to True/False
+        self.content_layout.addWidget(QLabel(self.tr("隐藏顶点:")))
+        vis_layout.addWidget(self.hidden_vertex_combobox)
+        self.hidden_label_combobox = QComboBox()
+        self.hidden_label_combobox.addItems(["不修改", "隐藏", "显示"])  # map to True/False
+        vis_layout.addWidget(QLabel(self.tr("隐藏标签:")))
+        vis_layout.addWidget(self.hidden_label_combobox)
+    # Note: 'highlighted' is runtime-only; do not expose it in persistent dialogs
+        self.content_layout.addLayout(vis_layout)
         self.content_layout.addSpacing(10)
 
         # --- 顶点标记 (marker) ---
@@ -212,16 +247,23 @@ class EditAllVerticesDialog(QDialog):
         apply_linewidth = self.linewidth_spinbox_checkbox.isChecked()
         apply_label_size = self.label_size_spinbox_checkbox.isChecked()
         apply_label_color = self.current_label_color is not None
+        apply_zorder = self.zorder_spinbox_checkbox.isChecked()
+        apply_label_ha = self.label_ha_combobox.currentIndex() > 0
+        apply_label_va = self.label_va_combobox.currentIndex() > 0
+        apply_hidden_vertex = self.hidden_vertex_combobox.currentIndex() > 0
+        apply_hidden_label = self.hidden_label_combobox.currentIndex() > 0
+        # highlighted is runtime-only; not applied here
 
         # Check if at least one checkbox/action was triggered
         any_setting_applied = any([
             apply_label, apply_offset, apply_size, apply_color, apply_marker,
             apply_alpha, apply_edgecolor, apply_linewidth, apply_label_size,
             apply_label_color
+            , apply_zorder, apply_label_ha, apply_label_va, apply_hidden_vertex, apply_hidden_label
         ])
         
         if not any_setting_applied:
-            QMessageBox.information(self, "提示", "没有需要修改的属性。")
+            QMessageBox.information(self, self.tr("提示"), self.tr("没有需要修改的属性。"))
             self.reject() # Use reject() to indicate no changes were made
             return
 
@@ -258,6 +300,29 @@ class EditAllVerticesDialog(QDialog):
                 new_offset_x = self.offset_x_spinbox.value()
                 new_offset_y = self.offset_y_spinbox.value()
                 vertex.label_offset = np.array([new_offset_x, new_offset_y])
+            if apply_zorder:
+                vertex.zorder = self.zorder_spinbox.value()
+            if apply_label_ha:
+                selected_ha = self.label_ha_combobox.currentText()
+                if selected_ha != "不修改":
+                    vertex.label_ha = selected_ha
+            if apply_label_va:
+                selected_va = self.label_va_combobox.currentText()
+                if selected_va != "不修改":
+                    vertex.label_va = selected_va
+            if apply_hidden_vertex:
+                sel = self.hidden_vertex_combobox.currentText()
+                if sel == '隐藏':
+                    vertex.hidden_vertex = True
+                elif sel == '显示':
+                    vertex.hidden_vertex = False
+            if apply_hidden_label:
+                sel = self.hidden_label_combobox.currentText()
+                if sel == '隐藏':
+                    vertex.hidden_label = True
+                elif sel == '显示':
+                    vertex.hidden_label = False
+            # do not modify vertex.highlighted_vertex here; it's transient
 
         QMessageBox.information(self, "成功", f"属性已成功应用于 {len(self.all_vertices)} 个顶点。")
         self.settings_applied.emit()

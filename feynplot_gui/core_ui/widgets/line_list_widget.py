@@ -27,7 +27,7 @@ class LineListWidget(QListWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("线条列表")
+        self.setWindowTitle(self.tr("线条列表"))
         self.setFixedWidth(200)
 
         # ！！重要修改！！

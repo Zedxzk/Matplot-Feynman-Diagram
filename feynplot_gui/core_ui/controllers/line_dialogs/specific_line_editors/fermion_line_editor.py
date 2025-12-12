@@ -95,9 +95,7 @@ class FermionLineEditor(LineEditBase):
             if line.arrow_tail_angle <= line.arrow_angle:
                 print("警告：箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。")
                 QMessageBox.warning(
-                    self.group_box, "警告",
-                    "箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。"
-                )
+                    self.group_box, self.tr("警告"), self.tr("箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。"))
 
 
 

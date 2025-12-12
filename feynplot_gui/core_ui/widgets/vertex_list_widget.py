@@ -26,7 +26,7 @@ class VertexListWidget(QListWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("顶点列表")
+        self.setWindowTitle(self.tr("顶点列表"))
         self.setFixedWidth(200)
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)

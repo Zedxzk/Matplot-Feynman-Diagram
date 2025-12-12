@@ -83,7 +83,7 @@ class FermionLoopEditor:
         self.arrow_direction_combo = QComboBox()
         self.arrow_direction_combo.addItems(['顺时针', '逆时针'])
         
-        arrow_direction_label = QLabel("箭头方向:")
+        arrow_direction_label = QLabel(self.tr("箭头方向:"))
         self.form_layout.addRow(arrow_direction_label, self.arrow_direction_combo)
         
         self.widgets.extend([arrow_direction_label, self.arrow_direction_combo])
@@ -130,21 +130,21 @@ class PhotonLoopEditor:
         self.wavelength_spinbox = QDoubleSpinBox()
         self.wavelength_spinbox.setRange(0, 20)
         self.wavelength_spinbox.setSingleStep(0.1)
-        wavelength_label = QLabel("波长:")
+        wavelength_label = QLabel(self.tr("波长:"))
         self.form_layout.addRow(wavelength_label, self.wavelength_spinbox)
         self.widgets.extend([wavelength_label, self.wavelength_spinbox])
 
         self.amplitude_spinbox = QDoubleSpinBox()
         self.amplitude_spinbox.setRange(0.01, 2.0)
         self.amplitude_spinbox.setSingleStep(0.02)
-        amplitude_label = QLabel("振幅:")
+        amplitude_label = QLabel(self.tr("振幅:"))
         self.form_layout.addRow(amplitude_label, self.amplitude_spinbox)
         self.widgets.extend([amplitude_label, self.amplitude_spinbox])
 
-        self.initial_phase_label = QLabel("初始相位:")
+        self.initial_phase_label = QLabel(self.tr("初始相位:"))
         self.initial_phase_group = QButtonGroup(self.form_layout.parentWidget() if self.form_layout else None)
-        self.initial_phase_0_checkbox = QCheckBox("0°")
-        self.initial_phase_180_checkbox = QCheckBox("180°")
+        self.initial_phase_0_checkbox = QCheckBox(self.tr("0°"))
+        self.initial_phase_180_checkbox = QCheckBox(self.tr("180°"))
         self.initial_phase_group.addButton(self.initial_phase_0_checkbox)
         self.initial_phase_group.addButton(self.initial_phase_180_checkbox)
         initial_phase_layout = QHBoxLayout()
@@ -153,10 +153,10 @@ class PhotonLoopEditor:
         self.form_layout.addRow(self.initial_phase_label, initial_phase_layout)
         self.widgets.extend([self.initial_phase_label, self.initial_phase_0_checkbox, self.initial_phase_180_checkbox])
 
-        self.final_phase_label = QLabel("终止相位:")
+        self.final_phase_label = QLabel(self.tr("终止相位:"))
         self.final_phase_group = QButtonGroup(self.form_layout.parentWidget() if self.form_layout else None)
-        self.final_phase_0_checkbox = QCheckBox("0°")
-        self.final_phase_180_checkbox = QCheckBox("180°")
+        self.final_phase_0_checkbox = QCheckBox(self.tr("0°"))
+        self.final_phase_180_checkbox = QCheckBox(self.tr("180°"))
         self.final_phase_group.addButton(self.final_phase_0_checkbox)
         self.final_phase_group.addButton(self.final_phase_180_checkbox)
         final_phase_layout = QHBoxLayout()
@@ -221,14 +221,14 @@ class GluonLoopEditor:
         # 胶子环形线条特有属性：螺旋数量和振幅
         self.n_cycles_spinbox = QSpinBox()
         self.n_cycles_spinbox.setRange(1, 20)
-        n_cycles_label = QLabel("螺旋数量:")
+        n_cycles_label = QLabel(self.tr("螺旋数量:"))
         
         self.form_layout.addRow(n_cycles_label, self.n_cycles_spinbox)
         
         self.amplitude_spinbox = QDoubleSpinBox()
         self.amplitude_spinbox.setRange(0.1, 2.0)
         self.amplitude_spinbox.setSingleStep(0.1)
-        amplitude_label = QLabel("螺旋振幅:")
+        amplitude_label = QLabel(self.tr("螺旋振幅:"))
         
         self.form_layout.addRow(amplitude_label, self.amplitude_spinbox)
         
@@ -278,22 +278,22 @@ class WZBosonLoopEditor:
         self.amplitude_spinbox = QDoubleSpinBox()
         self.amplitude_spinbox.setRange(0.1, 20)
         self.amplitude_spinbox.setSingleStep(0.01)
-        amplitude_label = QLabel("振幅:")
+        amplitude_label = QLabel(self.tr("振幅:"))
         self.form_layout.addRow(amplitude_label, self.amplitude_spinbox)
         self.widgets.extend([amplitude_label, self.amplitude_spinbox])
 
         self.frequency_spinbox = QDoubleSpinBox()
         self.frequency_spinbox.setRange(0.1, 100)
         self.frequency_spinbox.setSingleStep(0.1)
-        frequency_label = QLabel("频率:")
+        frequency_label = QLabel(self.tr("频率:"))
         self.form_layout.addRow(frequency_label, self.frequency_spinbox)
         self.widgets.extend([frequency_label, self.frequency_spinbox])
 
         # 初始相位
-        self.initial_phase_label = QLabel("初始相位:")
+        self.initial_phase_label = QLabel(self.tr("初始相位:"))
         self.initial_phase_group = QButtonGroup(self.form_layout.parentWidget() if self.form_layout else None) # 假设 self 是一个 QObject 的子类
-        self.initial_phase_0_checkbox = QCheckBox("0°")
-        self.initial_phase_180_checkbox = QCheckBox("180°")
+        self.initial_phase_0_checkbox = QCheckBox(self.tr("0°"))
+        self.initial_phase_180_checkbox = QCheckBox(self.tr("180°"))
         self.initial_phase_group.addButton(self.initial_phase_0_checkbox, 0)
         self.initial_phase_group.addButton(self.initial_phase_180_checkbox, 180)
         initial_phase_layout = QHBoxLayout()
@@ -304,10 +304,10 @@ class WZBosonLoopEditor:
 
 
         # 终止相位
-        self.final_phase_label = QLabel("终止相位:")
+        self.final_phase_label = QLabel(self.tr("终止相位:"))
         self.final_phase_group = QButtonGroup(self.form_layout.parentWidget() if self.form_layout else None) # 假设 self 是一个 QObject 的子类
-        self.final_phase_0_checkbox = QCheckBox("0°")
-        self.final_phase_180_checkbox = QCheckBox("180°")
+        self.final_phase_0_checkbox = QCheckBox(self.tr("0°"))
+        self.final_phase_180_checkbox = QCheckBox(self.tr("180°"))
         self.final_phase_group.addButton(self.final_phase_0_checkbox, 0)
         self.final_phase_group.addButton(self.final_phase_180_checkbox, 180)
         final_phase_layout = QHBoxLayout()
@@ -320,7 +320,7 @@ class WZBosonLoopEditor:
         self.dash_pattern_combo = QComboBox()
         self.dash_pattern_combo.addItems(['短虚线', '长虚线', '点划线'])
         
-        dash_pattern_label = QLabel("虚线模式:")
+        dash_pattern_label = QLabel(self.tr("虚线模式:"))
         self.form_layout.addRow(dash_pattern_label, self.dash_pattern_combo)
         
         self.widgets.extend([dash_pattern_label, self.dash_pattern_combo])
@@ -381,7 +381,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
     This function is exclusively for editing existing loops.
     """
     if not isinstance(loop, Line) or not getattr(loop, 'loop', False):
-        QMessageBox.critical(parent_widget, "错误", "提供的对象不是一个有效的环形线条，无法编辑。")
+        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的环形线条，无法编辑。"))
         return False
 
     class _InternalEditLoopDialog(QDialog, LoopEditBase):

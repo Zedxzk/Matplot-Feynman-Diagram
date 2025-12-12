@@ -80,7 +80,6 @@ def _vertex_to_dict(vertex: Vertex) -> Dict[str, Any]:
         'alpha': vertex.alpha,
         'edgecolor': vertex.edgecolor,
         'linewidth': vertex.linewidth,
-        'zorder': vertex.zorder,
         'label_size': vertex.label_size,
         'label_color': vertex.label_color,
         'label_offset': vertex.label_offset.tolist(),
@@ -107,6 +106,9 @@ def _vertex_from_dict(data: Dict[str, Any]) -> 'Vertex':
     处理特殊的类型（如枚举、numpy数组）。
     """
     data_copy = data.copy()
+    # Remove transient UI-only keys so they don't get set from persisted JSON
+    data_copy.pop('highlighted_vertex', None)
+    data_copy.pop('highlighted', None)
 
     # 处理需要特殊转换的类型
     if 'vertex_type' in data_copy:
@@ -224,6 +226,8 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
     这个函数由 Line 类的 from_dict() 类方法调用。
     """
     data_copy = data.copy()
+    # Remove transient UI-only keys so they don't get set from persisted JSON
+    data_copy.pop('highlighted', None)
 
     # 获取线条类型并查找对应的类
     line_type_name = data_copy.pop('__type__', "Line")
@@ -265,8 +269,7 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
     init_kwargs['is_selected'] = data_copy.pop('is_selected', False)
     init_kwargs['loop'] = data_copy.pop('loop', False)
     init_kwargs['a'] = data_copy.pop('a', None)  # 如果是自环，长半轴
-    init_kwargs['b'] = data_copy.pop('b', None)  # 如果是自环，短半轴
-    init_kwargs['angular_direction'] = data_copy.pop('angular_direction', None)
+           # Visibility - note: 'highlighted_vertex' is intentionally not serialized; it's a transient UI state
     init_kwargs['hollow_line_initialized'] = data_copy.pop('hollow_line_initialized', False)
     init_kwargs['inner_linewidth'] = data_copy.pop('inner_linewidth', 1.0)
     init_kwargs['inner_color'] = data_copy.pop('inner_color', 'black')

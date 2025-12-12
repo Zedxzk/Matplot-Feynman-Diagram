@@ -18,7 +18,7 @@ class EditTextDialog(QDialog):
             properties: 一个包含文本所有属性的字典，用于设置默认值。
         """
         super().__init__(parent)
-        self.setWindowTitle("编辑文本属性")
+        self.setWindowTitle(self.tr("编辑文本属性"))
         self.setModal(True)
         
         # 存储用户输入结果

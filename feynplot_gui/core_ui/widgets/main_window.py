@@ -16,7 +16,7 @@ from feynplot_gui.core_ui.widgets.other_texts_widget import OtherTextsWidget
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Feynman Diagram Plotter")
+        self.setWindowTitle(self.tr("Feynman Diagram Plotter"))
         self.setGeometry(100, 100, 1400, 800) # 增大窗口尺寸以更好地容纳三列
         self.init_ui()
 

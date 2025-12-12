@@ -231,7 +231,7 @@ class NavigationBarWidget(QWidget):
         
         # 添加鼠标悬停的注释（Tooltip）
         # 这行代码在 PySide6 和 PyQt5/6 中都是通用的
-        self.relative_units_checkbox.setToolTip("开启此项，绘图元素的尺寸（如文字、标记）将随图像的缩放而自动调整；关闭则保持绝对像素大小。")
+        self.relative_units_checkbox.setToolTip(self.tr("开启此项，绘图元素的尺寸（如文字、标记）将随图像的缩放而自动调整；关闭则保持绝对像素大小。"))
         
         self.tool_bar.addWidget(self.relative_units_checkbox)
 
@@ -638,7 +638,7 @@ class NavigationBarWidget(QWidget):
         """
         # 检查主列表是否为空
         if not self.tips:
-            self.tip_label.setText("没有可用的提示信息。")
+            self.tip_label.setText(self.tr("没有可用的提示信息。"))
             return
             
         # --- 关键改动：随机播放逻辑 ---
@@ -771,7 +771,7 @@ class NavigationBarWidget(QWidget):
         if self.about_window is None:
             # 使用 QDialog 代替 QWidget
             self.about_window = QDialog(self) 
-            self.about_window.setWindowTitle("关于 FeynPlot GUI")
+            self.about_window.setWindowTitle(self.tr("关于 FeynPlot GUI"))
             self.about_window.setFixedWidth(450)
 
             # 创建主垂直布局，并以 about_window 作为父级
@@ -795,7 +795,7 @@ class NavigationBarWidget(QWidget):
             top_layout.addWidget(icon_label, alignment=Qt.AlignCenter)
 
             # 创建标题标签
-            title_label = QLabel("FeynPlot GUI")
+            title_label = QLabel(self.tr("FeynPlot GUI"))
             title_label.setFont(QFont("Arial", 16, QFont.Bold))
             top_layout.addWidget(title_label, alignment=Qt.AlignCenter)
 
@@ -815,7 +815,7 @@ class NavigationBarWidget(QWidget):
             main_layout.addWidget(info_label)
 
             # 底部按钮
-            ok_button = QPushButton("确定")
+            ok_button = QPushButton(self.tr("确定"))
             # 使用 QDialog 的 accept() 方法关闭
             ok_button.clicked.connect(self.about_window.accept)
             main_layout.addWidget(ok_button, alignment=Qt.AlignRight)

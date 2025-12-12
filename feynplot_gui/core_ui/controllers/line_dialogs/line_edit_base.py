@@ -107,7 +107,7 @@ class LineEditBase(QWidget):
         # 创建按钮并设置动态属性
         color_button = QPushButton(f"选择颜色 ({initial_color_str})")
         color_prop_name = f"_{label_text.replace(' ', '_').lower()}"
-        color_button.setProperty("i", color_prop_name)
+        color_button.setProperty("color_attr_name", color_prop_name)
         
         # 设置按钮的初始颜色和类实例的属性
         self._set_button_color(color_button, initial_color_str)
@@ -115,7 +115,7 @@ class LineEditBase(QWidget):
 
         # 连接信号
         color_button.clicked.connect(lambda: self._pick_color(
-            color_button, color_button.property("color_attr_name")
+            color_button, color_button.property("color_attr_name"), parent=self
         ))
         
         h_layout.addWidget(color_button)

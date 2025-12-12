@@ -35,7 +35,7 @@ class FontSettingsPanel(CollapsibleGroupBox):
 
         font_size_layout = QHBoxLayout()
         self.font_size_edit = QLineEdit()
-        self.font_size_edit.setPlaceholderText("例如: 12.0")
+        self.font_size_edit.setPlaceholderText(self.tr("例如: 12.0"))
         self.font_size_edit.setValidator(QDoubleValidator(0.1, 100.0, 2, self))
         font_size_layout.addWidget(self.font_size_edit)
         font_size_layout.addWidget(QLabel(self.tr("pt")))
@@ -70,7 +70,7 @@ class FontSettingsPanel(CollapsibleGroupBox):
 
         text_font_size_layout = QHBoxLayout()
         self.text_font_size_edit = QLineEdit()
-        self.text_font_size_edit.setPlaceholderText("例如: 10.0")
+        self.text_font_size_edit.setPlaceholderText(self.tr("例如: 10.0"))
         self.text_font_size_edit.setValidator(QDoubleValidator(0.1, 100.0, 2, self))
         text_font_size_layout.addWidget(self.text_font_size_edit)
         text_font_size_layout.addWidget(QLabel(self.tr("pt")))

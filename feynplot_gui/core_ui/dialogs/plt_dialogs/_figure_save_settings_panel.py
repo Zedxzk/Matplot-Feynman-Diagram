@@ -16,7 +16,7 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
 
         figure_width_layout = QHBoxLayout()
         self.figure_width_edit = QLineEdit()
-        self.figure_width_edit.setPlaceholderText("例如: 6.4")
+        self.figure_width_edit.setPlaceholderText(self.tr("例如: 6.4"))
         self.figure_width_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_width_layout.addWidget(self.figure_width_edit)
         figure_width_layout.addWidget(QLabel(self.tr("英寸")))
@@ -24,14 +24,14 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
 
         figure_height_layout = QHBoxLayout()
         self.figure_height_edit = QLineEdit()
-        self.figure_height_edit.setPlaceholderText("例如: 4.8")
+        self.figure_height_edit.setPlaceholderText(self.tr("例如: 4.8"))
         self.figure_height_edit.setValidator(QDoubleValidator(1.0, 20.0, 2, self))
         figure_height_layout.addWidget(self.figure_height_edit)
         figure_height_layout.addWidget(QLabel(self.tr("英寸")))
         self.content_layout().addRow("图像高度:", figure_height_layout)
 
         self.savefig_dpi_edit = QLineEdit()
-        self.savefig_dpi_edit.setPlaceholderText("例如: 300")
+        self.savefig_dpi_edit.setPlaceholderText(self.tr("例如: 300"))
         self.savefig_dpi_edit.setValidator(QIntValidator(50, 1200, self))
         self.content_layout().addRow("保存图片DPI:", self.savefig_dpi_edit)
 

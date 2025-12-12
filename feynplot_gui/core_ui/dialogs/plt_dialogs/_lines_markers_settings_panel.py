@@ -16,7 +16,7 @@ class LinesMarkersSettingsPanel(CollapsibleGroupBox):
 
         line_width_layout = QHBoxLayout()
         self.lines_linewidth_edit = QLineEdit()
-        self.lines_linewidth_edit.setPlaceholderText("例如: 1.5")
+        self.lines_linewidth_edit.setPlaceholderText(self.tr("例如: 1.5"))
         self.lines_linewidth_edit.setValidator(QDoubleValidator(0.1, 10.0, 2, self))
         line_width_layout.addWidget(self.lines_linewidth_edit)
         line_width_layout.addWidget(QLabel(self.tr("pt")))
@@ -37,7 +37,7 @@ class LinesMarkersSettingsPanel(CollapsibleGroupBox):
 
         marker_size_layout = QHBoxLayout()
         self.lines_markersize_edit = QLineEdit()
-        self.lines_markersize_edit.setPlaceholderText("例如: 6.0")
+        self.lines_markersize_edit.setPlaceholderText(self.tr("例如: 6.0"))
         self.lines_markersize_edit.setValidator(QDoubleValidator(0.1, 50.0, 2, self))
         marker_size_layout.addWidget(self.lines_markersize_edit)
         marker_size_layout.addWidget(QLabel(self.tr("pt")))

@@ -23,7 +23,7 @@ class DeleteVertexDialog(QDialog):
             parent (QWidget, optional): 对话框的父控件。
         """
         super().__init__(parent)
-        self.setWindowTitle("删除顶点确认")
+        self.setWindowTitle(self.tr("删除顶点确认"))
         self.setMinimumWidth(400)
 
         self.diagram = diagram
@@ -40,7 +40,7 @@ class DeleteVertexDialog(QDialog):
         form_layout.addRow("选择要删除的顶点", self.vertex_combobox)
 
         if not self.vertices_data:
-            self.vertex_combobox.addItem("无可用顶点")
+            self.vertex_combobox.addItem(self.tr("无可用顶点"))
             self.vertex_combobox.setEnabled(False)
         else:
             for i, vertex in enumerate(self.vertices_data):
@@ -55,7 +55,7 @@ class DeleteVertexDialog(QDialog):
                     self.vertex_combobox.setEnabled(False) # 锁定下拉框
                 else:
                     # 如果预选顶点不在当前图中，则退回正常模式并警告
-                    QMessageBox.warning(self, "警告", "预选顶点在图中不存在，请手动选择。")
+                    QMessageBox.warning(self, self.tr("警告"), self.tr("预选顶点在图中不存在，请手动选择。"))
                     self._pre_selected_vertex = None # 清除预选状态
             
             # 如果没有预选，或者预选失败，确保下拉框是可交互的
@@ -182,12 +182,12 @@ class DeleteVertexDialog(QDialog):
             # 仅在复选框**可启用**且**未勾选**时才弹出警告。
             # 如果复选框被禁用（即没有关联线条时），则不需要警告。
             if self.confirm_checkbox.isEnabled() and not self.confirm_checkbox.isChecked():
-                QMessageBox.warning(self, "确认删除", "请勾选确认框以删除顶点及其关联的线条。")
+                QMessageBox.warning(self, self.tr("确认删除"), self.tr("请勾选确认框以删除顶点及其关联的线条。"))
                 return # Prevent dialog from closing
             
             self.accept() # Close dialog with QDialog.Accepted result
         else:
-            QMessageBox.warning(self, "选择顶点", "请选择一个要删除的顶点。")
+            QMessageBox.warning(self, self.tr("选择顶点"), self.tr("请选择一个要删除的顶点。"))
 
     def get_selected_vertex_id(self) -> Optional[str]:
         """

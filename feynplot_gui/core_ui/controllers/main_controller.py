@@ -418,7 +418,7 @@ class MainController(QObject):
             # 1. 检查图中是否有顶点可供删除。如果没有，直接提示并返回。
             print(f"vertex_to_delete: {vertex_to_delete}") # 调试打印
             if not self.diagram_model.vertices:
-                QMessageBox.information(self.main_window, "没有顶点", "图中目前没有可供删除的顶点。")
+                QMessageBox.information(self.main_window, self.tr("没有顶点"), self.tr("图中目前没有可供删除的顶点。"))
                 self.status_message.emit("删除顶点失败：图中没有顶点。")
                 return
 
@@ -464,7 +464,7 @@ class MainController(QObject):
                         self.status_message.emit(f"删除顶点时发生未知错误: {e}")
                         QMessageBox.critical(self.main_window, "删除顶点错误", f"删除顶点时发生未知错误: {e}")
                 else:
-                    QMessageBox.warning(self.main_window, "删除失败", "未选择任何顶点。")
+                    QMessageBox.warning(self.main_window, self.tr("删除失败"), self.tr("未选择任何顶点。"))
                     self.status_message.emit("删除顶点操作：未选择顶点。")
             else:
                 # 7. 如果用户点击了“取消”
@@ -485,7 +485,7 @@ class MainController(QObject):
         """
         # 1. 检查图中是否有线条可供删除。如果没有，直接提示并返回。
         if not self.diagram_model.lines:
-            QMessageBox.information(self.main_window, "没有线条", "图中目前没有可供删除的线条。")
+            QMessageBox.information(self.main_window, self.tr("没有线条"), self.tr("图中目前没有可供删除的线条。"))
             self.status_message.emit("删除线条失败：图中没有线条。")
             return
 
@@ -528,7 +528,7 @@ class MainController(QObject):
             else:
                 # 用户点击了“确定”，但下拉框中可能没有可选择的线条（虽然我们前面已经检查过）
                 # 或者 get_selected_line 返回了 None
-                QMessageBox.warning(self.main_window, "删除失败", "未选择任何线条。")
+                QMessageBox.warning(self.main_window, self.tr("删除失败"), self.tr("未选择任何线条。"))
                 self.status_message.emit("删除线条操作：未选择线条。")
         else:
             # 6. 如果用户点击了“取消”
@@ -625,7 +625,7 @@ class MainController(QObject):
             self.status_message.emit("清空图表操作已取消。")
 
     def save_diagram_from_toolbox(self):
-        # QMessageBox.information(self.main_window, "提示", "save_diagram_from_toolbox")
+        # QMessageBox.information(self.main_window, self.tr("提示"), self.tr("save_diagram_from_toolbox"))
         # exit()
         self.save_diagram_to_file()
 

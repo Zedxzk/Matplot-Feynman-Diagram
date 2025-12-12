@@ -10,7 +10,7 @@ class MyTimerClass(QObject):
         self.timer.timeout.connect(self.on_timer_timeout) # 连接 timeout 信号到槽函数
         self.start_time = None
 
-        self.label = QLabel("等待定时器启动...")
+        self.label = QLabel(self.tr("等待定时器启动..."))
 
     def start_timer(self):
         self.start_time = datetime.datetime.now() # 记录定时器启动时间
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     layout.addWidget(timer_obj.label)
     
     window.setLayout(layout)
-    window.setWindowTitle("QTimer 时间示例")
+    window.setWindowTitle(self.tr("QTimer 时间示例"))
     window.show()
 
     # 启动定时器

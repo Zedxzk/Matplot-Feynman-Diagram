@@ -12,7 +12,7 @@ class FishtailArrow(mpatches.ArrowStyle._Base):
     - tail_angle: 鱼尾部分的一半角度 (弧度或度数)。
     """
     def __init__(self, arrow_angle=20, tail_angle=60, offset_ratio : float = 0, use_degrees=True, **kwargs):
-        print(f"初始化 FishtailArrow: arrow_angle={arrow_angle}, tail_angle={tail_angle}, offset_ratio={offset_ratio}")
+        # print(f"初始化 FishtailArrow: arrow_angle={arrow_angle}, tail_angle={tail_angle}, offset_ratio={offset_ratio}")
         super().__init__()
         if use_degrees:
             self.arrow_angle = math.radians(float(arrow_angle))

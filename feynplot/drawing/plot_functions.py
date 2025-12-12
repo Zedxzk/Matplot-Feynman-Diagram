@@ -654,7 +654,7 @@ def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float
         arrow_angle = kwargs.get('arrow_angle', 20)
         tail_angle = kwargs.get('arrow_tail_angle', 60)
         offset_ratio = kwargs.get('arrow_offset_ratio', 0.0)
-        print(f"DEBUG: draw_arrow() arrow_angle: {arrow_angle}, tail_angle: {tail_angle}, offset_ratio: {offset_ratio}")
+        # print(f"DEBUG: draw_arrow() arrow_angle: {arrow_angle}, tail_angle: {tail_angle}, offset_ratio: {offset_ratio}")
 
         drawn_arrow = ax.annotate(
             '', xy=end, xytext=start, zorder=zorder,

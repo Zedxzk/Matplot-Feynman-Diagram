@@ -23,7 +23,7 @@ class DeleteLineDialog(QDialog):
             parent (QWidget, optional): 父窗口部件。
         """
         super().__init__(parent)
-        self.setWindowTitle("删除线条确认")
+        self.setWindowTitle(self.tr("删除线条确认"))
         self.setMinimumWidth(300)
 
         self.diagram = diagram # 存储 diagram 实例
@@ -42,7 +42,7 @@ class DeleteLineDialog(QDialog):
 
         # 2. 填充下拉列表
         if not self.lines_data:
-            self.delete_line_combobox.addItem("无可用线条")
+            self.delete_line_combobox.addItem(self.tr("无可用线条"))
             self.delete_line_combobox.setEnabled(False) # 如果没有线条，禁用下拉列表
         else:
             for i, line in enumerate(self.lines_data):
@@ -73,7 +73,7 @@ class DeleteLineDialog(QDialog):
                     self.delete_line_combobox.setEnabled(False) # 锁定下拉框
                 else:
                     # 如果预选线条不在当前图中，则退回正常模式并警告
-                    QMessageBox.warning(self, "警告", "预选线条在图中不存在，请手动选择。")
+                    QMessageBox.warning(self, self.tr("警告"), self.tr("预选线条在图中不存在，请手动选择。"))
                     self._pre_selected_line = None # 清除预选状态
             
             # 如果没有预选，或者预选失败，确保下拉框是可交互的

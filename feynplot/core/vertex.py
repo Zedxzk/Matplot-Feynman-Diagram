@@ -24,6 +24,8 @@ class Vertex:
                  coupling_constant=1.0, symmetry_factor=1,
                  label_offset=(0.1, -0.2),
                  label_zorder = 2,
+                 label_ha: str = 'left',
+                 label_va: str = 'bottom',
                  is_structured: bool = False,
                  structured_radius: float = 0.5,
                  structured_facecolor: str = 'lightgray',
@@ -70,6 +72,8 @@ class Vertex:
         self.label_color = kwargs.pop('label_color', kwargs.pop('labelcolor', 'black'))
         self.label_offset = np.array(label_offset)
         self.label_zorder = label_zorder
+        self.label_ha = label_ha
+        self.label_va = label_va
 
         
         self.is_structured = is_structured
@@ -136,8 +140,8 @@ class Vertex:
         return {
             'fontsize': self.label_size,
             'color': self.label_color,
-            'ha': 'left',   # <--- 修改这里
-            'va': 'bottom'  # <--- 修改这里
+            'ha': getattr(self, 'label_ha', 'left'),   # allow override
+            'va': getattr(self, 'label_va', 'bottom')  # allow override
         }
 
     def update_properties(self, **kwargs):

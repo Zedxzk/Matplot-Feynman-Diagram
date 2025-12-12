@@ -152,7 +152,7 @@ class NavigationBarController(QObject):
                     self.status_message.emit(f"项目已保存到：{file_path}")
                     self.project_saved.emit() # 通知MainController项目已保存
                 else:
-                    QMessageBox.warning(self.navigation_bar_widget, "保存失败", "当前没有可保存的费曼图项目。")
+                    QMessageBox.warning(self.navigation_bar_widget, self.tr("保存失败"), self.tr("当前没有可保存的费曼图项目。"))
                     self.status_message.emit("保存失败：没有可保存的项目。")
             except Exception as e:
                 QMessageBox.critical(self.navigation_bar_widget, "保存失败", f"保存项目时发生错误：\n{e}")
@@ -188,7 +188,7 @@ class NavigationBarController(QObject):
     def _on_add_vertex_ui_triggered(self):
         """处理UI的添加顶点触发，并发出业务请求信号。"""
         if not self.main_controller.diagram_model:
-            QMessageBox.warning(self.navigation_bar_widget, "操作禁用", "请先加载或创建一个图项目。")
+            QMessageBox.warning(self.navigation_bar_widget, self.tr("操作禁用"), self.tr("请先加载或创建一个图项目。"))
             self.status_message.emit("添加顶点失败：没有图项目。")
             return
 
@@ -199,7 +199,7 @@ class NavigationBarController(QObject):
     def _on_add_line_ui_triggered(self):
         """处理UI的添加线条触发，并发出业务请求信号。"""
         if not self.main_controller.diagram_model:
-            QMessageBox.warning(self.navigation_bar_widget, "操作禁用", "请先加载或创建一个图项目。")
+            QMessageBox.warning(self.navigation_bar_widget, self.tr("操作禁用"), self.tr("请先加载或创建一个图项目。"))
             self.status_message.emit("添加线条失败：没有图项目。")
             return
 
@@ -222,7 +222,7 @@ class NavigationBarController(QObject):
 
         if not all_vertices:
             # 如果没有顶点，则弹出提示并返回
-            QMessageBox.information(self.navigation_bar_widget, "无顶点", "当前图中没有顶点可供编辑。")
+            QMessageBox.information(self.navigation_bar_widget, self.tr("无顶点"), self.tr("当前图中没有顶点可供编辑。"))
             self.status_message.emit("编辑所有顶点失败：当前图中没有顶点。")
             return
 
@@ -246,7 +246,7 @@ class NavigationBarController(QObject):
         all_lines = diagram.lines if diagram else []
 
         if not all_lines:
-            QMessageBox.information(self.navigation_bar_widget, "无线条", "当前图中没有线条可供编辑。")
+            QMessageBox.information(self.navigation_bar_widget, self.tr("无线条"), self.tr("当前图中没有线条可供编辑。"))
             self.status_message.emit("编辑所有线条失败：当前图中没有线条。")
             return
 

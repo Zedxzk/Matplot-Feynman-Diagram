@@ -11,7 +11,7 @@ from typing import List, Tuple, Dict, Any
 class AddLineDialog(QDialog):
     def __init__(self, vertices_data: List[Vertex], parent=None, initial_start_vertex_id: str = None):
         super().__init__(parent)
-        self.setWindowTitle("添加线")
+        self.setWindowTitle(self.tr("添加线"))
         self.setMinimumWidth(350)
 
         self.vertices_data = vertices_data
@@ -25,8 +25,8 @@ class AddLineDialog(QDialog):
         self.end_vertex_combo = QComboBox()
 
         if not self.vertices_data:
-            self.start_vertex_combo.addItem("无可用顶点")
-            self.end_vertex_combo.addItem("无可用顶点")
+            self.start_vertex_combo.addItem(self.tr("无可用顶点"))
+            self.end_vertex_combo.addItem(self.tr("无可用顶点"))
             self.start_vertex_combo.setEnabled(False)
             self.end_vertex_combo.setEnabled(False)
         else:
@@ -60,7 +60,7 @@ class AddLineDialog(QDialog):
                     self.end_vertex_combo.setCurrentIndex(1)
 
         # 2. 新增一个复选框来控制是否为自环
-        self.is_loop_checkbox = QCheckBox("创建自环 (Loop)")
+        self.is_loop_checkbox = QCheckBox(self.tr("创建自环 (Loop)"))
         # 连接信号，当复选框状态改变时，更新UI
         self.is_loop_checkbox.stateChanged.connect(self._on_is_loop_state_changed)
         
@@ -88,7 +88,7 @@ class AddLineDialog(QDialog):
         form_layout.addRow("粒子类型:", self.particle_type_combo)
 
         # 4. 额外属性（箭头和标签）
-        self.add_arrow_checkbox = QCheckBox("添加箭头")
+        self.add_arrow_checkbox = QCheckBox(self.tr("添加箭头"))
         self.add_arrow_checkbox.setChecked(True)
         self.label_input = QLineEdit("")
         
@@ -128,7 +128,7 @@ class AddLineDialog(QDialog):
         is_loop = self.is_loop_checkbox.isChecked()
         
         if start_vertex is None:
-            QMessageBox.warning(self, "输入错误", "请选择一个起始顶点。")
+            QMessageBox.warning(self, self.tr("输入错误"), self.tr("请选择一个起始顶点。"))
             return None
 
         # 根据是否是自环，确定结束顶点
@@ -137,17 +137,17 @@ class AddLineDialog(QDialog):
         else:
             end_vertex = self.end_vertex_combo.currentData()
             if end_vertex is None:
-                QMessageBox.warning(self, "输入错误", "请选择一个结束顶点。")
+                QMessageBox.warning(self, self.tr("输入错误"), self.tr("请选择一个结束顶点。"))
                 return None
             
             if start_vertex == end_vertex:
-                QMessageBox.warning(self, "输入错误", "起始顶点和结束顶点不能相同！")
+                QMessageBox.warning(self, self.tr("输入错误"), self.tr("起始顶点和结束顶点不能相同！"))
                 return None
         
         selected_type_display = self.particle_type_combo.currentText()
         line_type_class = self.particle_types.get(selected_type_display)
         if line_type_class is None:
-            QMessageBox.warning(self, "输入错误", "无效的粒子类型。")
+            QMessageBox.warning(self, self.tr("输入错误"), self.tr("无效的粒子类型。"))
             return None
 
         arrow = self.add_arrow_checkbox.isChecked()

@@ -27,7 +27,7 @@ class MatplotlibSettingsDialog(QDialog):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.setWindowTitle("Matplotlib 后端设置")
+        self.setWindowTitle(self.tr("Matplotlib 后端设置"))
         self.setMinimumWidth(500)
         print(f"当前 rcParams['savefig.dpi'] 的值为: {plt.rcParams['savefig.dpi']}")
 
@@ -236,7 +236,7 @@ class MatplotlibSettingsDialog(QDialog):
         if not validation_errors:
             new_settings = self.get_settings_from_ui()
             self.settings_applied.emit(new_settings)
-            QMessageBox.information(self, "Settings Applied", "Matplotlib settings have been applied.")
+            QMessageBox.information(self, self.tr("Settings Applied"), self.tr("Matplotlib settings have been applied."))
         else:
             error_message = "Invalid input in the following fields, please correct:\n\n" + "\n".join(validation_errors)
             QMessageBox.warning(self, "Input Error", error_message)

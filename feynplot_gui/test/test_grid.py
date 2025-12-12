@@ -14,7 +14,7 @@ plt.rcParams['axes.unicode_minus'] = False
 class PlotWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Matplotlib + PySide6 网格开关示例 (已修正)")
+        self.setWindowTitle(self.tr("Matplotlib + PySide6 网格开关示例 (已修正)"))
         self.setGeometry(100, 100, 800, 600)
 
         # 1. 创建 Matplotlib 图形和坐标轴
@@ -26,7 +26,7 @@ class PlotWindow(QMainWindow):
         main_layout.addWidget(self.canvas)
 
         # 3. 添加一个 QCheckBox 来控制网格显示
-        self.grid_checkbox = QCheckBox("显示网格")
+        self.grid_checkbox = QCheckBox(self.tr("显示网格"))
         self.grid_checkbox.setChecked(init_grid_state) # 设置复选框的初始状态
         # 连接信号到统一的重绘函数
         self.grid_checkbox.stateChanged.connect(self._update_canvas) 

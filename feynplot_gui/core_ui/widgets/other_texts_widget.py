@@ -32,7 +32,7 @@ class OtherTextsWidget(QListWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("文本列表") # Window title adapted for text elements
+        self.setWindowTitle(self.tr("文本列表")) # Window title adapted for text elements
         # self.setFixedWidth(200) # 通常在父级布局中控制宽度，这里注释掉是好的实践
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)

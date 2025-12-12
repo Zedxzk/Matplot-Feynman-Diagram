@@ -83,7 +83,7 @@ class FermionLoopEditor:
         self.arrow_direction_combo = QComboBox()
         self.arrow_direction_combo.addItems(['顺时针', '逆时针'])
         
-        arrow_direction_label = QLabel("箭头方向:")
+        arrow_direction_label = QLabel(self.tr("箭头方向:"))
         self.form_layout.addRow(arrow_direction_label, self.arrow_direction_combo)
         
         self.widgets.extend([arrow_direction_label, self.arrow_direction_combo])
@@ -131,7 +131,7 @@ class PhotonLoopEditor:
         self.wave_count_spinbox.setRange(1, 20)
         self.wave_count_spinbox.setValue(6)
         
-        wave_count_label = QLabel("波浪数量:")
+        wave_count_label = QLabel(self.tr("波浪数量:"))
         self.form_layout.addRow(wave_count_label, self.wave_count_spinbox)
         
         self.widgets.extend([wave_count_label, self.wave_count_spinbox])
@@ -179,8 +179,8 @@ class GluonLoopEditor:
         self.amplitude_spinbox.setSingleStep(0.1)
         self.amplitude_spinbox.setValue(0.3)
         
-        n_cycles_label = QLabel("螺旋数量:")
-        amplitude_label = QLabel("螺旋振幅:")
+        n_cycles_label = QLabel(self.tr("螺旋数量:"))
+        amplitude_label = QLabel(self.tr("螺旋振幅:"))
         
         self.form_layout.addRow(n_cycles_label, self.n_cycles_spinbox)
         self.form_layout.addRow(amplitude_label, self.amplitude_spinbox)
@@ -232,7 +232,7 @@ class WZBosonLoopEditor:
         self.dash_pattern_combo = QComboBox()
         self.dash_pattern_combo.addItems(['短虚线', '长虚线', '点划线'])
         
-        dash_pattern_label = QLabel("虚线模式:")
+        dash_pattern_label = QLabel(self.tr("虚线模式:"))
         self.form_layout.addRow(dash_pattern_label, self.dash_pattern_combo)
         
         self.widgets.extend([dash_pattern_label, self.dash_pattern_combo])
@@ -282,7 +282,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
     """
     # 确保 loop 参数是一个 Line 实例且具有 loop 属性为 True
     if not isinstance(loop, Line) or not getattr(loop, 'loop', False):
-        QMessageBox.critical(parent_widget, "错误", "提供的对象不是一个有效的环形线条，无法编辑。")
+        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的环形线条，无法编辑。"))
         return False
 
     class _InternalEditLoopDialog(QDialog, LoopEditBase):

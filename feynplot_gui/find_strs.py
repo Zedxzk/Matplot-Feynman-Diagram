@@ -3,7 +3,7 @@ import re
 
 ROOT_DIR = "feynplot_gui"
 
-# 函数或类构造时带字符串参数的模式，例如：QLabel("Text")、setText("Text")
+# 函数或类构造时带字符串参数的模式，例如：QLabel(self.tr("Text"))、setText(self.tr("Text"))
 TRANSLATABLE_PATTERNS = [
     r'(?P<prefix>\bQLabel\s*\(|\bQPushButton\s*\(|\bQCheckBox\s*\(|\bQRadioButton\s*\(|\bQGroupBox\s*\(|\bQAction\s*\()(?P<quote>[\'"])(?P<text>.*?)(?P=quote)',
     r'(?P<prefix>\.setText\s*\(|\.setToolTip\s*\(|\.setStatusTip\s*\(|\.setWhatsThis\s*\(|\.setWindowTitle\s*\()(?P<quote>[\'"])(?P<text>.*?)(?P=quote)'
