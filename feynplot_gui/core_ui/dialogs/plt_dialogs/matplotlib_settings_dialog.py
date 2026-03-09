@@ -1,8 +1,8 @@
 # feynplot_GUI/feynplot_gui/dialogs/plt_dialogs/matplotlib_settings_dialog.py
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QDialogButtonBox, QMessageBox, QWidget,
-    QSpacerItem, QSizePolicy, QScrollArea
+    QDialog, QVBoxLayout, QHBoxLayout, QWidget,
+    QSpacerItem, QSizePolicy, QScrollArea, QPushButton
 )
 from PySide6.QtCore import Signal, Qt
 from typing import Dict, Any, Optional
@@ -17,6 +17,8 @@ from ._lines_markers_settings_panel import LinesMarkersSettingsPanel
 from ._axes_ticks_settings_panel import AxesTicksSettingsPanel
 from ._legend_settings_panel import LegendSettingsPanel
 from ._figure_save_settings_panel import FigureSaveSettingsPanel
+from feynplot_gui.debug_utils import cout
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 
 class MatplotlibSettingsDialog(QDialog):
     """
@@ -29,7 +31,9 @@ class MatplotlibSettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Matplotlib 后端设置"))
         self.setMinimumWidth(500)
-        print(f"当前 rcParams['savefig.dpi'] 的值为: {plt.rcParams['savefig.dpi']}")
+        cout(f"当前 rcParams['savefig.dpi'] 的值为: {plt.rcParams['savefig.dpi']}")
+        from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
+        apply_dialog_style(self)
 
         self._current_settings = self._get_current_matplotlib_settings()
 
@@ -40,14 +44,16 @@ class MatplotlibSettingsDialog(QDialog):
 
     def init_ui(self):
         """初始化对话框的用户界面元素和布局。"""
+        from feynplot_gui.core_ui.dialogs.dialog_style import apply_content_layout
         main_layout = QVBoxLayout(self)
+        apply_content_layout(main_layout)
 
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setMaximumHeight(800) 
 
         self.scroll_content_widget = QWidget(self.scroll_area)
         self.scroll_content_layout = QVBoxLayout(self.scroll_content_widget)
+        apply_content_layout(self.scroll_content_layout)
 
         self.scroll_area.setWidget(self.scroll_content_widget)
         main_layout.addWidget(self.scroll_area)
@@ -70,16 +76,18 @@ class MatplotlibSettingsDialog(QDialog):
 
         self.scroll_content_layout.addStretch(1)
 
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | 
-            QDialogButtonBox.StandardButton.Cancel | 
-            QDialogButtonBox.StandardButton.Apply 
-        )
-        button_box.accepted.connect(self._on_ok_clicked)
-        button_box.rejected.connect(self.reject)
-        button_box.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self._on_apply_clicked)
-        
-        main_layout.addWidget(button_box)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        apply_btn = QPushButton(self.tr("应用"))
+        apply_btn.clicked.connect(self._on_apply_clicked)
+        ok_btn = QPushButton(self.tr("确定"))
+        ok_btn.clicked.connect(self._on_ok_clicked)
+        cancel_btn = QPushButton(self.tr("取消"))
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(apply_btn)
+        button_layout.addWidget(ok_btn)
+        button_layout.addWidget(cancel_btn)
+        main_layout.addLayout(button_layout)
 
     def _get_current_matplotlib_settings(self) -> Dict[str, Any]:
         """
@@ -160,6 +168,17 @@ class MatplotlibSettingsDialog(QDialog):
         self._current_settings.update(settings)
         self.load_settings_to_ui(self._current_settings)
 
+    def set_canvas_figsize_callback(self, callback):
+        """设置从画布获取尺寸的回调，由 NavigationBarController 传入。"""
+        self.figure_save_panel.set_canvas_figsize_callback(callback)
+
+    def refresh_figsize_from_canvas(self):
+        """打开对话框时，用画布当前尺寸刷新图像宽高，使设置与界面一致。"""
+        try:
+            self.figure_save_panel._on_sync_from_canvas()
+        except Exception:
+            pass
+
     def load_settings_to_ui(self, settings: Dict[str, Any]):
         """Loads the given settings dictionary into the UI controls."""
         self.font_panel.load_settings(settings)
@@ -228,7 +247,7 @@ class MatplotlibSettingsDialog(QDialog):
             self.accept()
         else:
             error_message = "Invalid input in the following fields, please correct:\n\n" + "\n".join(validation_errors)
-            QMessageBox.warning(self, "Input Error", error_message)
+            MsgBox.warning(self, "Input Error", error_message)
 
     def _on_apply_clicked(self):
         """Handles Apply button click, emits signal but does not close the dialog."""
@@ -236,7 +255,7 @@ class MatplotlibSettingsDialog(QDialog):
         if not validation_errors:
             new_settings = self.get_settings_from_ui()
             self.settings_applied.emit(new_settings)
-            QMessageBox.information(self, self.tr("Settings Applied"), self.tr("Matplotlib settings have been applied."))
+            MsgBox.information(self, self.tr("Settings Applied"), self.tr("Matplotlib settings have been applied."))
         else:
             error_message = "Invalid input in the following fields, please correct:\n\n" + "\n".join(validation_errors)
-            QMessageBox.warning(self, "Input Error", error_message)
+            MsgBox.warning(self, "Input Error", error_message)

@@ -31,6 +31,19 @@ from typing import List, Tuple, Optional, Any, Dict
 
 highlight_color = 'red'
 
+# renderer 传入的 kwargs 中，这些键不应传给 matplotlib 的 ax.text/ax.plot 等
+_RENDER_KWARGS_KEYS = frozenset({
+    'selected_label_id', 'pre_render', 'zoom_times', 'use_relative_unit',
+    'target_xlim', 'target_ylim', 'auto_scale', 'skip_navigation_bar',
+})
+
+
+def _pop_render_kwargs(kwargs: dict) -> None:
+    """从 kwargs 中移除 renderer 专用参数，避免传入 matplotlib 导致错误。"""
+    for k in _RENDER_KWARGS_KEYS:
+        kwargs.pop(k, None)
+
+
 def draw_photon_wave(ax, line: PhotonLine, line_plot_options: dict, label_text_options: dict,  use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     current_line_plot_options = line_plot_options.copy()
@@ -237,6 +250,8 @@ def draw_fermion_line(ax, line: FermionLine, line_plot_options: dict, label_text
 def draw_point_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: bool = True, **kwargs):
     # 复制字典以避免修改原始对象内部的配置
     drawn_vertex, drawn_text = None, None
+    # 移除 renderer 专用参数，避免传入 matplotlib 函数导致错误
+    selected_label_id = kwargs.pop('selected_label_id', None)
     current_scatter_props = vertex.get_scatter_properties().copy()
     current_label_props = vertex.get_label_properties().copy()
     if 'pre_render' in kwargs and kwargs['pre_render']:
@@ -276,18 +291,20 @@ def draw_point_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: bool = T
         current_label_props['color'] = highlight_color
         current_label_props['zorder'] = current_scatter_props.get('zorder', 2) + 10 # 提高标签的 Z-order
     # --- 绘制点状顶点 ---
-    # print(f"kwargs: {kwargs}")
+    _pop_render_kwargs(kwargs)  # 移除 zoom_times 等，避免传入 ax.scatter 报错
     if not vertex.hidden_vertex or vertex.is_selected:
         cout(current_scatter_props)
         drawn_vertex = ax.scatter(vertex.x, vertex.y, **current_scatter_props, **kwargs)
 
-    # 绘制标签
-    drawn_text = draw_vertex_label(ax, vertex, current_label_props, use_relative_unit=use_relative_unit, **kwargs)
+    # 绘制标签（selected_label_id 仅用于 label 高亮，不传给 scatter）
+    drawn_text = draw_vertex_label(ax, vertex, current_label_props, use_relative_unit=use_relative_unit, selected_label_id=selected_label_id, **kwargs)
 
     return drawn_vertex, drawn_text
 
 
 def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: bool = True, **kwargs):
+    # 移除 renderer 专用参数，避免传入 matplotlib 函数导致错误
+    selected_label_id = kwargs.pop('selected_label_id', None)
     # 复制字典以避免修改原始对象内部的配置
     current_circle_props = vertex.get_circle_properties().copy()
     current_custom_hatch_props = vertex.get_custom_hatch_properties().copy()
@@ -337,7 +354,7 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: boo
             (vertex.x, vertex.y),
             **current_circle_props
         )
-        drawn_vertex = ax.add_patch(circle, **kwargs)
+        drawn_vertex = ax.add_patch(circle)
     else:
         # 如果圆圈不可见，则其阴影线和标签也不需要绘制
         return
@@ -378,12 +395,11 @@ def draw_structured_vertex(ax: plt.Axes, vertex: Vertex,  use_relative_unit: boo
                 color=hatch_line_color,
                 linewidth=hatch_line_width,
                 zorder=zorder_hatch,
-                **kwargs # 允许传入额外的绘图参数
             )
             line_artist.set_clip_path(circle) # 确保阴影线被裁剪在圆内
 
-    # 3. 绘制标签
-    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, use_relative_unit=use_relative_unit, **kwargs)
+    # 3. 绘制标签（selected_label_id 仅用于 label 高亮）
+    drawn_text = draw_vertex_label(ax=ax, vertex=vertex, current_label_props=current_label_props, use_relative_unit=use_relative_unit, selected_label_id=selected_label_id, **kwargs)
 
     return drawn_vertex, drawn_text
 
@@ -425,10 +441,18 @@ def draw_line_label(ax : plt.Axes, line : Line, current_label_text_options, use_
         if line.is_selected:
             current_label_text_options['color'] = highlight_color
             current_label_text_options['zorder'] = current_label_text_options.get('zorder', 1) + 10
-            current_label_text_options['fontsize'] = current_label_text_options.get('fontsize', 12) * 1.5 # 增大字体
+            # 不放大 label 字体，否则实际位置会因 bbox 变化而出错
+        # 仅 label 被选中时（非整条线）：加透明边框区分
+        selected_label_id = kwargs.pop('selected_label_id', None)
+        if selected_label_id == f"llabel:{line.id}":
+            current_label_text_options['bbox'] = dict(
+                boxstyle='round,pad=0.2', facecolor='none', edgecolor='red'
+            )
+            current_label_text_options['zorder'] = current_label_text_options.get('zorder', 1) + 5
 
         label_in_latex = str2latex(line.label)
         current_label_text_options = convert_props_from_data(ax, current_label_text_options, use_relative_unit=use_relative_unit)
+        _pop_render_kwargs(kwargs)  # 移除 zoom_times 等，避免传入 ax.text 报错
         drawn_text = ax.text(label_x,
                 label_y,
                 label_in_latex,
@@ -450,8 +474,17 @@ def draw_vertex_label(ax :plt.Axes, vertex : Vertex, current_label_props,  use_r
             # 如果标签位置不在当前视图范围内，则跳过绘制
             return
         # ------------------------
+        # 仅 label 被选中时（非整个顶点）：加透明边框区分
+        selected_label_id = kwargs.pop('selected_label_id', None)
+        if selected_label_id == f"vlabel:{vertex.id}":
+            current_label_props = current_label_props.copy()
+            current_label_props['bbox'] = dict(
+                boxstyle='round,pad=0.2', facecolor='none', edgecolor='red'
+            )
+            current_label_props['zorder'] = current_label_props.get('zorder', 2) + 5
         current_label_props = convert_props_from_data(ax, current_label_props, use_relative_unit=use_relative_unit)
         label_in_latex = str2latex(vertex.label)
+        _pop_render_kwargs(kwargs)  # 移除 zoom_times 等，避免传入 ax.text 报错
         drawn_text = ax.text(
             label_x,
             label_y,
@@ -534,23 +567,21 @@ def convert_props_from_data(ax: plt.Axes, props: Union[Dict[str, Any], float, in
     scale_factor = px_per_data / dpi  # 每数据单位对应的像素数除以 DPI 得到每数据单位对应的 pt
     # print(f"px_per_data: {px_per_data}, dpi: {dpi}")
 
-    # 定义需要转换的属性键
-    # 这里我们只区分字体相关和非字体相关的属性
+    # 定义需要转换的属性键：线/长度类按 scale_factor 一次方；点（面积）按 scale_factor 平方
     fontsize_keys = {'fontsize', 'size'}
-    other_size_keys = {'s', 'markersize', 'linewidth', 'markeredgewidth', 'elinewidth', 'mutation_scale', 'inner_linewidth',
-                       'outer_linewidth'}
-    
+    line_size_keys = {'linewidth', 'markeredgewidth', 'elinewidth', 'mutation_scale', 'inner_linewidth',
+                      'outer_linewidth', 'markersize'}
+    area_size_keys = {'s'}  # 散点大小（面积），按线的平方比例缩放
+
     def _convert_value(key: str, value: Union[float, int]):
         """内部函数，用于执行单个值的转换"""
         if value is None or not isinstance(value, (int, float)):
             return value
-        if key in fontsize_keys or key in other_size_keys:
-            # print(f"Converting {key}: {value} -> {value * scale_factor} (scale factor: {scale_factor})")
+        if key in fontsize_keys or key in line_size_keys:
             return value * scale_factor
-        else:
-            # 如果不是需要转换的属性，直接返回原值
-            # print(f"DEBUG: Skipping conversion for {key}: {value} (not a size property)")
-            return value
+        if key in area_size_keys:
+            return value * (scale_factor ** 2)
+        return value
 
     if is_dict:
         # 如果输入是字典，遍历每个键值对并转换
@@ -677,6 +708,7 @@ def draw_arrow(ax: plt.Axes, start: Tuple[float, float], end: Tuple[float, float
         
 
 def draw_line(ax: plt.Axes, line : Line, line_plot_options: dict, use_relative_unit: bool = True, **kwargs):
+    _pop_render_kwargs(kwargs)
     line_plot_options = convert_props_from_data(ax, line_plot_options, use_relative_unit=use_relative_unit)
     # print(f"DEBUG : line_plot_options: {line_plot_options}")
     if line.linestyle == "Hollow" or line.linestyle == 'hollow':
@@ -687,7 +719,8 @@ def draw_line(ax: plt.Axes, line : Line, line_plot_options: dict, use_relative_u
         # print(f"DEBUG : draw_line() : line_plot_options: {line_plot_options}")
         ax.plot(line.plot_points[:, 0], line.plot_points[:, 1], **line_plot_options)
 
-def draw_hollow_line(ax: plt.Axes, line: Line, line_plot_options: dict, use_relative_unit: bool = True, **kwargs):   
+def draw_hollow_line(ax: plt.Axes, line: Line, line_plot_options: dict, use_relative_unit: bool = True, **kwargs):
+    _pop_render_kwargs(kwargs)
     if not line.hollow_line_initialized:
         line._init_hollow_line(**kwargs)
     inner_line_zorder = line.inner_zorder if line.inner_zorder is not None else 5

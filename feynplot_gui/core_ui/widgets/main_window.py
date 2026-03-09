@@ -12,6 +12,7 @@ from feynplot_gui.core_ui.widgets.toolbox_widget import ToolboxWidget
 from feynplot_gui.core_ui.widgets.vertex_list_widget import VertexListWidget
 from feynplot_gui.core_ui.widgets.line_list_widget import LineListWidget
 from feynplot_gui.core_ui.widgets.other_texts_widget import OtherTextsWidget
+from feynplot_gui.debug_utils import cout
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -106,7 +107,7 @@ class MainWindow(QMainWindow):
         if os.path.exists(icon_path):
             icon = QIcon(icon_path)
             self.setWindowIcon(icon)
-            print(f"成功加载图标: {os.path.abspath(icon_path)}")
+            cout(f"成功加载图标: {os.path.abspath(icon_path)}")
         else:
             print(f"警告：找不到图标文件 '{icon_path}'")
             # 如果找不到文件，你可以在这里设置一个默认图标或者不设置

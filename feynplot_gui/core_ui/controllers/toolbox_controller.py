@@ -8,7 +8,8 @@ from collections import defaultdict
 
 from feynplot_gui.core_ui.widgets.toolbox_widget import ToolboxWidget
 from feynplot.io.diagram_io import diagram_to_json_string, diagram_from_json_string
-from feynplot.core.diagram import FeynmanDiagram 
+from feynplot.core.diagram import FeynmanDiagram
+from feynplot_gui.debug_utils import cout 
 
 
 class ToolboxController(QObject):
@@ -84,7 +85,7 @@ class ToolboxController(QObject):
             # print("图状态恢复成功。")
         except (json.JSONDecodeError, ValueError, TypeError) as e:
             self.main_controller.status_message.emit(f"错误：恢复图状态失败：{e}")
-            print(f"Error restoring diagram state: {e}")
+            cout(f"Error restoring diagram state: {e}")
             
             
     def _update_undo_redo_button_states(self):
@@ -111,7 +112,7 @@ class ToolboxController(QObject):
         """
         打印两个图摘要之间的差异。
         """
-        print(f"\n--- {operation_type} 操作引发的图对象变化 ---")
+        cout(f"\n--- {operation_type} 操作引发的图对象变化 ---")
         
         # 顶点变化
         old_vertex_ids = set(old_summary['vertex_ids'])
@@ -121,11 +122,11 @@ class ToolboxController(QObject):
         removed_vertices = old_vertex_ids - new_vertex_ids
         
         if added_vertices:
-            print(f"  新增顶点 (IDs): {', '.join(map(str, sorted(list(added_vertices))))}")
+            cout(f"  新增顶点 (IDs): {', '.join(map(str, sorted(list(added_vertices))))}")
         if removed_vertices:
-            print(f"  删除顶点 (IDs): {', '.join(map(str, sorted(list(removed_vertices))))}")
+            cout(f"  删除顶点 (IDs): {', '.join(map(str, sorted(list(removed_vertices))))}")
         if not added_vertices and not removed_vertices:
-            print(f"  顶点数量不变 ({new_summary['vertex_count']})")
+            cout(f"  顶点数量不变 ({new_summary['vertex_count']})")
         
         # 线条变化
         old_line_ids = set(old_summary['line_ids'])
@@ -135,16 +136,16 @@ class ToolboxController(QObject):
         removed_lines = old_line_ids - new_line_ids
         
         if added_lines:
-            print(f"  新增线条 (IDs): {', '.join(map(str, sorted(list(added_lines))))}")
+            cout(f"  新增线条 (IDs): {', '.join(map(str, sorted(list(added_lines))))}")
         if removed_lines:
-            print(f"  删除线条 (IDs): {', '.join(map(str, sorted(list(removed_lines))))}")
+            cout(f"  删除线条 (IDs): {', '.join(map(str, sorted(list(removed_lines))))}")
         if not added_lines and not removed_lines:
-            print(f"  线条数量不变 ({new_summary['line_count']})")
+            cout(f"  线条数量不变 ({new_summary['line_count']})")
         
         if not added_vertices and not removed_vertices and not added_lines and not removed_lines:
-            print("  图结构（顶点和线条）无明显增删变化。可能仅是属性变化或重新定位。")
+            cout("  图结构（顶点和线条）无明显增删变化。可能仅是属性变化或重新定位。")
             
-        print("------------------------------------------")
+        cout("------------------------------------------")
 
 
     def _on_undo_requested(self):

@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (
-    QMessageBox, QWidget, QVBoxLayout, QPushButton, 
+    QWidget, QVBoxLayout, QPushButton, 
     QMenuBar, QToolBar, QMenu, QSpinBox, QLabel, 
-    QCheckBox, QDoubleSpinBox, QHBoxLayout, QScrollArea, QGraphicsOpacityEffect, QSizePolicy, QDialog
- ) # Import QSpinBox and QLabel
-from PySide6.QtGui import QIcon, QAction, QPixmap, QFont
+    QCheckBox, QDoubleSpinBox, QHBoxLayout, QScrollArea, QGraphicsOpacityEffect, QSizePolicy, QDialog,
+    QTextBrowser, QDialogButtonBox
+)
+from PySide6.QtGui import QIcon, QAction, QPixmap, QFont, QKeySequence
 from PySide6.QtCore import Qt, Signal, QTimer
 from typing import Optional
 from PySide6.QtGui import QFontMetrics
@@ -16,6 +17,7 @@ from feynplot_gui.default.default_settings import TIPS
 import random
 import os
 from feynplot_gui.shared.shared import resource_path
+from feynplot_gui.debug_utils import cout
 
 class NavigationBarWidget(QWidget):
     # 定义信号，这些信号将被 MainController 或 NavigationBarController 监听
@@ -46,9 +48,11 @@ class NavigationBarWidget(QWidget):
     
     # 【修改】自动缩放信号，现在只在点击时触发，不携带状态
     toggle_auto_scale_requested = Signal() 
+    toggle_always_auto_scale = Signal(bool)  # 始终自动调整画布
     toggle_gride_points_mode = Signal() 
     toggle_use_relative_unit = Signal() # <--- **新增信号：切换相对单位使用状态**
     toggle_transparent_background = Signal() # <--- **新增信号：切换透明背景状态**
+    toggle_auto_set_line_angles_on_drag = Signal(bool) # 拖动时自动设置线角度
 
     # --- 【新增】画布更新间隔调整信号 ---
     # 当用户通过UI（QSpinBox）改变间隔时，NavigationBarWidget发出此信号
@@ -77,6 +81,7 @@ class NavigationBarWidget(QWidget):
         
         # --- 【新增】画布更新间隔的QSpinBox属性 ---
         self.canvas_update_interval_spinbox: Optional[QSpinBox] = None
+        self.auto_set_line_angles_on_drag_checkbox: Optional[QCheckBox] = None
         self.language = 'zh_CN'  # 默认语言设置
         self.tips = TIPS.get(self.language, TIPS['en'])  # 从默认设置中获取提示列表
         self.unplayed_tips = self.tips.copy()  # 复制一份未播放的提示列表
@@ -106,45 +111,60 @@ class NavigationBarWidget(QWidget):
         self.obj_menu = self.menu_bar.addMenu("对象")
         self.obj_menu.setEnabled(False) # 默认禁用
 
-        self.edit_obj_action = QAction("编辑属性", self)
+        self.edit_obj_action = QAction(self.tr("编辑属性"), self)
+        self.edit_obj_action.setShortcut(QKeySequence("F2"))
         self.edit_obj_action.setEnabled(False)
         self.edit_obj_action.triggered.connect(self._on_edit_object_triggered) # 内部处理，转发给控制器
         self.obj_menu.addAction(self.edit_obj_action)
 
-        self.delete_obj_action = QAction("删除对象", self)
+        self.delete_obj_action = QAction(self.tr("删除对象"), self)
+        self.delete_obj_action.setShortcut(QKeySequence(QKeySequence.StandardKey.Delete))
         self.delete_obj_action.setEnabled(False)
         self.delete_obj_action.triggered.connect(self.delete_selected_object_triggered.emit)
         self.obj_menu.addAction(self.delete_obj_action)
 
-        # 关于菜单
-        about_menu = self.menu_bar.addMenu("关于")
+        # 帮助菜单（快捷键说明）
+        help_menu = self.menu_bar.addMenu(self.tr("帮助"))
+        show_shortcuts_action = QAction(self.tr("快捷键说明"), self)
+        show_shortcuts_action.setShortcut(QKeySequence("F1"))
+        show_shortcuts_action.triggered.connect(self._show_shortcuts_dialog)
+        help_menu.addAction(show_shortcuts_action)
 
-        # 文件菜单项
-        self.load_action = QAction("加载项目", self)
+        # 关于菜单
+        about_menu = self.menu_bar.addMenu(self.tr("关于"))
+
+        # 文件菜单项（带快捷键）
+        self.load_action = QAction(self.tr("加载项目"), self)
+        self.load_action.setShortcut(QKeySequence.StandardKey.Open)
         self.load_action.triggered.connect(self.load_project_action_triggered.emit)
         file_menu.addAction(self.load_action)
 
-        self.save_action = QAction("保存项目", self)
+        self.save_action = QAction(self.tr("保存项目 (Ctrl+S)"), self)
+        # 快捷键由 MainController 的 QShortcut 统一处理，避免与菜单重复导致 Ambiguous shortcut
         self.save_action.triggered.connect(self.save_project_action_triggered.emit)
         file_menu.addAction(self.save_action)
 
-        # 编辑菜单项
-        add_vertex_action = QAction("添加顶点", self)
+        # 编辑菜单项（带快捷键）
+        add_vertex_action = QAction(self.tr("添加顶点"), self)
+        add_vertex_action.setShortcut(QKeySequence("Ctrl+Shift+V"))
         add_vertex_action.triggered.connect(self.add_vertex_button_clicked.emit)
         edit_menu.addAction(add_vertex_action)
 
-        add_line_action = QAction("添加线条", self)
+        add_line_action = QAction(self.tr("添加线条"), self)
+        add_line_action.setShortcut(QKeySequence("Ctrl+Shift+L"))
         add_line_action.triggered.connect(self.add_line_button_clicked.emit)
         edit_menu.addAction(add_line_action)
 
         # --- 在“编辑”菜单中添加“编辑所有顶点”选项 ---
-        self.edit_all_vertices_action = QAction("编辑所有顶点", self)
+        self.edit_all_vertices_action = QAction(self.tr("编辑所有顶点"), self)
+        self.edit_all_vertices_action.setShortcut(QKeySequence("Ctrl+Shift+E"))
         self.edit_all_vertices_action.triggered.connect(self.edit_all_vertices_triggered.emit)
         edit_menu.addAction(self.edit_all_vertices_action)
         # --- 结束 ---
 
         # --- 【新增】在“编辑”菜单中添加“编辑所有线条”选项 ---
-        self.edit_all_lines_action = QAction("编辑所有线条", self)
+        self.edit_all_lines_action = QAction(self.tr("编辑所有线条"), self)
+        self.edit_all_lines_action.setShortcut(QKeySequence("Ctrl+Shift+A"))
         self.edit_all_lines_action.triggered.connect(self.edit_all_lines_triggered.emit)
         edit_menu.addAction(self.edit_all_lines_action)
         # --- 新增结束 ---
@@ -167,8 +187,9 @@ class NavigationBarWidget(QWidget):
         self.view_menu.addAction(self.show_all_vertex_labels_action)
 
         # --- 【修改】自动缩放作为一个普通 QAction ---
-        self.auto_scale_action = QAction("自动调整画布", self) # 文本可以更明确
-        self.auto_scale_action.triggered.connect(self.toggle_auto_scale_requested.emit) # 连接到 triggered 信号
+        self.auto_scale_action = QAction(self.tr("自动调整画布"), self)
+        self.auto_scale_action.setShortcut(QKeySequence("F5"))
+        self.auto_scale_action.triggered.connect(self.toggle_auto_scale_requested.emit)
         self.view_menu.addAction(self.auto_scale_action)
         # --- 修改结束 ---
 
@@ -222,6 +243,26 @@ class NavigationBarWidget(QWidget):
         self.snap_to_grid_checkbox.setChecked(cc_default_settings['ONLY_ALLOW_GRID_POINTS'])
         # 连接 toggled 信号到一个处理函数
         self.snap_to_grid_checkbox.toggled.connect(self._on_snap_to_grid_toggled)
+
+        # 始终自动调整画布
+        self.tool_bar.addSeparator()
+        self.tool_bar.addWidget(QLabel(self.tr("始终自动调整画布") + ":", self))
+        self.always_auto_scale_checkbox = QCheckBox(self)
+        self.always_auto_scale_checkbox.setChecked(False)
+        self.always_auto_scale_checkbox.setToolTip(self.tr("开启后，每次视图更新时自动缩放画布以包含所有内容。"))
+        self.always_auto_scale_checkbox.toggled.connect(self._on_always_auto_scale_toggled)
+        self.tool_bar.addWidget(self.always_auto_scale_checkbox)
+
+        # 拖动时自动设置线角度（默认开启）
+        self.tool_bar.addSeparator()
+        self.tool_bar.addWidget(QLabel("拖动时自动设置线角度:", self))
+        self.auto_set_line_angles_on_drag_checkbox = QCheckBox(self)
+        self.auto_set_line_angles_on_drag_checkbox.setChecked(True)
+        self.auto_set_line_angles_on_drag_checkbox.setToolTip(
+            self.tr("开启后，拖动顶点时会自动重算相连线条的 angleIn/angleOut。关闭则保留线条当前角度。")
+        )
+        self.auto_set_line_angles_on_drag_checkbox.toggled.connect(self.toggle_auto_set_line_angles_on_drag)
+        self.tool_bar.addWidget(self.auto_set_line_angles_on_drag_checkbox)
 
 
         self.tool_bar.addSeparator()
@@ -366,13 +407,13 @@ class NavigationBarWidget(QWidget):
 
         self.second_tool_bar.setMovable(False)
         self.second_tool_bar.addSeparator()
-        self.second_tool_bar.addWidget(QLabel("画布拖动更新间隔:", self))
+        self.second_tool_bar.addWidget(QLabel("画布拖动FPS:", self))
         self.canvas_update_interval_spinbox = QSpinBox(self)
-        self.canvas_update_interval_spinbox.setRange(0, 1000)
+        self.canvas_update_interval_spinbox.setRange(cw_default_settings['FPS_MIN'], cw_default_settings['FPS_MAX']) 
         self.canvas_update_interval_spinbox.setSingleStep(1)
-        self.canvas_update_interval_spinbox.setSuffix(" ms")
-        self.canvas_update_interval_spinbox.setValue(cw_default_settings['SIGNAL_INTERVAL_MS'])
-        self.canvas_update_interval_spinbox.valueChanged.connect(self.canvas_update_interval_changed_ui)
+        self.canvas_update_interval_spinbox.setSuffix(" fps")
+        self.canvas_update_interval_spinbox.setValue(cw_default_settings['FPS_LIMIT'])
+        self.canvas_update_interval_spinbox.valueChanged.connect(self._on_fps_changed)
         self.second_tool_bar.addWidget(self.canvas_update_interval_spinbox)
 
         main_layout.addWidget(self.second_tool_bar)
@@ -502,6 +543,18 @@ class NavigationBarWidget(QWidget):
         if self.edit_obj_action:
             self.edit_obj_action.setEnabled(enabled)
 
+    def _on_fps_changed(self, fps: int):
+        """
+        Calculates millisecond interval from FPS and emits signal.
+        """
+        # Avoid division by zero
+        if fps <= 0:
+            interval_ms = 1000 
+        else:
+            interval_ms = 1000 // fps
+        
+        self.canvas_update_interval_changed_ui.emit(interval_ms)
+
     def set_delete_object_action_enabled(self, enabled: bool):
         """
         设置“删除对象”动作的启用状态。
@@ -573,6 +626,10 @@ class NavigationBarWidget(QWidget):
         更新 canvas_controller 中的 only_allow_grid_points 属性。
         """
         self.toggle_gride_points_mode.emit()
+
+    def _on_always_auto_scale_toggled(self, checked: bool):
+        """当“始终自动调整画布”复选框状态改变时被调用。"""
+        self.toggle_always_auto_scale.emit(checked)
 
 
     def _on_relative_units_toggled(self, checked: bool):
@@ -687,22 +744,25 @@ class NavigationBarWidget(QWidget):
             self.animation_group.setLoopCount(1)
             self.animation_group.start()
             
-            # 连接动画组完成信号到重启定时器的槽函数
+            # 连接动画组完成信号到重启定时器的槽函数（仅当需要滚动时连接）
+            self._tip_animation_connected = True
             self.animation_group.finished.connect(self.restart_tip_timer)
             
         else:
             self.animation_group.stop()
             self.tip_label.move(0, 0)
-            # 如果不需要滚动，直接重启5秒定时器
+            # 如果不需要滚动，直接重启5秒定时器（此时未连接 finished 信号）
+            self._tip_animation_connected = False
             self.restart_tip_timer()
 
     def restart_tip_timer(self):
         """滚动动画结束后重新启动5秒定时器"""
-        # 断开信号连接，避免重复连接
-        try:
-            self.animation_group.finished.disconnect(self.restart_tip_timer)
-        except:
-            pass
+        if getattr(self, '_tip_animation_connected', False):
+            try:
+                self.animation_group.finished.disconnect(self.restart_tip_timer)
+            except (TypeError, RuntimeError):
+                pass
+            self._tip_animation_connected = False
         
         # 重新启动5秒定时器
         self.tip_timer.start(5000)
@@ -785,7 +845,7 @@ class NavigationBarWidget(QWidget):
             icon_label = QLabel()
             icon_path = resource_path('../icon/bhabha_scattering(1).png')
             if not os.path.exists(icon_path):
-                print("Icon file not found, using default icon.")
+                cout("Icon file not found, using default icon.")
                 pixmap = QPixmap() # 创建一个空的 QPixmap，避免崩溃
             else:
                 pixmap = QPixmap(icon_path)
@@ -822,3 +882,45 @@ class NavigationBarWidget(QWidget):
 
         # 每次调用时，直接执行已创建的实例
         self.about_window.exec()
+
+    def _show_shortcuts_dialog(self):
+        """显示“快捷键说明”对话框，列出所有常规快捷键。"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.tr("快捷键说明"))
+        dialog.setMinimumSize(420, 380)
+        layout = QVBoxLayout(dialog)
+        text = QTextBrowser(dialog)
+        text.setOpenExternalLinks(False)
+        shortcuts_text = (
+            "<h3>" + self.tr("文件") + "</h3>"
+            "<p><b>Ctrl+O</b> " + self.tr("加载项目") + "</p>"
+            "<p><b>Ctrl+S</b> " + self.tr("保存项目") + "</p>"
+            "<h3>" + self.tr("编辑") + "</h3>"
+            "<p><b>Ctrl+Shift+V</b> " + self.tr("添加顶点") + "</p>"
+            "<p><b>Ctrl+Shift+L</b> " + self.tr("添加线条") + "</p>"
+            "<p><b>Ctrl+Shift+E</b> " + self.tr("编辑所有顶点") + "</p>"
+            "<p><b>Ctrl+Shift+A</b> " + self.tr("编辑所有线条") + "</p>"
+            "<h3>" + self.tr("对象") + "</h3>"
+            "<p><b>F2</b> " + self.tr("编辑属性") + "（选中顶点/线/文本时）</p>"
+            "<p><b>Delete</b> " + self.tr("删除对象") + "（选中时）</p>"
+            "<h3>" + self.tr("视图") + "</h3>"
+            "<p><b>F5</b> " + self.tr("自动调整画布") + "</p>"
+            "<h3>" + self.tr("画布操作") + "</h3>"
+            "<p>" + self.tr("滚轮") + " " + self.tr("缩放") + "</p>"
+            "<p>" + self.tr("中键或左键拖拽空白") + " " + self.tr("平移") + "</p>"
+            "<p>" + self.tr("双击空白") + " " + self.tr("在该位置添加顶点") + "</p>"
+            "<h3>" + self.tr("方向键") + "</h3>"
+            "<p><b>↑/↓/←/→</b> " + self.tr("无选中或选中线条/文本时") + " " + self.tr("平移画布") + "；"
+            + self.tr("选中顶点时") + " " + self.tr("移动顶点") + "（步长 0.1）。</p>"
+            "<p><b>Ctrl+↑/↓/←/→</b> " + self.tr("同上，步长 0.01（精细）") + "。</p>"
+            "<p><b>Shift+↑/↓/←/→</b> " + self.tr("同上，步长 0.25") + "。</p>"
+            "<p><b>Page Up/Down</b> " + self.tr("在顶点/线条/文本列表中切换选中项") + "。</p>"
+            "<h3>" + self.tr("帮助") + "</h3>"
+            "<p><b>F1</b> " + self.tr("快捷键说明") + "</p>"
+        )
+        text.setHtml(shortcuts_text)
+        layout.addWidget(text)
+        btn = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        btn.accepted.connect(dialog.accept)
+        layout.addWidget(btn)
+        dialog.exec()

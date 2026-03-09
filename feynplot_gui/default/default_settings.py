@@ -17,7 +17,10 @@ GENERAL_SETTINGS: Dict[str, Any] = {
 # ----------------------------------------------------
 # 这些设置可以继承 GENERAL_SETTINGS，或者包含特有配置
 CANVAS_WIDGET_DEFAULTS: Dict[str, Any] = {
-    'SIGNAL_INTERVAL_MS': 100,
+    'FPS_LIMIT': 10,                 # 默认 FPS
+    'FPS_MIN': 2,                    # 最小 FPS
+    'FPS_MAX': 25,                   # 最大 FPS
+    'SIGNAL_INTERVAL_MS': 1000 // 10, # 根据默认 FPS 计算 (100ms)
     'DRAG_THRESHOLD_PIXELS': 3,
     'DOUBLE_CLICK_INTERVAL_MS': 300,
     **GENERAL_SETTINGS,  # 合并通用设置
@@ -28,6 +31,13 @@ CANVAS_CONTROLLER_DEFAULTS: Dict[str, Any] = {
     "SCALING_FACTOR_FOR_TOLERANCE": 1 / 30.0,
     "GRID_SIZE": 1,
     'ONLY_ALLOW_GRID_POINTS': False,
+    # 方向键步长（数据坐标）：默认 0.1，Ctrl 精细 0.01，Shift 大步 0.25（平移与移动顶点共用）
+    "ARROW_STEP": 0.1,
+    "ARROW_STEP_FINE": 0.01,
+    "ARROW_STEP_LARGE": 0.25,
+    # 格点模式下方向键步长：默认 1，Shift 2，Ctrl 保持 1
+    "ARROW_STEP_GRID": 1,
+    "ARROW_STEP_GRID_LARGE": 2,
     **GENERAL_SETTINGS,
 }
 

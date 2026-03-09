@@ -1,15 +1,17 @@
 # feynplot_GUI/feynplot_gui/dialogs/delete_vertex_dialog.py
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QComboBox,
-    QDialogButtonBox, QLabel, QCheckBox, QMessageBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QComboBox,
+    QLabel, QCheckBox, QPushButton,
     QScrollArea, QWidget
 )
 from PySide6.QtCore import Qt
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from feynplot.core.line import * # Assuming these are needed for line info display
 from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.vertex import Vertex
-from typing import Optional # Import Optional for type hinting
+from typing import Optional
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
 
 class DeleteVertexDialog(QDialog):
     def __init__(self, diagram: FeynmanDiagram, vertex_to_delete: Optional[Vertex] = None, parent=None):
@@ -27,6 +29,7 @@ class DeleteVertexDialog(QDialog):
         self.setMinimumWidth(400)
 
         self.diagram = diagram
+        apply_dialog_style(self)
         self.vertices_data = diagram.vertices
 
         # 将传入的预选顶点保存到实例变量
@@ -34,6 +37,7 @@ class DeleteVertexDialog(QDialog):
         self.selected_vertex: Vertex | None = None # This will be set by combobox or pre-selection
 
         main_layout = QVBoxLayout(self)
+        apply_content_layout(main_layout)
         form_layout = QFormLayout()
 
         self.vertex_combobox = QComboBox()
@@ -55,7 +59,7 @@ class DeleteVertexDialog(QDialog):
                     self.vertex_combobox.setEnabled(False) # 锁定下拉框
                 else:
                     # 如果预选顶点不在当前图中，则退回正常模式并警告
-                    QMessageBox.warning(self, self.tr("警告"), self.tr("预选顶点在图中不存在，请手动选择。"))
+                    MsgBox.warning(self, self.tr("警告"), self.tr("预选顶点在图中不存在，请手动选择。"))
                     self._pre_selected_vertex = None # 清除预选状态
             
             # 如果没有预选，或者预选失败，确保下拉框是可交互的
@@ -93,23 +97,26 @@ class DeleteVertexDialog(QDialog):
         self.confirm_checkbox.stateChanged.connect(self._update_ok_button_state)
         main_layout.addWidget(self.confirm_checkbox)
 
-        self.button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        self.button_box.accepted.connect(self._on_ok_clicked)
-        self.button_box.rejected.connect(self.reject)
-        main_layout.addWidget(self.button_box)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        self.ok_button = QPushButton(self.tr("确定"))
+        self.ok_button.clicked.connect(self._on_ok_clicked)
+        self.cancel_button = QPushButton(self.tr("取消"))
+        self.cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.ok_button)
+        button_layout.addWidget(self.cancel_button)
+        main_layout.addLayout(button_layout)
 
         # Initial state setup
         if not self.vertices_data:
-            self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+            self.ok_button.setEnabled(False)
             self.vertex_combobox.setEnabled(False)
             self.confirm_checkbox.setEnabled(False)
             self.associated_lines_text_area.setText(self.tr("图中目前没有可供删除的顶点。"))
             self.scroll_area.setFixedHeight(self.scroll_area.minimumHeight())
         else:
             # 初始状态下，OK按钮默认禁用，直到确认框被勾选（或无关联线条时自动勾选）
-            self.button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False) 
+            self.ok_button.setEnabled(False) 
             # 确保显示根据初始选择（可能是预选的）进行更新
             self._update_associated_lines_display()
 
@@ -164,15 +171,10 @@ class DeleteVertexDialog(QDialog):
         """
         根据复选框状态和选定顶点启用/禁用 OK 按钮。
         """
-        ok_button = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
-        
         if self.selected_vertex:
-            # OK button is enabled only if the checkbox is checked.
-            # This applies whether there are associated lines or not.
-            ok_button.setEnabled(self.confirm_checkbox.isChecked())
+            self.ok_button.setEnabled(self.confirm_checkbox.isChecked())
         else:
-            # If no vertex is selected (e.g., initial state with no vertices or "None" selected), OK button is disabled.
-            ok_button.setEnabled(False)
+            self.ok_button.setEnabled(False)
 
     def _on_ok_clicked(self):
         """
@@ -182,12 +184,12 @@ class DeleteVertexDialog(QDialog):
             # 仅在复选框**可启用**且**未勾选**时才弹出警告。
             # 如果复选框被禁用（即没有关联线条时），则不需要警告。
             if self.confirm_checkbox.isEnabled() and not self.confirm_checkbox.isChecked():
-                QMessageBox.warning(self, self.tr("确认删除"), self.tr("请勾选确认框以删除顶点及其关联的线条。"))
+                MsgBox.warning(self, self.tr("确认删除"), self.tr("请勾选确认框以删除顶点及其关联的线条。"))
                 return # Prevent dialog from closing
             
             self.accept() # Close dialog with QDialog.Accepted result
         else:
-            QMessageBox.warning(self, self.tr("选择顶点"), self.tr("请选择一个要删除的顶点。"))
+            MsgBox.warning(self, self.tr("选择顶点"), self.tr("请选择一个要删除的顶点。"))
 
     def get_selected_vertex_id(self) -> Optional[str]:
         """

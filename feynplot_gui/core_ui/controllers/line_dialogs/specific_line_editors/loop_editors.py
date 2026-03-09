@@ -94,12 +94,46 @@ class LoopEditor(LineEditBase):
         self.parent_layout.addRow(self.loop_radius_container)
         self.photon_loop_widgets.extend([self.loops_container, self.loop_radius_input])
 
-        # 胶子自环特有控件 (双线偏移)
-        self.double_line_offset_container, self.double_line_offset_input = self._create_spinbox_container(
-            "双线偏移 (Offset):", 0.1, min_val=0.01, max_val=1.0, step=0.01
+        # 胶子自环特有控件
+        self.gluon_amplitude_container, self.gluon_amplitude_input = self._create_spinbox_container(
+            "振幅 (Amplitude):", 0.15, min_val=0.0, max_val=1.0, step=0.01
         )
-        self.parent_layout.addRow(self.double_line_offset_container)
-        self.gluon_loop_widgets.append(self.double_line_offset_container)
+        self.gluon_n_cycles_container, self.gluon_n_cycles_input = self._create_spinbox_container(
+            "周期数 (N_Cycles):", 18, min_val=0.5, max_val=100, step=0.5
+        )
+        self.gluon_phase_container = QWidget()
+        phase_layout = QHBoxLayout(self.gluon_phase_container)
+        phase_layout.setContentsMargins(0,0,0,0)
+        phase_layout.addWidget(QLabel("绕向:"))
+        self.gluon_phase_combo = QComboBox()
+        self.gluon_phase_combo.addItems(["逆时针", "顺时针"])
+        phase_layout.addWidget(self.gluon_phase_combo)
+
+        self.gluon_squash_container, self.gluon_squash_input = self._create_spinbox_container(
+            "扁率 (Squash):", 1.0, min_val=0.1, max_val=3.0, step=0.05
+        )
+        self.gluon_start_straight_container, self.gluon_start_straight_input = self._create_spinbox_container(
+            "开始直线比例:", 0.0, min_val=0.0, max_val=1.0, step=0.05
+        )
+        self.gluon_end_straight_container, self.gluon_end_straight_input = self._create_spinbox_container(
+            "终止直线比例:", 0.0, min_val=0.0, max_val=1.0, step=0.05
+        )
+
+        self.parent_layout.addRow(self.gluon_amplitude_container)
+        self.parent_layout.addRow(self.gluon_n_cycles_container)
+        self.parent_layout.addRow(self.gluon_phase_container)
+        self.parent_layout.addRow(self.gluon_squash_container)
+        self.parent_layout.addRow(self.gluon_start_straight_container)
+        self.parent_layout.addRow(self.gluon_end_straight_container)
+
+        self.gluon_loop_widgets.extend([
+            self.gluon_amplitude_container,
+            self.gluon_n_cycles_container,
+            self.gluon_phase_container,
+            self.gluon_squash_container,
+            self.gluon_start_straight_container,
+            self.gluon_end_straight_container,
+        ])
 
         self.all_widgets.extend(self.fermion_loop_widgets)
         self.all_widgets.extend(self.wz_loop_widgets)
@@ -169,7 +203,12 @@ class LoopEditor(LineEditBase):
             for widget in self.photon_loop_widgets:
                 widget.setVisible(True)
         elif isinstance(line, GluonLine):
-            self.double_line_offset_input.setValue(line.double_line_offset)
+            self.gluon_amplitude_input.setValue(getattr(line, 'amplitude', 0.15))
+            self.gluon_n_cycles_input.setValue(getattr(line, 'n_cycles', 18))
+            self.gluon_phase_combo.setCurrentText("顺时针" if getattr(line, 'clockwise', False) else "逆时针")
+            self.gluon_squash_input.setValue(getattr(line, 'squash_ratio', 1.0))
+            self.gluon_start_straight_input.setValue(getattr(line, 'start_straight_ratio', 0.0))
+            self.gluon_end_straight_input.setValue(getattr(line, 'end_straight_ratio', 0.0))
             for widget in self.gluon_loop_widgets:
                 widget.setVisible(True)
 
@@ -194,7 +233,12 @@ class LoopEditor(LineEditBase):
             kwargs['loops'] = self.loops_input.value()
             kwargs['loop_radius'] = self.loop_radius_input.value()
         elif isinstance(line, GluonLine):
-            kwargs['double_line_offset'] = self.double_line_offset_input.value()
+            kwargs['amplitude'] = self.gluon_amplitude_input.value()
+            kwargs['n_cycles'] = self.gluon_n_cycles_input.value()
+            kwargs['clockwise'] = (self.gluon_phase_combo.currentText() == "顺时针")
+            kwargs['squash_ratio'] = self.gluon_squash_input.value()
+            kwargs['start_straight_ratio'] = self.gluon_start_straight_input.value()
+            kwargs['end_straight_ratio'] = self.gluon_end_straight_input.value()
 
         return kwargs
 
@@ -207,9 +251,9 @@ class LoopEditor(LineEditBase):
 
         # 应用通用自环属性
         line.center_offset = np.array([self.center_x_input.value(), self.center_y_input.value()])
-        line.major_axis = self.major_axis_input.value()
-        line.minor_axis = self.minor_axis_input.value()
-        line.rotation = self.rotation_input.value()
+        line.a = self.major_axis_input.value()
+        line.b = self.minor_axis_input.value()
+        line.angular_direction = self.rotation_input.value()
 
         # 应用特定粒子类型的属性
         if isinstance(line, FermionLine):
@@ -221,4 +265,9 @@ class LoopEditor(LineEditBase):
             line.loops = self.loops_input.value()
             line.loop_radius = self.loop_radius_input.value()
         elif isinstance(line, GluonLine):
-            line.double_line_offset = self.double_line_offset_input.value()
+            line.amplitude = self.gluon_amplitude_input.value()
+            line.n_cycles = self.gluon_n_cycles_input.value()
+            line.clockwise = (self.gluon_phase_combo.currentText() == "顺时针")
+            line.squash_ratio = self.gluon_squash_input.value()
+            line.start_straight_ratio = self.gluon_start_straight_input.value()
+            line.end_straight_ratio = self.gluon_end_straight_input.value()

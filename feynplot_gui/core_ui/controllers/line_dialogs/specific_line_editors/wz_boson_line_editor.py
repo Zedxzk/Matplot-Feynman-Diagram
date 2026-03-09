@@ -1,7 +1,7 @@
 # feynplot_gui/controllers/line_dialogs/specific_line_editors/wz_boson_line_editor.py
 
 from PySide6.QtWidgets import (
-    QGroupBox, QVBoxLayout, QSizePolicy, QFormLayout, QButtonGroup, QRadioButton, QLabel, QHBoxLayout
+    QGroupBox, QVBoxLayout, QSizePolicy, QFormLayout, QButtonGroup, QRadioButton, QLabel, QHBoxLayout, QComboBox
 )
 from feynplot.core.line import WPlusLine, WMinusLine, ZBosonLine
 from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
@@ -21,10 +21,18 @@ class WZBosonLineEditor(LineEditBase):
 
         # 设置 GroupBox 内部布局
         self.layout = QVBoxLayout(self.group_box)
+        self.wz_style_combo = QComboBox()
+        self.wz_style_combo.addItem(self.tr("波浪线"), True)
+        self.wz_style_combo.addItem(self.tr("折线"), False)
+        self.wz_style_combo.setToolTip(self.tr("波浪线：正弦曲线；折线：锯齿形"))
+        wz_style_layout = QHBoxLayout()
+        wz_style_layout.addWidget(QLabel(self.tr("线型:")))
+        wz_style_layout.addWidget(self.wz_style_combo)
+        self.layout.addLayout(wz_style_layout)
         self.zigzag_amplitude_layout, self.zigzag_amplitude_input = \
-            self._create_spinbox_row("折线振幅:", 0.2, min_val=0.0, max_val=1.0, step=0.01)
+            self._create_spinbox_row("振幅:", 0.2, min_val=0.0, max_val=1.0, step=0.01)
         self.zigzag_frequency_layout, self.zigzag_frequency_input = \
-            self._create_spinbox_row("折线频率:", 2.0, min_val=0.1, max_val=10.0, step=0.1)
+            self._create_spinbox_row("频率:", 2.0, min_val=0.1, max_val=10.0, step=0.1)
 
 
         self.wz_initial_phase_group = QButtonGroup(self.group_box) # Parent to group_box
@@ -63,6 +71,9 @@ class WZBosonLineEditor(LineEditBase):
         self.group_box.hide()  # 默认隐藏
 
     def _load_properties(self):
+        use_wavy = self._get_value_or_default(self.line, 'wz_use_wavy', True, bool)
+        idx = self.wz_style_combo.findData(use_wavy)
+        self.wz_style_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.zigzag_amplitude_input.setValue(self._get_value_or_default(self.line, 'zigzag_amplitude', 0.2, float))
         self.zigzag_frequency_input.setValue(self._get_value_or_default(self.line, 'zigzag_frequency', 2.0, float))
         initial_phase = self._get_value_or_default(self.line, 'initial_phase', 0, int)
@@ -82,6 +93,7 @@ class WZBosonLineEditor(LineEditBase):
 
     def apply_properties(self, line: (WPlusLine | WMinusLine | ZBosonLine)):
         if isinstance(line, (WPlusLine, WMinusLine, ZBosonLine)):
+            line.wz_use_wavy = bool(self.wz_style_combo.currentData())
             line.zigzag_amplitude = float(self.zigzag_amplitude_input.value())
             line.zigzag_frequency = float(self.zigzag_frequency_input.value())
             line.initial_phase = self.wz_initial_phase_group.checkedId()
@@ -91,6 +103,7 @@ class WZBosonLineEditor(LineEditBase):
 
     def get_specific_kwargs(self) -> dict:
         return {
+            'wz_use_wavy': bool(self.wz_style_combo.currentData()),
             'zigzag_amplitude': float(self.zigzag_amplitude_input.value()),
             'zigzag_frequency': float(self.zigzag_frequency_input.value()),
             'initial_phase': self.wz_initial_phase_group.checkedId(),

@@ -1,7 +1,8 @@
 # feynplot_gui\core_ui\controllers\canvas_controller.py
 import traceback
 from PySide6.QtCore import QObject, Signal, QPointF, Qt, QTimer 
-from PySide6.QtWidgets import QDialog, QMessageBox
+from PySide6.QtWidgets import QDialog
+from feynplot_gui.core_ui.msg_box_utils import CustomErrorDialog
 from typing import Optional, Callable, Tuple, Dict, Any
 
 from feynplot_gui.core_ui.widgets.canvas_widget import CanvasWidget
@@ -11,7 +12,7 @@ from feynplot.core.vertex import Vertex
 from feynplot.core.line import Line
 from feynplot_gui.core_ui.controllers.other_texts_controller import TextElement
 from feynplot_gui.default.default_settings import CANVAS_CONTROLLER_DEFAULTS
-# from debug_utils import cout3 
+from feynplot_gui.debug_utils import cout
 
 import numpy as np 
 
@@ -68,6 +69,8 @@ class CanvasController(QObject):
         self._motion_cid: Optional[int] = None # Stores Matplotlib event connection ID
         self._release_cid: Optional[int] = None # Stores Matplotlib event connection ID
         self.transparent_background = CANVAS_CONTROLLER_DEFAULTS['TRANSPARENT_BACKGROUND']
+        # 拖动顶点时是否自动重算相连线条角度
+        self.auto_set_line_angles_on_drag: bool = True
 
     def get_fig(self):
         return self.canvas_widget.get_figure()
@@ -87,14 +90,14 @@ class CanvasController(QObject):
         self.canvas_widget.set_mode(mode) # Notify CanvasWidget to update its internal mode and cursor
         self.reset_line_creation_state() # Reset line creation state when changing mode
 
-    def update_canvas(self, **render_kwargs: Any):
+    def update_canvas(self, skip_navigation_bar: bool = False, **render_kwargs: Any):
         """
         从模型中检索最新数据，并直接通过 MatplotlibBackend 绘制。
         这是 MainController 在模型更改后强制刷新画布的入口点。
-        
+
         Args:
-            **render_kwargs: 传递给 MatplotlibBackend.render 方法的额外关键词参数，
-                             例如 'target_xlim', 'target_ylim', 'auto_scale' 等。
+            skip_navigation_bar: 若为 True，本次不更新导航栏范围（用于高频拖动/平移时减小开销）。
+            **render_kwargs: 传递给 MatplotlibBackend.render 的额外参数，如 target_xlim, target_ylim, auto_scale 等。
         """
         vertices_list = self.diagram_model.vertices
         lines_list = self.diagram_model.lines
@@ -117,6 +120,12 @@ class CanvasController(QObject):
             if selected_item and hasattr(selected_item, 'id') and selected_item.id == text_elem.id and isinstance(selected_item, TextElement):
                 text_elem.is_selected = True
 
+        # 当选中项为 label（vlabel:/llabel:）时，传入 selected_label_id 以高亮该 label
+        render_opts = dict(render_kwargs)
+        sel_id = getattr(self.main_controller, '_current_selected_item_id', None)
+        if sel_id and (str(sel_id).startswith("vlabel:") or str(sel_id).startswith("llabel:")):
+            render_opts['selected_label_id'] = sel_id
+
         # 调用 MatplotlibBackend 的 render 方法，并原样传递所有 render_kwargs
         # canvas_size = self.canvas_widget.size()
         # width = canvas_size.width()
@@ -129,7 +138,7 @@ class CanvasController(QObject):
                 texts_list,
                 zoom_times= self.zoom_times,
                 use_relative_unit= self.relative_size_unit,
-                **render_kwargs # <--- 将所有接收到的 kwargs 传递下去
+                **render_opts
             )
             # (xmin, xmax), (ymin, ymax) = self._canvas_instance.get_axes_limits()
             # self.main_controller.navigation_bar_controller.navigation_bar_widget.update_plot_limits(xmin, xmax, ymin, ymax)
@@ -137,13 +146,14 @@ class CanvasController(QObject):
             # 确保 MatplotlibBackend.render 完成后，text controller 拿到的是最新的 ax
             # self.main_controller.other_texts_controller.draw_texts_on_canvas(self._canvaps_instance.ax) 
             # self.get_ax().grid(True)
-            self.canvas_widget.draw_idle_canvas() 
-            self.main_controller._update_canvas_range_on_navigation_bar()
+            self.canvas_widget.draw_idle_canvas()
+            if not skip_navigation_bar:
+                self.main_controller._update_canvas_range_on_navigation_bar()
         except Exception as e:
             error_trace = traceback.format_exc()  # 获取完整的错误堆栈信息
             self.main_controller.status_message.emit(f"画布更新失败: {e}\n{error_trace}")
-            print(f"画布更新失败: {e}\n{error_trace}")  # 调试打印
-            QMessageBox.critical(self.main_controller.main_window, "画布更新错误", f"画布更新失败: {e}\n{error_trace}")
+            cout(f"画布更新失败: {e}\n{error_trace}")
+            CustomErrorDialog("画布更新错误", f"画布更新失败: {e}", detailed_text=error_trace, parent=self.main_controller.main_window).exec()
 
     # def set_selected_object(self, item: [Vertex, Line, None]):
     #     """
@@ -178,12 +188,24 @@ class CanvasController(QObject):
                 obj = self._get_item_by_id(self.diagram_model.vertices, item_id)
             elif item_type == "line":
                 obj = self._get_item_by_id(self.diagram_model.lines, item_id)
+            elif item_type == "text":
+                obj = self._get_item_by_id(self.diagram_model.texts, item_id)
+            elif item_type == "label":
+                if item_id.startswith("vlabel:"):
+                    obj = self._get_item_by_id(self.diagram_model.vertices, item_id[len("vlabel:"):])
+                elif item_id.startswith("llabel:"):
+                    obj = self._get_item_by_id(self.diagram_model.lines, item_id[len("llabel:"):])
+                else:
+                    obj = None
 
             if self._current_canvas_mode == "select":
-                self.main_controller.select_item(obj) # MainController handles selection and updates all views
+                self.main_controller.select_item(obj, item_id=item_id)  # 传入 item_id 以支持 label 高亮
             elif self._current_canvas_mode == "add_line":
-                if item_type == "vertex": # Only vertices proceed with line creation
+                if item_type == "vertex":
                     self._collect_vertex_for_line(item_id)
+                elif item_type == "label" and obj is not None and hasattr(obj, "id"):
+                    # 点击顶点 label 视为选中该顶点
+                    self._collect_vertex_for_line(obj.id)
                 else:
                     self.main_controller.status_message.emit("In 'add line' mode, you must click a vertex.")
                     self.reset_line_creation_state()
@@ -199,6 +221,15 @@ class CanvasController(QObject):
             obj = self._get_item_by_id(self.diagram_model.vertices, item_id)
         elif item_type == "line":
             obj = self._get_item_by_id(self.diagram_model.lines, item_id)
+        elif item_type == "text":
+            obj = self._get_item_by_id(self.diagram_model.texts, item_id)
+        elif item_type == "label":
+            if item_id.startswith("vlabel:"):
+                obj = self._get_item_by_id(self.diagram_model.vertices, item_id[len("vlabel:"):])
+            elif item_id.startswith("llabel:"):
+                obj = self._get_item_by_id(self.diagram_model.lines, item_id[len("llabel:"):])
+            else:
+                obj = None
 
         self.main_controller.edit_item_properties(obj)
 
@@ -207,9 +238,32 @@ class CanvasController(QObject):
         """
         处理来自 CanvasWidget 的对象移动信号。
         更新模型中的对象位置，并通知 MainController 重新绘制所有视图。
+        支持顶点、其余文本、以及顶点/线条 label 的拖动（label 仅更新 label_offset）。
         """
         obj = None
-        # 查找被移动的对象
+        # 顶点/线条 label 拖动：仅更新 label_offset，不参与后续视图边距逻辑
+        if item_id.startswith("vlabel:"):
+            vertex_id = item_id[len("vlabel:"):]
+            vertex = self._get_item_by_id(self.diagram_model.vertices, vertex_id)
+            if vertex is not None:
+                vertex.label_offset = np.array([new_pos.x() - vertex.x, new_pos.y() - vertex.y])
+            self.main_controller.update_canvas_only(canvas_options={
+                'target_xlim': self.get_ax().get_xlim(), 'target_ylim': self.get_ax().get_ylim()
+            })
+            return
+        if item_id.startswith("llabel:"):
+            line_id = item_id[len("llabel:"):]
+            line = self._get_item_by_id(self.diagram_model.lines, line_id)
+            pts = getattr(line, 'plot_points', None) if line is not None else None
+            if line is not None and pts is not None and len(pts) > 0:
+                mid_idx = len(pts) // 2
+                mid = pts[mid_idx]
+                line.label_offset = np.array([new_pos.x() - mid[0], new_pos.y() - mid[1]])
+            self.main_controller.update_canvas_only(canvas_options={
+                'target_xlim': self.get_ax().get_xlim(), 'target_ylim': self.get_ax().get_ylim()
+            })
+            return
+        # 查找被移动的对象（顶点优先，再文本；顶点逻辑含网格与线条角度，文本仅更新坐标）
         if any(v.id == item_id for v in self.diagram_model.vertices):
             obj = next((v for v in self.diagram_model.vertices if v.id == item_id), None)
             if obj:
@@ -236,11 +290,24 @@ class CanvasController(QObject):
                         line.v_start = obj 
                     if line.v_end.id == obj.id:
                         line.v_end = obj
+                # 拖动时自动设置线角度（仅影响与该顶点相连的线；loop 线条忽略）
+                if self.auto_set_line_angles_on_drag:
+                    for line in self.diagram_model.lines:
+                        try:
+                            if getattr(line, "loop", False):
+                                continue
+                            if (line.v_start and line.v_start.id == obj.id) or (line.v_end and line.v_end.id == obj.id):
+                                line.reset_angles()
+                        except Exception:
+                            # 拖动过程中不应因单条线异常打断交互
+                            pass
+        elif any(t.id == item_id for t in self.diagram_model.texts):
+            obj = next((t for t in self.diagram_model.texts if t.id == item_id), None)
+            if obj:
+                obj.x = new_pos.x()
+                obj.y = new_pos.y()
 
-        # 如果是线条被拖动，目前你的模型结构不支持直接拖动线条，
-        # 通常线条是连接顶点的，移动线条意味着移动其连接的顶点，这需要更复杂的逻辑。
-        # 这里假设只有顶点可以被直接拖动。
-        # 如果将来支持线条拖动，可能需要在这里添加逻辑。
+        # 线条不支持直接拖动（移动线条需通过移动顶点实现）
 
         current_xlim = self.get_ax().get_xlim()
         current_ylim = self.get_ax().get_ylim()
@@ -300,8 +367,8 @@ class CanvasController(QObject):
                 # In this case, simply redraw maintaining the current view
                 canvas_options = {'target_xlim': current_xlim, 'target_ylim': current_ylim}
         
-        # 统一通过 MainController 触发更新
-        self.main_controller.update_all_views(canvas_options=canvas_options)
+        # 拖动/平移属于高频交互：只更新画布，不在此处刷新顶点列表（改为鼠标释放时统一刷新以减小开销）
+        self.main_controller.update_canvas_only(canvas_options=canvas_options)
 
 
     def _handle_selection_cleared_on_canvas_widget(self):
@@ -326,6 +393,88 @@ class CanvasController(QObject):
             if hasattr(item, 'id') and item.id == item_id:
                 return item
         return None
+
+    def get_canvas_options_for_object_at_position(self, obj) -> dict:
+        """
+        根据对象当前位置返回画布选项；若对象靠近视图边缘则扩展视图以包含对象。
+        供方向键移动顶点等场景使用，与拖动时的视图扩展逻辑一致。
+        """
+        current_xlim = self.get_ax().get_xlim()
+        current_ylim = self.get_ax().get_ylim()
+        margin_x = (current_xlim[1] - current_xlim[0]) * 0.1
+        margin_y = (current_ylim[1] - current_ylim[0]) * 0.1
+        adjusted_xlim = list(current_xlim)
+        adjusted_ylim = list(current_ylim)
+        needs_adjust = False
+        if obj.x < current_xlim[0] + margin_x:
+            adjusted_xlim[0] = obj.x - margin_x
+            needs_adjust = True
+        elif obj.x > current_xlim[1] - margin_x:
+            adjusted_xlim[1] = obj.x + margin_x
+            needs_adjust = True
+        if obj.y < current_ylim[0] + margin_y:
+            adjusted_ylim[0] = obj.y - margin_y
+            needs_adjust = True
+        elif obj.y > current_ylim[1] - margin_y:
+            adjusted_ylim[1] = obj.y + margin_y
+            needs_adjust = True
+        if needs_adjust:
+            return {'target_xlim': tuple(adjusted_xlim), 'target_ylim': tuple(adjusted_ylim)}
+        return {'target_xlim': current_xlim, 'target_ylim': current_ylim}
+
+    def apply_vertex_move(self, vertex: Vertex, new_x: float, new_y: float) -> None:
+        """
+        将顶点移动到 (new_x, new_y)，并更新线条端点引用与角度。
+        若开启「仅允许拖动到格点」则先对齐到网格。供方向键等调用。
+        """
+        if self.only_allow_grid_points:
+            grid_size = CANVAS_CONTROLLER_DEFAULTS['GRID_SIZE']
+            new_x = round(new_x / grid_size) * grid_size
+            new_y = round(new_y / grid_size) * grid_size
+        vertex.x = new_x
+        vertex.y = new_y
+        for line in self.diagram_model.lines:
+            if line.v_start.id == vertex.id:
+                line.v_start = vertex
+            if line.v_end.id == vertex.id:
+                line.v_end = vertex
+        if self.auto_set_line_angles_on_drag:
+            for line in self.diagram_model.lines:
+                try:
+                    if getattr(line, "loop", False):
+                        continue
+                    if (line.v_start and line.v_start.id == vertex.id) or (line.v_end and line.v_end.id == vertex.id):
+                        line.reset_angles()
+                except Exception:
+                    pass
+
+    def apply_label_offset_move(self, sel_id: str, dx: float, dy: float) -> bool:
+        """
+        根据 sel_id（vlabel:vertex_id 或 llabel:line_id）用方向键移动 label_offset。
+        供 MainController._handle_arrow_key 调用。
+        成功时返回 True，否则返回 False。
+        """
+        if sel_id.startswith("vlabel:"):
+            vertex_id = sel_id[len("vlabel:"):]
+            vertex = self._get_item_by_id(self.diagram_model.vertices, vertex_id)
+            if vertex is not None:
+                off = getattr(vertex, 'label_offset', None)
+                if off is None:
+                    vertex.label_offset = np.array([dx, dy])
+                else:
+                    vertex.label_offset = np.array([off[0] + dx, off[1] + dy])
+                return True
+        elif sel_id.startswith("llabel:"):
+            line_id = sel_id[len("llabel:"):]
+            line = self._get_item_by_id(self.diagram_model.lines, line_id)
+            if line is not None:
+                off = getattr(line, 'label_offset', None)
+                if off is None:
+                    line.label_offset = np.array([dx, dy])
+                else:
+                    line.label_offset = np.array([off[0] + dx, off[1] + dy])
+                return True
+        return False
 
     ### Canvas Panning and Zooming Logic ###
 
@@ -358,8 +507,10 @@ class CanvasController(QObject):
 
     def _handle_mouse_released(self):
         """
-        处理鼠标释放信号，结束画布平移模式。
+        处理鼠标释放信号。结束平移/拖动后统一刷新顶点列表与其余文本列表，使坐标显示与模型一致。
         """
+        self.main_controller.vertex_controller.update_vertex_list()
+        self.main_controller.other_texts_controller.update_text_list()
         self.main_controller.picture_model()
 
 
@@ -402,25 +553,21 @@ class CanvasController(QObject):
 
     def _perform_hit_test(self, x: float, y: float) -> Tuple[Optional[str], Optional[str]]:
         """
-        执行点击测试，判断点击是否落在对象（顶点或线条）上，并返回最近的对象。
-        此方法会遍历所有对象，找到距离鼠标点击位置最近的那个。
+        执行点击测试，判断点击是否落在对象（顶点、线条或其余文本）上，并返回最近的对象。
+        优先级：顶点 > 线条 > 文本，确保顶点拖动不受影响。
         """
         closest_id: Optional[str] = None
         closest_type: Optional[str] = None
-        min_dist_sq = float('inf') # 使用平方距离，避免开方运算，提高性能
+        min_dist_sq = float('inf')
+
+        x_limits, y_limits = self._canvas_instance.get_axes_limits()
+        width = max(x_limits[1] - x_limits[0], y_limits[1] - y_limits[0])
+        tolarence_scaling_factor = CANVAS_CONTROLLER_DEFAULTS["SCALING_FACTOR_FOR_TOLERANCE"]
+        hit_tolerance_vertex_sq = (tolarence_scaling_factor * width) ** 2
 
         # --- 遍历顶点进行点击检测 ---
         for vertex in self.diagram_model.vertices:
-            # 简单的距离检查，0.5 是经验值，根据顶点视觉大小调整
             dist_sq = (x - vertex.x)**2 + (y - vertex.y)**2
-            x_limits, y_limits = self._canvas_instance.get_axes_limits()
-            x_coverage = (x_limits[1] - x_limits[0])
-            y_coverage = (y_limits[1] - y_limits[0])
-            width = max(x_coverage , y_coverage)
-            # 使用容差来决定是否命中，这里我们直接比较距离
-            tolarence_scaling_factor = CANVAS_CONTROLLER_DEFAULTS["SCALING_FACTOR_FOR_TOLERANCE"]
-            hit_tolerance_vertex_sq = (tolarence_scaling_factor  *  width) ** 2
-            # hit_tolerance_vertex_sq = 0.5**2  # 顶点的点击容差
             if dist_sq < min_dist_sq and dist_sq < hit_tolerance_vertex_sq:
                 min_dist_sq = dist_sq
                 closest_id = vertex.id
@@ -477,6 +624,36 @@ class CanvasController(QObject):
                     closest_id = line.id
                     closest_type = "line"
 
+        # --- 其余文本：仅当未命中顶点/线条时，用渲染器提供的真实边界框检测（与显示一致）---
+        if closest_id is None:
+            try:
+                text_bboxes = self._canvas_instance.get_extra_text_bboxes()
+            except Exception:
+                text_bboxes = {}
+            best_text_area = float('inf')
+            for text_id, (x0, y0, x1, y1) in text_bboxes.items():
+                if not (x0 <= x <= x1 and y0 <= y <= y1):
+                    continue
+                area = (x1 - x0) * (y1 - y0)
+                if area < best_text_area:
+                    best_text_area = area
+                    closest_id = text_id
+                    closest_type = "text"
+        # --- 顶点/线条 label：仅当仍未命中时，用真实边界框检测，支持 label 拖动 ---
+        if closest_id is None:
+            try:
+                label_bboxes = self._canvas_instance.get_label_bboxes()
+            except Exception:
+                label_bboxes = {}
+            best_label_area = float('inf')
+            for label_key, (x0, y0, x1, y1) in label_bboxes.items():
+                if not (x0 <= x <= x1 and y0 <= y <= y1):
+                    continue
+                area = (x1 - x0) * (y1 - y0)
+                if area < best_label_area:
+                    best_label_area = area
+                    closest_id = label_key
+                    closest_type = "label"
         return closest_id, closest_type
     
 
@@ -545,7 +722,7 @@ class CanvasController(QObject):
 
             # Restore cursor to default state
             self.canvas_widget.setCursor(Qt.ArrowCursor)
-            print("Pan ended.")
+            cout("Pan ended.")
             # self.main_controller.picture_model()
 
 
@@ -563,6 +740,19 @@ class CanvasController(QObject):
             obj = self._get_item_by_id(self.diagram_model.lines, item_id)
             if isinstance(obj, Line):
                 self.main_controller.line_controller._on_request_edit_line(obj)
+        elif item_type == "text":
+            obj = self._get_item_by_id(self.diagram_model.texts, item_id)
+            if obj is not None and isinstance(obj, TextElement):
+                self.main_controller.other_texts_controller._on_request_edit_text(obj)
+        elif item_type == "label":
+            if item_id.startswith("vlabel:"):
+                obj = self._get_item_by_id(self.diagram_model.vertices, item_id[len("vlabel:"):])
+                if isinstance(obj, Vertex):
+                    self.main_controller.vertex_controller._on_edit_vertex_requested_from_list(obj)
+            elif item_id.startswith("llabel:"):
+                obj = self._get_item_by_id(self.diagram_model.lines, item_id[len("llabel:"):])
+                if isinstance(obj, Line):
+                    self.main_controller.line_controller._on_request_edit_line(obj)
 
 
     def _handle_object_deleted_on_canvas_widget(self, item_id: str, item_type: str):
@@ -576,9 +766,25 @@ class CanvasController(QObject):
             if isinstance(obj, Vertex):
                 self.main_controller.vertex_controller._on_delete_vertex_requested_from_list(obj)
         elif item_type == "line":
-                obj = self._get_item_by_id(self.diagram_model.lines, item_id)
-                if isinstance(obj, Line):
-                    self.main_controller.line_controller._on_request_delete_line(obj)
+            obj = self._get_item_by_id(self.diagram_model.lines, item_id)
+            if isinstance(obj, Line):
+                self.main_controller.line_controller._on_request_delete_line(obj)
+        elif item_type == "text":
+            obj = self._get_item_by_id(self.diagram_model.texts, item_id)
+            if obj is not None and isinstance(obj, TextElement):
+                self.main_controller.other_texts_controller._on_request_delete_text(obj)
+        elif item_type == "label":
+            # 删除 label：仅清空该顶点/线条的 label 文本，不删除顶点/线
+            if item_id.startswith("vlabel:"):
+                obj = self._get_item_by_id(self.diagram_model.vertices, item_id[len("vlabel:"):])
+                if obj is not None:
+                    obj.label = ""
+                    self.main_controller.update_all_views()
+            elif item_id.startswith("llabel:"):
+                obj = self._get_item_by_id(self.diagram_model.lines, item_id[len("llabel:"):])
+                if obj is not None:
+                    obj.label = ""
+                    self.main_controller.update_all_views()
 
     def _handle_blank_double_clicked_on_canvas_widget(self, position: QPointF): # <--- **修改此处，接受 QPointF 参数**
         """
@@ -607,7 +813,7 @@ class CanvasController(QObject):
         槽函数：切换画布的网格可见性。
         """
         self._canvas_instance.switch_grid_state()
-        print(f"Grid visibility toggled. Current state: {self._canvas_instance.grid_on}")
+        cout(f"Grid visibility toggled. Current state: {self._canvas_instance.grid_on}")
         self.main_controller.update_all_views(canvas_options ={"auto_scale": False})
         # Optional: Update status message
         # status_msg = "网格已显示" if self._grid_visible else "网格已隐藏"
@@ -631,5 +837,5 @@ class CanvasController(QObject):
         """
         self.transparent_background = not self.transparent_background
         self._canvas_instance.change_transparent_background_state(self.transparent_background)
-        print(f"Transparent background toggled. Current state: {self.transparent_background}")
+        cout(f"Transparent background toggled. Current state: {self.transparent_background}")
         self.main_controller.update_all_views(canvas_options={"auto_scale": False})

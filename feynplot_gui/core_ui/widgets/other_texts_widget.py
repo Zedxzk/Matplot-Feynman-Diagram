@@ -1,12 +1,14 @@
 # feynplot_gui\core_ui\widgets\other_texts_widget.py
 
-from PySide6.QtWidgets import QListWidget, QListWidgetItem, QMenu, QMessageBox, QApplication # Added QApplication for global position
+from PySide6.QtWidgets import QListWidget, QListWidgetItem, QMenu
 from PySide6.QtCore import Signal, Qt, QPoint
-from PySide6.QtGui import QMouseEvent
-# from requests import get # This import seems unrelated to UI logic, consider removing if not used elsewhere
-from feynplot_gui.debug.find_caller import print_caller_info # Keep this for debugging, or remove when done
-from feynplot_gui.debug.debug_output import other_texts_print
-
+from PySide6.QtGui import QMouseEvent, QKeyEvent
+from feynplot_gui.core_ui.widgets.list_widget_common import (
+    keyPressEvent_page_up_down,
+    mousePressEvent_blank_or_item,
+    set_selected_item_in_list_impl,
+    get_selected_item_from_list,
+)
 class OtherTextsWidget(QListWidget):
     """
     A QListWidget specifically for displaying a list of TextElement objects in the diagram.
@@ -38,12 +40,6 @@ class OtherTextsWidget(QListWidget):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.itemDoubleClicked.connect(self._on_item_double_clicked)
         self.customContextMenuRequested.connect(self._on_context_menu_requested)
-
-        # 存储 project_root，以便 print_caller_info 可以使用相对路径
-        # 理想情况下，这个值应该由 MainController 在初始化时传入
-        self.project_root = None 
-        # 可以考虑在这里设置一个默认值，或者要求它在构造函数中传入
-        # 例如: self.project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
     def _on_item_double_clicked(self, item: QListWidgetItem):
         """Handler for list item double-clicks."""
@@ -83,31 +79,12 @@ class OtherTextsWidget(QListWidget):
 
 
     def mousePressEvent(self, event: QMouseEvent):
-        """
-        Overrides the mouse press event to detect clicks on blank areas or list items.
-        """
-        # Call the base class's method first to handle standard UI selection logic
-        super().mousePressEvent(event) 
+        super().mousePressEvent(event)
+        mousePressEvent_blank_or_item(self, event, self.text_selected, self.list_blank_clicked)
 
-        if event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
-            item = self.itemAt(event.pos())
-            
-            if item is None:
-                # 仅在点击空白区域时打印堆栈，且将 project_root 传入
-                # 如果 self.project_root 未设置，它会打印完整路径
-                print_caller_info(start_depth=2, max_depth=5, message="OtherTextsWidget: Blank Area Click - Call Stack", base_path=self.project_root) 
-                
-                # If no item was clicked, it's a click on the blank area
-                print("OtherTextsWidget: 点击了空白区域。")
-                self.clearSelection() # Clear any existing selection
-                self.list_blank_clicked.emit() # Emit the blank click signal
-            else:
-                # If an item was clicked, emit its selection signal
-                text_element = item.data(Qt.ItemDataRole.UserRole)
-                if text_element:
-                    print(f"OtherTextsWidget: 点击了文本 {text_element.id}")
-                    self.text_selected.emit(text_element) # Emit the selected TextElement object
-        
+    def keyPressEvent(self, event: QKeyEvent):
+        """用 Page Up/Down 切换选中项；方向键由全局处理（移动顶点/平移画布）。"""
+        keyPressEvent_page_up_down(self, event, self.text_selected)
 
     def add_text_item(self, text_data):
         """
@@ -135,32 +112,8 @@ class OtherTextsWidget(QListWidget):
 
     def get_selected_text_element(self):
         """Retrieves the currently selected TextElement object, or None if nothing is selected."""
-        selected_items = self.selectedItems()
-        if selected_items:
-            return selected_items[0].data(Qt.ItemDataRole.UserRole)
-        return None
+        return get_selected_item_from_list(self)
 
     def set_selected_item_in_list(self, item_to_select):
-        """
-        Selects an item in the list based on the provided TextElement object.
-        If None is passed, all selections are cleared.
-        This method is for UI synchronization only and should not trigger new selection signals.
-        """
-        # Ensure signals are blocked to prevent infinite loops from itemSelectionChanged
-        self.blockSignals(True) 
-        print("OtherTextsWidget: 设置选中项")
-        self.clearSelection() # Clear any existing selection
-
-        if item_to_select is not None: 
-            for i in range(self.count()):
-                item_widget = self.item(i)
-                text_data = item_widget.data(Qt.ItemDataRole.UserRole)
-                # Compare TextElement objects by their ID to ensure it's the same object
-                if text_data and hasattr(item_to_select, 'id') and text_data.id == item_to_select.id:
-                    item_widget.setSelected(True)
-                    self.setCurrentItem(item_widget) 
-                    self.scrollToItem(item_widget) 
-                    break 
-            
-        # Unblock signals after processing
-        self.blockSignals(False)
+        """Selects an item in the list based on the provided TextElement object; None clears selection."""
+        set_selected_item_in_list_impl(self, item_to_select)

@@ -1,7 +1,8 @@
 # feynplot_gui/controllers/navigation_bar_controller.py
 
 from PySide6.QtCore import QObject, Signal
-from PySide6.QtWidgets import QMessageBox, QFileDialog
+from PySide6.QtWidgets import QFileDialog
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from feynplot_gui.core_ui.widgets.navigation_bar_widget import NavigationBarWidget
 from feynplot.core.vertex import Vertex # 用于类型提示
 from feynplot.core.line import Line # 用于类型提示
@@ -17,6 +18,7 @@ import matplotlib.pyplot as plt # 导入 matplotlib 用于应用 rcParams
 
 # 导入图的导入/导出函数
 from feynplot.io.diagram_io import export_diagram_to_json, import_diagram_from_json
+from feynplot_gui.debug_utils import cout
 
 # 为了避免循环导入，使用 TYPE_CHECKING
 # from typing import TYPE_CHECKING
@@ -52,6 +54,7 @@ class NavigationBarController(QObject):
         # 初始化 Matplotlib 设置对话框实例
         self._matplotlib_settings_dialog = MatplotlibSettingsDialog(parent=self.navigation_bar_widget)
         self._matplotlib_settings_dialog.settings_applied.connect(self._on_matplotlib_settings_applied)
+        self._matplotlib_settings_dialog.set_canvas_figsize_callback(self._get_canvas_figsize_inches)
 
         self.setup_connections()
         # 初始状态更新
@@ -85,6 +88,7 @@ class NavigationBarController(QObject):
         self.navigation_bar_widget.show_matplotlib_settings_triggered.connect(self._on_show_matplotlib_settings_ui_triggered)
         self.navigation_bar_widget.toggle_use_relative_unit.connect(self._on_toggle_use_relative_unit_ui_triggered)
         self.navigation_bar_widget.toggle_transparent_background.connect(self._on_toggle_transparent_background_ui_triggered)
+        self.navigation_bar_widget.toggle_auto_set_line_angles_on_drag.connect(self._on_toggle_auto_set_line_angles_on_drag_ui_triggered)
         try:
             self.main_controller.selection_changed.connect(self._on_main_controller_selection_changed)
         except AttributeError:
@@ -148,14 +152,14 @@ class NavigationBarController(QObject):
                 diagram = self.main_controller.diagram_model
                 if diagram:
                     export_diagram_to_json(diagram, file_path)
-                    QMessageBox.information(self.navigation_bar_widget, "保存成功", f"项目已成功保存到：\n{file_path}")
+                    MsgBox.information(self.navigation_bar_widget, "保存成功", f"项目已成功保存到：\n{file_path}")
                     self.status_message.emit(f"项目已保存到：{file_path}")
                     self.project_saved.emit() # 通知MainController项目已保存
                 else:
-                    QMessageBox.warning(self.navigation_bar_widget, self.tr("保存失败"), self.tr("当前没有可保存的费曼图项目。"))
+                    MsgBox.warning(self.navigation_bar_widget, self.tr("保存失败"), self.tr("当前没有可保存的费曼图项目。"))
                     self.status_message.emit("保存失败：没有可保存的项目。")
             except Exception as e:
-                QMessageBox.critical(self.navigation_bar_widget, "保存失败", f"保存项目时发生错误：\n{e}")
+                MsgBox.critical(self.navigation_bar_widget, "保存失败", f"保存项目时发生错误：\n{e}")
                 self.status_message.emit(f"保存失败：{e}")
         self._update_ui_state() # 总是更新UI状态
 
@@ -176,19 +180,19 @@ class NavigationBarController(QObject):
                 # 或者 MainController 有一个 set_diagram_model 方法来处理这个逻辑。
                 # 如果 MainController 只是直接赋值，则可能需要 MainController 内部做调整来发出信号。
                 self.main_controller.diagram_model = import_diagram_from_json(file_path, self.main_controller.diagram_model)
-                QMessageBox.information(self.navigation_bar_widget, "加载成功", f"项目已成功从：\n{file_path}")
+                MsgBox.information(self.navigation_bar_widget, "加载成功", f"项目已成功从：\n{file_path}")
                 self.main_controller.picture_model()
                 self.status_message.emit(f"项目已从：{file_path} 加载。")
                 self.project_loaded.emit() # 通知NavigationBarController自身项目已加载
             except Exception as e:
-                QMessageBox.critical(self.navigation_bar_widget, "加载失败", f"加载项目时发生错误：\n{e}")
+                MsgBox.critical(self.navigation_bar_widget, "加载失败", f"加载项目时发生错误：\n{e}")
                 self.status_message.emit(f"加载失败：{e}")
         self.main_controller.update_all_views(canvas_options={'auto_scale': True}) # 调用 MainController 更新视图，这也可能触发 _on_main_controller_diagram_updated
 
     def _on_add_vertex_ui_triggered(self):
         """处理UI的添加顶点触发，并发出业务请求信号。"""
         if not self.main_controller.diagram_model:
-            QMessageBox.warning(self.navigation_bar_widget, self.tr("操作禁用"), self.tr("请先加载或创建一个图项目。"))
+            MsgBox.warning(self.navigation_bar_widget, self.tr("操作禁用"), self.tr("请先加载或创建一个图项目。"))
             self.status_message.emit("添加顶点失败：没有图项目。")
             return
 
@@ -199,7 +203,7 @@ class NavigationBarController(QObject):
     def _on_add_line_ui_triggered(self):
         """处理UI的添加线条触发，并发出业务请求信号。"""
         if not self.main_controller.diagram_model:
-            QMessageBox.warning(self.navigation_bar_widget, self.tr("操作禁用"), self.tr("请先加载或创建一个图项目。"))
+            MsgBox.warning(self.navigation_bar_widget, self.tr("操作禁用"), self.tr("请先加载或创建一个图项目。"))
             self.status_message.emit("添加线条失败：没有图项目。")
             return
 
@@ -222,7 +226,7 @@ class NavigationBarController(QObject):
 
         if not all_vertices:
             # 如果没有顶点，则弹出提示并返回
-            QMessageBox.information(self.navigation_bar_widget, self.tr("无顶点"), self.tr("当前图中没有顶点可供编辑。"))
+            MsgBox.information(self.navigation_bar_widget, self.tr("无顶点"), self.tr("当前图中没有顶点可供编辑。"))
             self.status_message.emit("编辑所有顶点失败：当前图中没有顶点。")
             return
 
@@ -246,7 +250,7 @@ class NavigationBarController(QObject):
         all_lines = diagram.lines if diagram else []
 
         if not all_lines:
-            QMessageBox.information(self.navigation_bar_widget, self.tr("无线条"), self.tr("当前图中没有线条可供编辑。"))
+            MsgBox.information(self.navigation_bar_widget, self.tr("无线条"), self.tr("当前图中没有线条可供编辑。"))
             self.status_message.emit("编辑所有线条失败：当前图中没有线条。")
             return
 
@@ -273,12 +277,22 @@ class NavigationBarController(QObject):
         self.delete_selected_object_requested.emit()
         self._update_ui_state() # 删除后会影响UI状态
 
+    def _get_canvas_figsize_inches(self):
+        """返回画布当前 figure 的尺寸（宽, 高）英寸，供设置对话框同步。"""
+        try:
+            fig = self.main_controller.canvas_controller.canvas_widget.get_figure()
+            w, h = fig.get_size_inches()
+            return (float(w), float(h))
+        except Exception:
+            return (6.4, 4.8)
+
     def _on_show_matplotlib_settings_ui_triggered(self):
         """
         处理UI触发的显示Matplotlib设置请求。
         这是 NavigationBarController 自己的业务逻辑：管理 Matplotlib 设置对话框的显示。
         """
         self.status_message.emit("请求显示Matplotlib后端设置。")
+        self._matplotlib_settings_dialog.refresh_figsize_from_canvas()
         self._matplotlib_settings_dialog.exec()
 
     def _on_matplotlib_settings_applied(self, settings: dict):
@@ -299,6 +313,19 @@ class NavigationBarController(QObject):
                     self.status_message.emit(f"警告: Matplotlib中不存在参数 '{key}'，跳过。")
                 except Exception as e:
                     self.status_message.emit(f"警告: 应用 Matplotlib 参数 '{key}' 失败: {e}")
+
+            # 同步 axes.grid 到画布渲染器的 grid_on（否则后端设置的网格选项不生效）
+            if "axes.grid" in settings:
+                canvas = getattr(self.main_controller.canvas_controller, '_canvas_instance', None)
+                if canvas is not None:
+                    canvas.grid_on = bool(settings["axes.grid"])
+
+            # 同步 figure.figsize 到画布（否则图像尺寸设置不生效）
+            if "figure.figsize" in settings:
+                figsize = settings["figure.figsize"]
+                if isinstance(figsize, (list, tuple)) and len(figsize) >= 2:
+                    fig = self.main_controller.canvas_controller.canvas_widget.get_figure()
+                    fig.set_size_inches(float(figsize[0]), float(figsize[1]))
 
             if hasattr(self.main_controller, 'update_all_views'):
                 self.main_controller.update_all_views()
@@ -386,10 +413,10 @@ class NavigationBarController(QObject):
         当用户在导航栏中切换“相对单位”复选框时调用。
         更新 canvas_controller 的 relative_size_unit 属性，并通知 MainController 更新所有视图。
         """
-        print("触发切换相对单位的UI事件。")
+        cout("触发切换相对单位的UI事件。")
         self.main_controller.canvas_controller.relative_size_unit = not self.main_controller.canvas_controller.relative_size_unit
         self.status_message.emit(f"已切换相对单位使用状态: {self.main_controller.canvas_controller.relative_size_unit}")
-        print(f"当前相对单位状态: {self.main_controller.canvas_controller.relative_size_unit}")
+        cout(f"当前相对单位状态: {self.main_controller.canvas_controller.relative_size_unit}")
         self.main_controller.update_all_views(canvas_options={'auto_scale': True})
 
     def _on_toggle_transparent_background_ui_triggered(self):
@@ -397,8 +424,19 @@ class NavigationBarController(QObject):
         当用户在导航栏中切换“透明背景”复选框时调用。
         更新 canvas_controller 的 transparent_background 属性，并通知 MainController 更新所有视图。
         """
-        print("触发切换透明背景的UI事件。")
+        cout("触发切换透明背景的UI事件。")
         self.main_controller.canvas_controller.toggle_transparent_background()
         self.status_message.emit(f"已切换透明背景状态: {self.main_controller.canvas_controller.transparent_background}")
-        print(f"当前透明背景状态: {self.main_controller.canvas_controller.transparent_background}")
+        cout(f"当前透明背景状态: {self.main_controller.canvas_controller.transparent_background}")
         self.main_controller.update_all_views(canvas_options={'auto_scale': True})
+
+    def _on_toggle_auto_set_line_angles_on_drag_ui_triggered(self, checked: bool):
+        """
+        当用户切换“拖动时自动设置线角度”复选框时调用。
+        仅更新 CanvasController 的运行时开关，不强制触发一次全量重绘。
+        """
+        try:
+            self.main_controller.canvas_controller.auto_set_line_angles_on_drag = bool(checked)
+            self.status_message.emit(f"拖动时自动设置线角度: {checked}")
+        except Exception as e:
+            self.status_message.emit(f"更新拖动自动线角度开关失败: {e}")

@@ -1,7 +1,7 @@
 # feynplot_gui/controllers/line_dialogs/edit_line.py
 
 from PySide6.QtWidgets import (
-    QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QGroupBox,
     QScrollArea, QWidget, QFormLayout
 )
@@ -26,6 +26,8 @@ from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.photon_
 from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.gluon_line_editor import GluonLineEditor
 from feynplot_gui.core_ui.controllers.line_dialogs.specific_line_editors.wz_boson_line_editor import WZBosonLineEditor
 from feynplot_gui.core_ui.controllers.line_dialogs.specific_linestyle_editors.hollow_line_editor import HollowLineEditor
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 
 def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widget=None) -> bool:
     """
@@ -34,7 +36,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
     """
     # 确保 line 参数是一个 Line 实例，因为现在只处理编辑模式
     if not isinstance(line, Line):
-        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的线条，无法编辑。"))
+        MsgBox.critical(parent_widget, "错误", "提供的对象不是一个有效的线条，无法编辑。")
         return False
 
     class _InternalEditLineDialog(QDialog, LineEditBase):
@@ -59,6 +61,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             self.setGeometry(200, 200, 480, 750)
             self.setMinimumHeight(300)
             self.setMaximumHeight(800)
+            apply_dialog_style(self)
 
             # --- 主对话框布局 ---
             self.main_dialog_layout = QVBoxLayout(self)
@@ -68,6 +71,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             self.scroll_area.setWidgetResizable(True)
             self.scroll_content_widget = QWidget()
             self.main_form_layout = QFormLayout(self.scroll_content_widget)
+            apply_content_layout(self.main_form_layout)
             self.scroll_area.setWidget(self.scroll_content_widget)
             self.main_dialog_layout.addWidget(self.scroll_area)
 
@@ -118,7 +122,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
             else:  # 如果编辑的线条类型不在列表中
                 self.particle_type_combo.addItem("未知类型", None)
                 self.particle_type_combo.setCurrentIndex(self.particle_type_combo.count() - 1)
-                QMessageBox.warning(self, "警告", f"当前线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
+                MsgBox.warning(self, "警告", f"当前线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
 
             self.main_form_layout.addRow("线条粒子类型:", self.particle_type_combo)
 
@@ -403,14 +407,14 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
                     
                     # 关键：更新对话框内部的 line 引用，以便 line_updated 信号传递的是正确的对象
                     self.line = new_line_instance
-                    QMessageBox.information(self, "操作成功", f"线条 {new_line_id} 类型已更换并更新。")
+                    MsgBox.information(self, "操作成功", f"线条 {new_line_id} 类型已更换并更新。")
 
                 except ValueError as e:
-                    QMessageBox.critical(self, "操作失败", str(e))
+                    MsgBox.critical(self, "操作失败", str(e))
                     super().reject()
                     return
                 except Exception as e:
-                    QMessageBox.critical(self, "错误", f"更新线条时发生未知错误: {e}")
+                    MsgBox.critical(self, "错误", f"更新线条时发生未知错误: {e}")
                     super().reject()
                     return
             # --- 线条类型未变化时的处理逻辑 (编辑现有线条) ---
@@ -441,7 +445,7 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
                     current_editor = self.specific_editors[selected_particle_class]
                     current_editor.apply_properties(self.line)
 
-                QMessageBox.information(self, "操作成功", f"线条 {self.line.id} 属性已更新。")
+                MsgBox.information(self, "操作成功", f"线条 {self.line.id} 属性已更新。")
 
             super().accept()  # 接受对话框
 
@@ -453,6 +457,6 @@ def open_edit_line_dialog(line: Line, diagram_model: FeynmanDiagram, parent_widg
         return True
     else:
         # 对话框取消
-        # QMessageBox.information(parent_widget, "编辑取消", f"线条 {line.id} 属性编辑已取消。")
+        # MsgBox.information(parent_widget, "编辑取消", f"线条 {line.id} 属性编辑已取消。")
         
         return False

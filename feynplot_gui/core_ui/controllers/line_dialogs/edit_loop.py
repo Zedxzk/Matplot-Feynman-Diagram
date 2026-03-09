@@ -1,7 +1,7 @@
 # feynplot_gui/controllers/line_dialogs/edit_loop.py
 
 from PySide6.QtWidgets import (
-    QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QGroupBox,
     QScrollArea, QWidget, QFormLayout, QCheckBox, QButtonGroup, QRadioButton
 )
@@ -17,6 +17,7 @@ from feynplot.core.line import (
 )
 from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.vertex import Vertex
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 import numpy as np
 
 
@@ -218,9 +219,11 @@ class GluonLoopEditor:
     
     def _create_ui(self):
         """创建胶子环形线条特有的UI控件"""
-        # 胶子环形线条特有属性：螺旋数量和振幅
-        self.n_cycles_spinbox = QSpinBox()
-        self.n_cycles_spinbox.setRange(1, 20)
+        # 胶子环形线条特有属性：螺旋数量、振幅、绕向、扁率
+        self.n_cycles_spinbox = QDoubleSpinBox()
+        self.n_cycles_spinbox.setRange(0.5, 50.0)
+        self.n_cycles_spinbox.setSingleStep(0.5)
+        self.n_cycles_spinbox.setDecimals(2)
         n_cycles_label = QLabel(self.tr("螺旋数量:"))
         
         self.form_layout.addRow(n_cycles_label, self.n_cycles_spinbox)
@@ -231,29 +234,65 @@ class GluonLoopEditor:
         amplitude_label = QLabel(self.tr("螺旋振幅:"))
         
         self.form_layout.addRow(amplitude_label, self.amplitude_spinbox)
-        
+
+        self.squash_ratio_spinbox = QDoubleSpinBox()
+        self.squash_ratio_spinbox.setRange(0.1, 3.0)
+        self.squash_ratio_spinbox.setSingleStep(0.05)
+        self.squash_ratio_spinbox.setDecimals(2)
+        squash_ratio_label = QLabel(self.tr("扁率(Squash):"))
+        self.form_layout.addRow(squash_ratio_label, self.squash_ratio_spinbox)
+
+        winding_label = QLabel(self.tr("绕向:"))
+        self.winding_combo = QComboBox()
+        self.winding_combo.addItems([self.tr("逆时针"), self.tr("顺时针")])
+        self.form_layout.addRow(winding_label, self.winding_combo)
+
+        start_straight_label = QLabel(self.tr("开始直线比例:"))
+        self.start_straight_spinbox = QDoubleSpinBox()
+        self.start_straight_spinbox.setRange(0.0, 1.0)
+        self.start_straight_spinbox.setSingleStep(0.05)
+        self.start_straight_spinbox.setDecimals(2)
+        self.form_layout.addRow(start_straight_label, self.start_straight_spinbox)
+        end_straight_label = QLabel(self.tr("终止直线比例:"))
+        self.end_straight_spinbox = QDoubleSpinBox()
+        self.end_straight_spinbox.setRange(0.0, 1.0)
+        self.end_straight_spinbox.setSingleStep(0.05)
+        self.end_straight_spinbox.setDecimals(2)
+        self.form_layout.addRow(end_straight_label, self.end_straight_spinbox)
+
         self.widgets.extend([
             n_cycles_label, self.n_cycles_spinbox,
-            amplitude_label, self.amplitude_spinbox
+            amplitude_label, self.amplitude_spinbox,
+            squash_ratio_label, self.squash_ratio_spinbox,
+            winding_label, self.winding_combo,
+            start_straight_label, self.start_straight_spinbox,
+            end_straight_label, self.end_straight_spinbox,
         ])
         self._load_properties()
     
     def _load_properties(self):
         """从loop对象加载属性到UI"""
-        # 使用 getattr 安全地访问属性，提供默认值
-        self.n_cycles_spinbox.setValue(getattr(self.loop, 'n_cycles', 8))
+        self.n_cycles_spinbox.setValue(float(getattr(self.loop, 'n_cycles', 8)))
         self.amplitude_spinbox.setValue(getattr(self.loop, 'amplitude', 0.3))
-    
+        self.squash_ratio_spinbox.setValue(float(getattr(self.loop, 'squash_ratio', 1.0)))
+        self.winding_combo.setCurrentText(self.tr("顺时针") if getattr(self.loop, 'clockwise', False) else self.tr("逆时针"))
+        self.start_straight_spinbox.setValue(float(getattr(self.loop, 'start_straight_ratio', 0.0)))
+        self.end_straight_spinbox.setValue(float(getattr(self.loop, 'end_straight_ratio', 0.0)))
+
     def set_visible(self, visible: bool):
         """设置所有控件的可见性"""
         for widget in self.widgets:
             widget.setVisible(visible)
-    
+
     def get_specific_kwargs(self) -> Dict[str, Any]:
-        """获取胶子环形线条特有的参数"""
+        """获取胶子环形线条特有的参数（绕向用 clockwise，无相位）"""
         return {
-            'n_cycles': self.n_cycles_spinbox.value(),
-            'amplitude': self.amplitude_spinbox.value()
+            'n_cycles': float(self.n_cycles_spinbox.value()),
+            'amplitude': self.amplitude_spinbox.value(),
+            'clockwise': (self.winding_combo.currentText() == self.tr("顺时针")),
+            'squash_ratio': float(self.squash_ratio_spinbox.value()),
+            'start_straight_ratio': float(self.start_straight_spinbox.value()),
+            'end_straight_ratio': float(self.end_straight_spinbox.value()),
         }
     
     def apply_properties(self, loop: Line):
@@ -288,6 +327,13 @@ class WZBosonLoopEditor:
         frequency_label = QLabel(self.tr("频率:"))
         self.form_layout.addRow(frequency_label, self.frequency_spinbox)
         self.widgets.extend([frequency_label, self.frequency_spinbox])
+
+        self.wz_style_combo = QComboBox()
+        self.wz_style_combo.addItem(self.tr("波浪线"), True)
+        self.wz_style_combo.addItem(self.tr("折线"), False)
+        wz_style_label = QLabel(self.tr("线型:"))
+        self.form_layout.addRow(wz_style_label, self.wz_style_combo)
+        self.widgets.extend([wz_style_label, self.wz_style_combo])
 
         # 初始相位
         self.initial_phase_label = QLabel(self.tr("初始相位:"))
@@ -338,6 +384,9 @@ class WZBosonLoopEditor:
             self.dash_pattern_combo.setCurrentText('点划线')
         self.amplitude_spinbox.setValue(getattr(self.loop, 'zigzag_amplitude', 0.3))
         self.frequency_spinbox.setValue(getattr(self.loop, 'zigzag_frequency', 1.0))
+        use_wavy = getattr(self.loop, 'wz_use_wavy', True)
+        idx = self.wz_style_combo.findData(use_wavy)
+        self.wz_style_combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.initial_phase_0_checkbox.setChecked(getattr(self.loop, 'initial_phase', 0) == 0)
         self.initial_phase_180_checkbox.setChecked(getattr(self.loop, 'initial_phase', 0) == 180)
         self.final_phase_0_checkbox.setChecked(getattr(self.loop, 'final_phase', 0) == 0)
@@ -358,6 +407,7 @@ class WZBosonLoopEditor:
         pattern = pattern_map.get(self.dash_pattern_combo.currentText(), 'short')
         return {
             'dash_pattern': pattern,
+            'wz_use_wavy': bool(self.wz_style_combo.currentData()),
             'zigzag_amplitude': self.amplitude_spinbox.value(),
             'zigzag_frequency': self.frequency_spinbox.value(),
             'initial_phase': 0 if self.initial_phase_0_checkbox.isChecked() else 180,
@@ -381,7 +431,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
     This function is exclusively for editing existing loops.
     """
     if not isinstance(loop, Line) or not getattr(loop, 'loop', False):
-        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的环形线条，无法编辑。"))
+        MsgBox.critical(parent_widget, "错误", "提供的对象不是一个有效的环形线条，无法编辑。")
         return False
 
     class _InternalEditLoopDialog(QDialog, LoopEditBase):
@@ -443,7 +493,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
             else:
                 self.particle_type_combo.addItem("未知类型", None)
                 self.particle_type_combo.setCurrentIndex(self.particle_type_combo.count() - 1)
-                QMessageBox.warning(self, "警告", f"当前环形线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
+                MsgBox.warning(self, "警告", f"当前环形线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
 
             self.main_form_layout.addRow("环形线条粒子类型:", self.particle_type_combo)
             initial_semi_major = getattr(self.loop, 'a', 1.0)
@@ -597,13 +647,13 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
                 try:
                     self.diagram_model.add_line(line=new_loop_instance)
                     self.loop = new_loop_instance
-                    QMessageBox.information(self, "操作成功", f"环形线条 {new_loop_id} 类型已更换并更新。")
+                    MsgBox.information(self, "操作成功", f"环形线条 {new_loop_id} 类型已更换并更新。")
                 except ValueError as e:
-                    QMessageBox.critical(self, "操作失败", str(e))
+                    MsgBox.critical(self, "操作失败", str(e))
                     super().reject()
                     return
                 except Exception as e:
-                    QMessageBox.critical(self, "错误", f"更新环形线条时发生未知错误: {e}")
+                    MsgBox.critical(self, "错误", f"更新环形线条时发生未知错误: {e}")
                     super().reject()
                     return
             # --- 环形线条类型未变化时的处理逻辑 (编辑现有环形线条) ---
@@ -627,7 +677,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
                 if selected_particle_class in self.specific_editors:
                     current_editor = self.specific_editors[selected_particle_class]
                     current_editor.apply_properties(self.loop)
-                QMessageBox.information(self, "操作成功", f"环形线条 {self.loop.id} 属性已更新。")
+                MsgBox.information(self, "操作成功", f"环形线条 {self.loop.id} 属性已更新。")
 
             super().accept()
 

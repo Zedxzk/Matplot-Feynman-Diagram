@@ -69,9 +69,9 @@ def generate_WZ_zigzag(line):
     # ---- 自动微调频率以匹配自然闭合 ----
     raw_n_cycles = getattr(line, 'zigzag_frequency', 2.0) * total_arc_length
     n_half_cycles = round(raw_n_cycles * 2) 
-    if line.initial_phase == 0:
+    if getattr(line, 'initial_phase', 0) == 0:
         n_half_cycles += 1
-    if line.final_phase == 0:
+    if getattr(line, 'final_phase', 0) == 0:
         n_half_cycles += 1
     
     if total_arc_length > 1e-6:
@@ -82,21 +82,32 @@ def generate_WZ_zigzag(line):
     actual_zigzag_wavelength = 1.0 / adjusted_frequency if adjusted_frequency > 0 else total_arc_length
     # ------------------------------------
     
-    # 计算锯齿位移
+    # 计算位移：波浪线（正弦）或折线（锯齿），默认波浪线
+    use_wavy = getattr(line, 'wz_use_wavy', True)
     start_up = (getattr(line, 'initial_phase', 0) == 0)
-    zigzag_displacement = np.zeros(num_bezier_points)
+    displacement = np.zeros(num_bezier_points)
     for i in range(num_bezier_points):
-        zigzag_displacement[i] = find_zigzag_y(zigzag_amplitude, actual_zigzag_wavelength, arc_len[i], start_up)
+        if use_wavy:
+            displacement[i] = find_wavy_y(zigzag_amplitude, actual_zigzag_wavelength, arc_len[i], start_up)
+        else:
+            displacement[i] = find_zigzag_y(zigzag_amplitude, actual_zigzag_wavelength, arc_len[i], start_up)
 
-    # 生成锯齿线
-    xs_zigzag_path = xs + nx * zigzag_displacement
-    ys_zigzag_path = ys + ny * zigzag_displacement
+    # 生成路径
+    xs_zigzag_path = xs + nx * displacement
+    ys_zigzag_path = ys + ny * displacement
     zigzag_path = np.column_stack((xs_zigzag_path, ys_zigzag_path))
     
     return zigzag_path, base_path
 
 
-# find_zigzag_y 函数保持不变
+def find_wavy_y(amplitude: float, wavelength: float, x: float, start_up: bool = True) -> float:
+    """正弦波浪线位移。"""
+    if amplitude == 0 or wavelength == 0:
+        return 0.0
+    phase_offset = 0.0 if start_up else math.pi
+    return amplitude * math.sin(2 * math.pi * x / wavelength + phase_offset)
+
+
 def find_zigzag_y(amplitude: float, wavelength: float, x: float, start_up: bool = True) -> float:
     #... (保持不变)
     if amplitude == 0 or wavelength == 0:

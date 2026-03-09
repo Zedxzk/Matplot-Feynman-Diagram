@@ -2,8 +2,9 @@
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit, QCheckBox,
-    QComboBox, QDialogButtonBox, QLabel, QMessageBox, QFontComboBox,
-    QSpinBox, QHBoxLayout, QWidget, QGroupBox, QSpacerItem, QSizePolicy # 导入 QSpacerItem 和 QSizePolicy
+    QComboBox, QLabel, QFontComboBox, QPushButton,
+    QSpinBox, QHBoxLayout, QWidget, QGroupBox, QSpacerItem, QSizePolicy,
+    QScrollArea
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDoubleValidator, QIntValidator
@@ -11,6 +12,9 @@ from PySide6.QtGui import QDoubleValidator, QIntValidator
 from typing import Dict, Any, Optional
 
 import matplotlib.pyplot as plt
+from feynplot_gui.debug_utils import cout
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 
 class MatplotlibSettingsDialog(QDialog):
     """
@@ -24,7 +28,8 @@ class MatplotlibSettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(self.tr("Matplotlib 后端设置"))
         self.setMinimumWidth(500)
-        print(f"当前 rcParams['savefig.dpi'] 的值为: {plt.rcParams['savefig.dpi']}")
+        cout(f"当前 rcParams['savefig.dpi'] 的值为: {plt.rcParams['savefig.dpi']}")
+        apply_dialog_style(self)
 
         self._current_settings = self._get_current_matplotlib_settings()
 
@@ -34,14 +39,15 @@ class MatplotlibSettingsDialog(QDialog):
     def init_ui(self):
         """初始化对话框的用户界面元素和布局。"""
         main_layout = QVBoxLayout(self)
+        apply_content_layout(main_layout)
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_content_widget = QWidget()
+        scroll_content_layout = QVBoxLayout(scroll_content_widget)
 
-        # --- 1. 字体设置组 ---
-        # 调整：现在 _create_collapsible_group_box 返回 group_box 和其内部的 content_layout
         self.font_group_box, font_layout = self._create_collapsible_group_box("字体设置")
-
         self.font_family_combo = QFontComboBox()
         font_layout.addRow("字体家族:", self.font_family_combo)
-
         font_size_layout = QHBoxLayout()
         self.font_size_edit = QLineEdit()
         self.font_size_edit.setPlaceholderText(self.tr("例如: 12.0"))
@@ -49,24 +55,19 @@ class MatplotlibSettingsDialog(QDialog):
         font_size_layout.addWidget(self.font_size_edit)
         font_size_layout.addWidget(QLabel(self.tr("pt")))
         font_layout.addRow("字体大小:", font_size_layout)
-        
-        main_layout.addWidget(self.font_group_box)
+        scroll_content_layout.addWidget(self.font_group_box)
 
-        # --- 2. LaTeX 设置组 ---
         self.latex_group_box, latex_layout = self._create_collapsible_group_box("LaTeX 设置")
-
         self.use_latex_checkbox = QCheckBox(self.tr("使用 LaTeX 渲染文本"))
         self.use_latex_checkbox.stateChanged.connect(self._on_usetex_changed)
         latex_layout.addRow("LaTeX 支持:", self.use_latex_checkbox)
-
         self.latex_font_family_combo = QComboBox()
         self.latex_font_family_combo.addItems([
             "serif (Times New Roman)", "sans-serif (Helvetica/Arial)", "monospace (Courier)"
         ])
         self.latex_font_family_combo.setEditable(False)
         latex_layout.addRow("LaTeX 字体家族:", self.latex_font_family_combo)
-        
-        main_layout.addWidget(self.latex_group_box)
+        scroll_content_layout.addWidget(self.latex_group_box)
 
 
         # --- 3. 线条和标记设置组 ---
@@ -100,9 +101,7 @@ class MatplotlibSettingsDialog(QDialog):
         marker_size_layout.addWidget(self.lines_markersize_edit)
         marker_size_layout.addWidget(QLabel(self.tr("pt")))
         lines_layout.addRow("默认标记大小:", marker_size_layout)
-
-        main_layout.addWidget(self.lines_group_box)
-
+        scroll_content_layout.addWidget(self.lines_group_box)
 
         # --- 4. 轴与刻度设置组 ---
         self.axes_ticks_group_box, axes_ticks_layout = self._create_collapsible_group_box("轴与刻度设置")
@@ -124,8 +123,7 @@ class MatplotlibSettingsDialog(QDialog):
         
         self.axes_grid_checkbox = QCheckBox(self.tr("显示网格"))
         axes_ticks_layout.addRow("网格:", self.axes_grid_checkbox)
-
-        main_layout.addWidget(self.axes_ticks_group_box)
+        scroll_content_layout.addWidget(self.axes_ticks_group_box)
 
         # --- 5. 图例设置组 ---
         self.legend_group_box, legend_layout = self._create_collapsible_group_box("图例设置")
@@ -144,9 +142,7 @@ class MatplotlibSettingsDialog(QDialog):
             "right", "center left", "center right", "lower center", "upper center", "center"
         ])
         legend_layout.addRow("图例位置:", self.legend_loc_combo)
-        
-        main_layout.addWidget(self.legend_group_box)
-
+        scroll_content_layout.addWidget(self.legend_group_box)
 
         # --- 6. 图像与保存设置组 ---
         self.figure_save_group_box, figure_save_layout = self._create_collapsible_group_box("图像与保存设置")
@@ -175,24 +171,24 @@ class MatplotlibSettingsDialog(QDialog):
         self.savefig_format_combo = QComboBox()
         self.savefig_format_combo.addItems(["png", "pdf", "svg", "jpeg", "tiff"])
         figure_save_layout.addRow("保存图片格式:", self.savefig_format_combo)
-        
-        main_layout.addWidget(self.figure_save_group_box)
+        scroll_content_layout.addWidget(self.figure_save_group_box)
+        scroll_content_layout.addStretch(1)
 
+        scroll_area.setWidget(scroll_content_widget)
+        main_layout.addWidget(scroll_area)
 
-        # 添加一个垂直伸缩器，确保内容不会顶到对话框顶部
-        main_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
-
-        # --- 按钮盒 ---
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | 
-            QDialogButtonBox.StandardButton.Cancel | 
-            QDialogButtonBox.StandardButton.Apply 
-        )
-        button_box.accepted.connect(self._on_ok_clicked)
-        button_box.rejected.connect(self.reject)
-        button_box.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self._on_apply_clicked)
-        
-        main_layout.addWidget(button_box)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        apply_btn = QPushButton(self.tr("应用"))
+        apply_btn.clicked.connect(self._on_apply_clicked)
+        ok_btn = QPushButton(self.tr("确定"))
+        ok_btn.clicked.connect(self._on_ok_clicked)
+        cancel_btn = QPushButton(self.tr("取消"))
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(apply_btn)
+        button_layout.addWidget(ok_btn)
+        button_layout.addWidget(cancel_btn)
+        main_layout.addLayout(button_layout)
 
     def _create_collapsible_group_box(self, title: str) -> tuple[QGroupBox, QFormLayout]:
         """
@@ -441,7 +437,7 @@ class MatplotlibSettingsDialog(QDialog):
             self.accept()
         else:
             error_message = "以下字段输入无效，请修正：\n\n" + "\n".join(validation_errors)
-            QMessageBox.warning(self, "输入错误", error_message)
+            MsgBox.warning(self, "输入错误", error_message)
 
     def _on_apply_clicked(self):
         """处理Apply按钮点击，发出信号但不关闭对话框。"""
@@ -449,8 +445,8 @@ class MatplotlibSettingsDialog(QDialog):
         if not validation_errors:
             new_settings = self.get_settings_from_ui()
             self.settings_applied.emit(new_settings)
-            QMessageBox.information(self, self.tr("设置已应用"), self.tr("Matplotlib 设置已应用。"))
+            MsgBox.information(self, self.tr("设置已应用"), self.tr("Matplotlib 设置已应用。"))
         else:
             error_message = "以下字段输入无效，请修正：\n\n" + "\n".join(validation_errors)
-            QMessageBox.warning(self, "输入错误", error_message)
+            MsgBox.warning(self, "输入错误", error_message)
 

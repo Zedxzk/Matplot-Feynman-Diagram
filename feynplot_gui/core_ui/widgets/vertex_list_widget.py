@@ -1,8 +1,14 @@
 # feynplot_gui/widgets/vertex_list_widget.py
 
-from PySide6.QtWidgets import QListWidget, QListWidgetItem, QMenu, QMessageBox
+from PySide6.QtWidgets import QListWidget, QListWidgetItem, QMenu
 from PySide6.QtCore import Signal, Qt
-from PySide6.QtGui import QMouseEvent # 导入 QMouseEvent
+from PySide6.QtGui import QMouseEvent, QKeyEvent
+from feynplot_gui.core_ui.widgets.list_widget_common import (
+    keyPressEvent_page_up_down,
+    mousePressEvent_blank_or_item,
+    set_selected_item_in_list_impl,
+    get_selected_item_from_list,
+)
 
 class VertexListWidget(QListWidget):
     """
@@ -65,35 +71,12 @@ class VertexListWidget(QListWidget):
                 menu.exec(self.mapToGlobal(position))
 
     def mousePressEvent(self, event: QMouseEvent):
-        """
-        重写鼠标按下事件，检测是否点击了列表的空白处或列表项。
-        """
-        # ！！重要修改！！
-        # 在处理鼠标事件期间，暂时阻塞信号，防止 itemSelectionChanged 意外触发循环
-        # self.blockSignals(True) 
-        
-        # 先调用父类的 mousePressEvent，让 QListWidget 处理正常的UI选中逻辑（例如点击某个项就选中它）
-        super().mousePressEvent(event) 
+        super().mousePressEvent(event)
+        mousePressEvent_blank_or_item(self, event, self.vertex_selected, self.list_blank_clicked)
 
-        if event.button() == Qt.MouseButton.LeftButton or event.button() == Qt.MouseButton.RightButton:
-            # itemAt(pos) 返回给定位置的 QListWidgetItem，如果没有则返回 None
-            item = self.itemAt(event.pos())
-            
-            if item is None:
-                # 如果点击的位置没有列表项，表示点击了空白处
-                print("VertexListWidget: 点击了空白区域。")
-                self.list_blank_clicked.emit() # 发出空白点击信号
-            else:
-                # 如果点击了某个列表项，发出该项的选中信号
-                vertex = item.data(Qt.ItemDataRole.UserRole)
-                if vertex:
-                    print(f"VertexListWidget: 点击了顶点 {vertex.id}")
-                    self.vertex_selected.emit(vertex) # 发出选中的 Vertex 对象
-        
-        # ！！重要修改！！
-        # 处理完毕后解除信号阻塞
-        # self.blockSignals(False)
-
+    def keyPressEvent(self, event: QKeyEvent):
+        """用 Page Up/Down 切换选中项；方向键由全局处理（移动顶点/平移画布）。"""
+        keyPressEvent_page_up_down(self, event, self.vertex_selected)
 
     def add_vertex_item(self, vertex_data):
         """
@@ -117,34 +100,8 @@ class VertexListWidget(QListWidget):
 
     def get_selected_vertex(self):
         """获取当前选中的 Vertex 对象，如果没有选中则返回 None。"""
-        selected_items = self.selectedItems()
-        if selected_items:
-            return selected_items[0].data(Qt.ItemDataRole.UserRole)
-        return None
+        return get_selected_item_from_list(self)
 
     def set_selected_item_in_list(self, item_to_select):
-        """
-        根据传入的 Vertex 对象在列表中进行选中。
-        如果传入 None，则取消所有选中。
-        这个方法仅用于UI层面同步选中状态，不应触发新的选择信号。
-        """
-        # ！！重要！！
-        # 确保这里继续阻塞信号，防止 itemSelectionChanged 信号被触发，导致循环
-        # self.blockSignals(True) 
-        # print("VertexListWidget: 设置选中项")
-        self.clearSelection() # 首先清除所有选中
-
-        if item_to_select is not None: 
-            for i in range(self.count()):
-                item_widget = self.item(i)
-                vertex_data = item_widget.data(Qt.ItemDataRole.UserRole)
-                # 比较 Vertex 对象的 ID 来确定是否是同一个对象
-                if vertex_data and hasattr(item_to_select, 'id') and vertex_data.id == item_to_select.id:
-                    item_widget.setSelected(True)
-                    self.setCurrentItem(item_widget) 
-                    self.scrollToItem(item_widget) 
-                    break 
-        
-        # ！！重要！！
-        # 解除信号阻塞
-        # self.blockSignals(False)
+        """根据传入的 Vertex 对象在列表中进行选中；None 则清空选中。仅用于 UI 同步。"""
+        set_selected_item_in_list_impl(self, item_to_select)

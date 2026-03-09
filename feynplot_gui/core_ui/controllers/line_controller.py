@@ -1,6 +1,6 @@
 # feynplot_gui\core_ui\controllers\line_controller.py
 
-from PySide6.QtWidgets import QListWidgetItem, QMessageBox, QDialog
+from PySide6.QtWidgets import QListWidgetItem, QDialog
 from PySide6.QtCore import Qt, QObject, Signal
 
 # Import core model classes
@@ -13,6 +13,7 @@ from feynplot_gui.core_ui.widgets.line_list_widget import LineListWidget
 from feynplot_gui.core_ui.controllers.line_dialogs.edit_line import open_edit_line_dialog 
 from feynplot_gui.core_ui.controllers.line_dialogs.edit_loop import open_edit_loop_dialog
 from feynplot.io.diagram_io import diagram_to_json_string
+from feynplot_gui.debug_utils import cout
 
 # Type hint for MainController to avoid circular imports
 # class MainController: 
@@ -130,7 +131,7 @@ class LineController(QObject):
         current_status = diagram_to_json_string(self.main_controller.diagram_model)
         
         parent_widget = self.main_controller.canvas_controller.canvas_widget
-        print(f"Editing line: {line.id}, loop status: {line.loop}")
+        cout(f"Editing line: {line.id}, loop status: {line.loop}")
         # --- 关键修改点: 检查 `line.loop` 属性 ---
         if line.loop:
             # 如果是自环，调用 open_edit_loop_dialog

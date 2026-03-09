@@ -1,14 +1,16 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QDoubleSpinBox, QComboBox, QColorDialog, QCheckBox, QGroupBox, QSpinBox,
-    QMessageBox, QScrollArea, QWidget
+    QScrollArea, QWidget
 )
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtCore import Qt
 
 from feynplot.core.vertex import Vertex, VertexType
 import numpy as np
 import matplotlib.pyplot as plt
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
 
 def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -> bool:
     """
@@ -16,16 +18,16 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
     This function now includes the complete implementation of EditVertexDialog.
     """
     if not isinstance(vertex, Vertex):
-        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的顶点。"))
+        MsgBox.critical(parent_widget, "错误", "提供的对象不是一个有效的顶点。")
         return False
 
     class _InternalEditVertexDialog(QDialog):
         def __init__(self, vertex_obj: Vertex, parent_dialog=None):
             super().__init__(parent_dialog)
             self.setWindowTitle(f"编辑顶点: {vertex_obj.label} (ID: {vertex_obj.id})")
-            # 初始窗口大小，并设置最大高度
             self.setGeometry(200, 200, 400, 650)
             self.setMaximumHeight(800)
+            apply_dialog_style(self)
 
             self.vertex = vertex_obj
             self.original_vertex_id = vertex_obj.id
@@ -37,7 +39,8 @@ def open_edit_vertex_dialog(vertex: Vertex, diagram_model, parent_widget=None) -
 
             # --- 创建一个 QWidget 来承载所有可滚动的内容 ---
             scroll_content_widget = QWidget()
-            scroll_content_layout = QVBoxLayout(scroll_content_widget) # 这是所有 GroupBox 的父布局
+            scroll_content_layout = QVBoxLayout(scroll_content_widget)
+            apply_content_layout(scroll_content_layout)
 
             # --- Basic Properties ---
             basic_group = QGroupBox(self.tr("基本属性"))

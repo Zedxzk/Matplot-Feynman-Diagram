@@ -2,9 +2,9 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QButtonGroup, QRadioButton, QLabel,
-    QFrame,
-    QMessageBox
+    QFrame, QMessageBox
 )
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt, Signal
 
@@ -182,10 +182,10 @@ class ToolboxWidget(QFrame):
 
     def _on_clear_diagram_button_clicked(self):
         """清空图按钮的点击处理，带确认对话框。"""
-        reply = QMessageBox.question(self, '清空图',
-                                     "你确定要清空整个图吗？这将清除当前所有数据。",
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        reply = MsgBox.question(self, '清空图',
+                               "你确定要清空整个图吗？这将清除当前所有数据。",
+                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
             self.clear_diagram_requested.emit()
 
     def _create_separator(self):

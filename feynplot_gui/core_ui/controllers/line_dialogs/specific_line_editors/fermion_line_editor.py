@@ -2,11 +2,13 @@
 
 from PySide6.QtWidgets import (
     QGroupBox, QVBoxLayout, QCheckBox, QHBoxLayout,
-    QFormLayout, QSizePolicy, QWidget, QMessageBox
+    QFormLayout, QSizePolicy, QWidget
 )
 from PySide6.QtCore import Qt
 from feynplot.core.line import FermionLine, AntiFermionLine
 from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
+from feynplot_gui.debug_utils import cout
 
 
 class FermionLineEditor(LineEditBase):
@@ -93,14 +95,14 @@ class FermionLineEditor(LineEditBase):
             line.arrow_tail_angle = float(self.fermion_arrow_tail_angle_input.value())
             line.arrow_angle = float(self.fermion_arrow_arrow_angle_input.value())
             if line.arrow_tail_angle <= line.arrow_angle:
-                print("警告：箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。")
-                QMessageBox.warning(
+                cout("警告：箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。")
+                MsgBox.warning(
                     self.group_box, self.tr("警告"), self.tr("箭头尾部角度小于或等于箭头角度，这可能导致箭头无法正确显示。"))
 
 
 
         else:
-            print(f"警告：尝试将费米子线属性应用于非费米子线对象: {type(line)}")
+            cout(f"警告：尝试将费米子线属性应用于非费米子线对象: {type(line)}")
 
     def get_specific_kwargs(self) -> dict:
         """返回用于创建线条的特定关键字参数字典。"""
@@ -115,7 +117,7 @@ class FermionLineEditor(LineEditBase):
             'arrow_tail_angle': float(self.fermion_arrow_tail_angle_input.value()),
             'arrow_angle': float(self.fermion_arrow_arrow_angle_input.value()),
         }
-        print(f"获取特定关键字参数: {specific_kwargs}")
+        cout(f"获取特定关键字参数: {specific_kwargs}")
         return specific_kwargs
 
     def set_visible(self, visible: bool):

@@ -1,12 +1,14 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QComboBox,
-    QDialogButtonBox, QLabel, QCheckBox, QLineEdit, QMessageBox
+    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QComboBox,
+    QLabel, QCheckBox, QLineEdit, QPushButton, QScrollArea, QWidget
 )
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from feynplot.core.line import *
 from feynplot.core.vertex import Vertex
 from typing import List, Tuple, Dict, Any
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
 
 class AddLineDialog(QDialog):
     def __init__(self, vertices_data: List[Vertex], parent=None, initial_start_vertex_id: str = None):
@@ -16,9 +18,14 @@ class AddLineDialog(QDialog):
 
         self.vertices_data = vertices_data
         self.vertex_map = {v.id: v for v in vertices_data}
+        apply_dialog_style(self)
 
         main_layout = QVBoxLayout(self)
-        form_layout = QFormLayout()
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_content_widget = QWidget()
+        form_layout = QFormLayout(scroll_content_widget)
+        apply_content_layout(form_layout)
 
         # 1. 起始顶点下拉选择框
         self.start_vertex_combo = QComboBox()
@@ -52,7 +59,7 @@ class AddLineDialog(QDialog):
                 if found_index != -1:
                     self.start_vertex_combo.setCurrentIndex(found_index)
                 else:
-                    QMessageBox.warning(self, "警告", f"预设起始顶点 ID '{initial_start_vertex_id}' 未找到。")
+                    MsgBox.warning(self, "警告", f"预设起始顶点 ID '{initial_start_vertex_id}' 未找到。")
                     if len(self.vertices_data) > 1:
                         self.end_vertex_combo.setCurrentIndex(1)
             else:
@@ -95,12 +102,18 @@ class AddLineDialog(QDialog):
         form_layout.addRow("显示箭头:", self.add_arrow_checkbox)
         form_layout.addRow("标签 (可选):", self.label_input)
 
-        main_layout.addLayout(form_layout)
+        scroll_area.setWidget(scroll_content_widget)
+        main_layout.addWidget(scroll_area)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        main_layout.addWidget(button_box)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        ok_button = QPushButton(self.tr("确定"))
+        ok_button.clicked.connect(self.accept)
+        cancel_button = QPushButton(self.tr("取消"))
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        main_layout.addLayout(button_layout)
 
     def _on_is_loop_state_changed(self, state: int):
         """
@@ -128,7 +141,7 @@ class AddLineDialog(QDialog):
         is_loop = self.is_loop_checkbox.isChecked()
         
         if start_vertex is None:
-            QMessageBox.warning(self, self.tr("输入错误"), self.tr("请选择一个起始顶点。"))
+            MsgBox.warning(self, self.tr("输入错误"), self.tr("请选择一个起始顶点。"))
             return None
 
         # 根据是否是自环，确定结束顶点
@@ -137,17 +150,17 @@ class AddLineDialog(QDialog):
         else:
             end_vertex = self.end_vertex_combo.currentData()
             if end_vertex is None:
-                QMessageBox.warning(self, self.tr("输入错误"), self.tr("请选择一个结束顶点。"))
+                MsgBox.warning(self, self.tr("输入错误"), self.tr("请选择一个结束顶点。"))
                 return None
             
             if start_vertex == end_vertex:
-                QMessageBox.warning(self, self.tr("输入错误"), self.tr("起始顶点和结束顶点不能相同！"))
+                MsgBox.warning(self, self.tr("输入错误"), self.tr("起始顶点和结束顶点不能相同！"))
                 return None
         
         selected_type_display = self.particle_type_combo.currentText()
         line_type_class = self.particle_types.get(selected_type_display)
         if line_type_class is None:
-            QMessageBox.warning(self, self.tr("输入错误"), self.tr("无效的粒子类型。"))
+            MsgBox.warning(self, self.tr("输入错误"), self.tr("无效的粒子类型。"))
             return None
 
         arrow = self.add_arrow_checkbox.isChecked()

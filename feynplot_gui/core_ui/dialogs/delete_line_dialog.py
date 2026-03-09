@@ -1,15 +1,16 @@
 # feynplot_GUI/feynplot_gui/dialogs/delete_line_dialog.py
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QFormLayout, QComboBox,
-    QDialogButtonBox, QLabel, QMessageBox
+    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QComboBox,
+    QLabel, QPushButton
 )
 from PySide6.QtCore import Qt
 # 确保导入 FeynmanDiagram 类
 from feynplot.core.diagram import FeynmanDiagram 
 # 导入 Line 类型用于类型提示
-from feynplot.core.line import Line 
-from typing import Optional # 导入 Optional 用于类型提示
+from feynplot.core.line import Line
+from typing import Optional
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
 
 class DeleteLineDialog(QDialog):
     def __init__(self, diagram: FeynmanDiagram, line_to_delete: Optional[Line] = None, parent=None):
@@ -26,7 +27,8 @@ class DeleteLineDialog(QDialog):
         self.setWindowTitle(self.tr("删除线条确认"))
         self.setMinimumWidth(300)
 
-        self.diagram = diagram # 存储 diagram 实例
+        self.diagram = diagram
+        apply_dialog_style(self) # 存储 diagram 实例
         self.lines_data = diagram.lines # 获取所有可用的线条数据
 
         # 将传入的预选线条保存到实例变量
@@ -34,6 +36,7 @@ class DeleteLineDialog(QDialog):
         # self.selected_line 将在 get_selected_line 中返回
 
         main_layout = QVBoxLayout(self)
+        apply_content_layout(main_layout)
         form_layout = QFormLayout()
 
         # 1. 创建用于选择线条的下拉列表
@@ -58,51 +61,39 @@ class DeleteLineDialog(QDialog):
                 self.delete_line_combobox.addItem(display_text, line)
             
             # 如果提供了预选线条，则设置并锁定下拉框
+            found_index = -1
             if self._pre_selected_line:
-                # 查找与 _pre_selected_line 对应的数据项
-                # 使用循环查找，因为 findData 默认只比较值，不比较对象ID
-                found_index = -1
                 for i in range(self.delete_line_combobox.count()):
                     item_data = self.delete_line_combobox.itemData(i)
                     if item_data and hasattr(item_data, 'id') and item_data.id == self._pre_selected_line.id:
                         found_index = i
                         break
-
                 if found_index != -1:
                     self.delete_line_combobox.setCurrentIndex(found_index)
-                    self.delete_line_combobox.setEnabled(False) # 锁定下拉框
+                    self.delete_line_combobox.setEnabled(False)
                 else:
-                    # 如果预选线条不在当前图中，则退回正常模式并警告
-                    QMessageBox.warning(self, self.tr("警告"), self.tr("预选线条在图中不存在，请手动选择。"))
-                    self._pre_selected_line = None # 清除预选状态
-            
-            # 如果没有预选，或者预选失败，确保下拉框是可交互的
-            if not self._pre_selected_line:
-                self.delete_line_combobox.setEnabled(True)
+                    MsgBox.warning(self, self.tr("警告"), self.tr("预选线条在图中不存在，请手动选择。"))
+                    self._pre_selected_line = None
+                if not self._pre_selected_line:
+                    self.delete_line_combobox.setEnabled(True)
 
         main_layout.addLayout(form_layout)
 
-        # 3. 添加标准确认和取消按钮
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(self.accept) # 连接 OK 按钮到对话框的 accept 槽
-        button_box.rejected.connect(self.reject) # 连接 Cancel 按钮到对话框的 reject 槽
-        main_layout.addWidget(button_box)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        self.ok_button = QPushButton(self.tr("确定"))
+        self.ok_button.clicked.connect(self.accept)
+        cancel_button = QPushButton(self.tr("取消"))
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(self.ok_button)
+        button_layout.addWidget(cancel_button)
+        main_layout.addLayout(button_layout)
 
-        # 初始时，如果没有任何线条，禁用 OK 按钮
         if not self.lines_data:
-            button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
-            self.delete_line_combobox.setEnabled(False) # 确保禁用
+            self.ok_button.setEnabled(False)
+            self.delete_line_combobox.setEnabled(False)
         else:
-            # 初始时，OK 按钮默认可用（只要有线条可供选择），除非被锁定且预选失败
-            # 如果没有预选，或者预选失败，OK 按钮初始是可用的
-            if self._pre_selected_line is None: # 表示用户可以自己选择
-                button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
-            elif found_index == -1: # 表示预选失败，用户仍需选择
-                 button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
-            else: # 预选成功并锁定
-                 button_box.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
+            self.ok_button.setEnabled(True)
 
 
     def get_selected_line(self) -> Optional[Line]:

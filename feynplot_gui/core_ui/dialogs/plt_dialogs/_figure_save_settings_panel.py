@@ -1,7 +1,7 @@
 # feynplot_GUI/feynplot_gui/dialogs/plt_dialogs/_figure_save_settings_panel.py
 
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QComboBox
-from PySide6.QtGui import QDoubleValidator, QIntValidator
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QLineEdit, QComboBox, QSpinBox, QPushButton
+from PySide6.QtGui import QDoubleValidator
 from PySide6.QtCore import Qt # 导入Qt用于Qt.MatchFixedString
 from typing import Dict, Any
 
@@ -30,27 +30,69 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
         figure_height_layout.addWidget(QLabel(self.tr("英寸")))
         self.content_layout().addRow("图像高度:", figure_height_layout)
 
-        self.savefig_dpi_edit = QLineEdit()
-        self.savefig_dpi_edit.setPlaceholderText(self.tr("例如: 300"))
-        self.savefig_dpi_edit.setValidator(QIntValidator(50, 1200, self))
-        self.content_layout().addRow("保存图片DPI:", self.savefig_dpi_edit)
+        sync_btn = QPushButton(self.tr("从画布获取"))
+        sync_btn.setToolTip(self.tr("将当前画布显示尺寸填入宽高，使保存结果与界面一致"))
+        sync_btn.clicked.connect(self._on_sync_from_canvas)
+        self.content_layout().addRow("", sync_btn)
+
+        self.savefig_dpi_spin = QSpinBox()
+        self.savefig_dpi_spin.setRange(50, 1200)
+        self.savefig_dpi_spin.setValue(300)
+        self.content_layout().addRow("保存图片DPI:", self.savefig_dpi_spin)
 
         self.savefig_format_combo = QComboBox()
         self.savefig_format_combo.addItems(["png", "pdf", "svg", "jpeg", "tiff"])
         self.content_layout().addRow("保存图片格式:", self.savefig_format_combo)
 
+        self._pixel_preview_label = QLabel("")
+        self._update_pixel_preview()
+        self.savefig_dpi_spin.valueChanged.connect(self._update_pixel_preview)
+        self.figure_width_edit.textChanged.connect(self._update_pixel_preview)
+        self.figure_height_edit.textChanged.connect(self._update_pixel_preview)
+        self.content_layout().addRow("输出约:", self._pixel_preview_label)
+
+        self._canvas_figsize_callback = None
+
+    def set_canvas_figsize_callback(self, callback):
+        """设置从画布获取尺寸的回调，由外部传入。"""
+        self._canvas_figsize_callback = callback
+
+    def _on_sync_from_canvas(self):
+        """从画布获取当前尺寸并填入宽高。"""
+        if self._canvas_figsize_callback:
+            try:
+                w, h = self._canvas_figsize_callback()
+                self.figure_width_edit.setText(f"{w:.2f}")
+                self.figure_height_edit.setText(f"{h:.2f}")
+            except Exception:
+                pass
+
+    def _update_pixel_preview(self):
+        """根据宽高和 DPI 更新输出像素预览。"""
+        try:
+            w = float(self.figure_width_edit.text() or 6.4)
+            h = float(self.figure_height_edit.text() or 4.8)
+            dpi = self.savefig_dpi_spin.value()
+            pw, ph = int(w * dpi), int(h * dpi)
+            self._pixel_preview_label.setText(f"{pw} × {ph} 像素")
+        except (ValueError, TypeError):
+            self._pixel_preview_label.setText("—")
+
     def load_settings(self, settings: Dict[str, Any]):
         """从字典加载设置到UI。"""
         self.figure_width_edit.setText(str(settings.get("figure.figsize", [6.4, 4.8])[0]))
         self.figure_height_edit.setText(str(settings.get("figure.figsize", [6.4, 4.8])[1]))
-        self.savefig_dpi_edit.setText(self.tr("300")) 
+        save_dpi = settings.get("savefig.dpi", 300)
+        dpi_int = int(save_dpi) if isinstance(save_dpi, (int, float)) else 300
+        self.savefig_dpi_spin.setValue(min(1200, max(50, dpi_int)))
         self._set_combobox_value(self.savefig_format_combo, settings.get("savefig.format", 'png'))
+        self._update_pixel_preview()
 
     def get_settings(self) -> Dict[str, Any]:
         """从UI获取设置并返回字典。"""
         return {
             "figure.figsize": [float(self.figure_width_edit.text()), float(self.figure_height_edit.text())],
-            "savefig.dpi": int(self.savefig_dpi_edit.text()),
+            "savefig.dpi": self.savefig_dpi_spin.value(),
             "savefig.format": self.savefig_format_combo.currentText(),
         }
 
@@ -61,8 +103,7 @@ class FigureSaveSettingsPanel(CollapsibleGroupBox):
             errors.append(f"图像宽度 (Figure Width) 输入无效。当前输入: '{self.figure_width_edit.text()}'。请检查是否为有效数字。")
         if not self.figure_height_edit.hasAcceptableInput():
             errors.append(f"图像高度 (Figure Height) 输入无效。当前输入: '{self.figure_height_edit.text()}'。请检查是否为有效数字。")
-        if not self.savefig_dpi_edit.hasAcceptableInput():
-            errors.append(f"保存图片DPI (Save DPI) 输入无效。当前输入: '{self.savefig_dpi_edit.text()}'。请检查是否为有效整数。")
+        # DPI 使用 QSpinBox，始终为有效整数，无需额外验证
         return errors
 
     def _set_combobox_value(self, combobox: QComboBox, value: Any):

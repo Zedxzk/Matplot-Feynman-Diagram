@@ -7,6 +7,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from typing import Optional, Callable
 from feynplot_gui.default.default_settings import CANVAS_WIDGET_DEFAULTS as default_settings
+from feynplot_gui.debug_utils import cout
 
 class CanvasWidget(QWidget):
     # Various user interaction signals
@@ -27,6 +28,11 @@ class CanvasWidget(QWidget):
     mouse_released = Signal()
     
     add_line_from_vertex_requested = Signal(str) # 传递起始顶点的ID
+    # 画布右键菜单触发的通用操作（由 MainController 连接到对应逻辑）
+    context_auto_scale_requested = Signal()
+    context_toggle_grid_requested = Signal()
+    context_add_vertex_requested = Signal()
+    context_add_text_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -175,8 +181,10 @@ class CanvasWidget(QWidget):
                         self._show_context_menu(event, item_id, item_type)
                     else:
                         self.selection_cleared.emit()
+                        self._show_blank_context_menu(event)
                 else:
                     self.selection_cleared.emit()
+                    self._show_blank_context_menu(event)
 
 
     def _on_mouse_release(self, event):
@@ -284,7 +292,8 @@ class CanvasWidget(QWidget):
         if self._is_dragging_object and self._dragged_object_id:
             # 发出 object_moved 信号，通知 CanvasController 更新模型中的对象位置
             self.object_moved.emit(self._dragged_object_id, current_mouse_data_pos)
-            self.draw_idle_canvas() 
+            # 注意：画布重绘应由 Controller 统一调度（通常会合并/节流），
+            # 这里不要在高频 mouse move 中额外触发 draw_idle，避免重复排队重绘。
         elif self._is_panning and self._is_drag_event:
             # 确认是空白区域平移，并且达到拖动阈值
             # 持续发出平移信号，通知控制器平移
@@ -318,42 +327,66 @@ class CanvasWidget(QWidget):
         self.canvas_zoomed.emit(QPointF(mouse_x, mouse_y), scale_factor)
 
     # --- 右键菜单相关方法 ---
+    def _show_blank_context_menu(self, event):
+        """画布空白处右键：添加顶点、添加文本、自动调整画布、显示/隐藏网格。"""
+        menu = QMenu(self)
+        a1 = menu.addAction(self.tr("添加顶点"))
+        a1.triggered.connect(self.context_add_vertex_requested.emit)
+        a2 = menu.addAction(self.tr("添加文本"))
+        a2.triggered.connect(self.context_add_text_requested.emit)
+        menu.addSeparator()
+        a3 = menu.addAction(self.tr("自动调整画布"))
+        a3.triggered.connect(self.context_auto_scale_requested.emit)
+        a4 = menu.addAction(self.tr("显示/隐藏网格"))
+        a4.triggered.connect(self.context_toggle_grid_requested.emit)
+        menu.exec(event.guiEvent.globalPos())
+
     def _show_context_menu(self, event, item_id: str, item_type: str):
         menu = QMenu(self)
 
-        # 【新增】如果点击的是顶点，添加“添加线条”选项
-        if item_type == "vertex":
-            add_line_action = QAction("添加线条", self)
-            # 连接到新的槽函数，该槽函数将发出 add_line_from_vertex_requested 信号
-            add_line_action.triggered.connect(lambda: self._on_add_line_from_vertex_action(item_id))
+        # 顶点或其 label 均可“添加线条”（label 时用父顶点 id）
+        _vertex_id_for_line = item_id if item_type == "vertex" else (item_id[len("vlabel:"):] if item_type == "label" and item_id.startswith("vlabel:") else None)
+        if _vertex_id_for_line:
+            add_line_action = QAction(self.tr("添加线条"), self)
+            add_line_action.triggered.connect(lambda: self._on_add_line_from_vertex_action(_vertex_id_for_line))
             menu.addAction(add_line_action)
-            # 添加一个分隔符，使菜单更清晰
             menu.addSeparator()
 
-        edit_action = QAction("编辑", self)
+        edit_action = QAction(self.tr("编辑"), self)
         edit_action.triggered.connect(lambda: self._on_edit_object_action(item_id, item_type))
         menu.addAction(edit_action)
 
-        delete_action = QAction("删除", self)
+        delete_action = QAction(self.tr("删除"), self)
         delete_action.triggered.connect(lambda: self._on_delete_object_action(item_id, item_type))
         menu.addAction(delete_action)
+
+        # 丰富：视图与添加操作
+        menu.addSeparator()
+        a_scale = menu.addAction(self.tr("自动调整画布"))
+        a_scale.triggered.connect(self.context_auto_scale_requested.emit)
+        a_grid = menu.addAction(self.tr("显示/隐藏网格"))
+        a_grid.triggered.connect(self.context_toggle_grid_requested.emit)
+        a_vertex = menu.addAction(self.tr("添加顶点"))
+        a_vertex.triggered.connect(self.context_add_vertex_requested.emit)
+        a_text = menu.addAction(self.tr("添加文本"))
+        a_text.triggered.connect(self.context_add_text_requested.emit)
 
         menu.exec(event.guiEvent.globalPos())
 
     def _on_edit_object_action(self, item_id: str, item_type: str):
         """响应 '编辑' 菜单项点击的槽函数。"""
-        print(f"请求编辑 {item_type} ID: {item_id}")
+        cout(f"请求编辑 {item_type} ID: {item_id}")
         self.object_edited.emit(item_id, item_type)
 
     def _on_delete_object_action(self, item_id: str, item_type: str):
         """响应 '删除' 菜单项点击的槽函数。"""
-        print(f"请求删除 {item_type} ID: {item_id}")
+        cout(f"请求删除 {item_type} ID: {item_id}")
         self.object_deleted.emit(item_id, item_type)
 
     # --- 【新增】处理“添加线条”菜单项点击的槽函数 ---
     def _on_add_line_from_vertex_action(self, vertex_id: str):
         """响应 '添加线条' 菜单项点击的槽函数。"""
-        print(f"请求从顶点 {vertex_id} 添加线条")
+        cout(f"请求从顶点 {vertex_id} 添加线条")
         # 发出信号，通知控制器从这个顶点开始添加线条
         self.add_line_from_vertex_requested.emit(vertex_id)
 

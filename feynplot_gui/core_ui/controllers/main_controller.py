@@ -1,8 +1,13 @@
 # feynplot_GUI/feynplot_gui/controllers/main_controller.py
 from typing import Optional, Tuple, Dict, Any, Union
 from feynplot_gui.debug_utils import cout, cout3
-from PySide6.QtCore import QObject, Signal, QPointF
-from PySide6.QtWidgets import QMessageBox, QDialog, QFileDialog
+from PySide6.QtCore import QObject, Signal, QPointF, Qt, QEvent
+from PySide6.QtWidgets import (
+    QMessageBox, QDialog, QFileDialog, QApplication,
+    QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit, QComboBox,
+    QListWidget,
+)
+from PySide6.QtGui import QShortcut, QKeySequence
 import os
 
 # 导入所有控制器
@@ -16,10 +21,12 @@ from feynplot_gui.core_ui.controllers.other_texts_controller import OtherTextsCo
 # 导入核心模型类和其组成部分
 from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.vertex import Vertex, VertexType
-from feynplot.core.line import Line, FermionLine, PhotonLine, GluonLine, LineStyle # 确保所有需要的线条类和样式被导入
+from feynplot.core.line import Line, FermionLine, PhotonLine, GluonLine, LineStyle
+from feynplot.core.extra_text_element import TextElement
 
 # 导入主窗口 (方便类型提示和访问其子组件实例)
 from feynplot_gui.core_ui.widgets.main_window import MainWindow
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 # 导入对话框，因为 MainController 现在负责它们的创建和数据显示
 from feynplot_gui.core_ui.dialogs.add_vertex_dialog import AddVertexDialog
 # from feynplot_gui.core_ui.dialogs.edit_vertex_dialog import EditVertexDialog
@@ -27,6 +34,7 @@ from feynplot_gui.core_ui.dialogs.add_line_dialog import AddLineDialog
 # from feynplot_gui.core_ui.dialogs.edit_line_dialog import EditLineDialog
 from feynplot_gui.core_ui.dialogs.delete_vertex_dialog import DeleteVertexDialog
 from feynplot_gui.core_ui.dialogs.delete_line_dialog import DeleteLineDialog
+from feynplot_gui.default.default_settings import CANVAS_CONTROLLER_DEFAULTS
 
 class MainController(QObject):
     # 定义 MainController 自身发出的信号
@@ -42,8 +50,11 @@ class MainController(QObject):
         cout3("创建核心费曼图模型")
         # 内部跟踪当前选中项
         self._current_selected_item = None
+        # 选中项的 ID（用于 label 高亮，如 vlabel:vertex_1、llabel:line_1）
+        self._current_selected_item_id = None
         # 跟踪当前工具模式，MainController负责管理并转发给CanvasController
         self._current_tool_mode = "select" # 默认选择模式
+        self.always_auto_scale = False  # 始终自动调整画布
 
         # 实例化所有子控制器，并传递必要的依赖（模型、UI组件实例、MainController自身）
 
@@ -81,10 +92,33 @@ class MainController(QObject):
         # 连接所有 UI 信号到控制器槽函数
         self._link_controllers_signals()
 
+        # Delete/Backspace 由 eventFilter 处理（可区分编辑控件，避免在输入框内误触发删除）
+        # Ctrl+S/Ctrl+Shift+S：以 QApplication 为父级，确保任意焦点下均可响应
+        app = QApplication.instance()
+        if app:
+            self._save_project_shortcut = QShortcut(QKeySequence.StandardKey.Save, app)
+            self._save_project_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+            self._save_project_shortcut.activated.connect(self.navigation_bar_controller._on_save_project_ui_triggered)
+            self._save_image_shortcut = QShortcut(QKeySequence("Ctrl+Shift+S"), app)
+            self._save_image_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+            self._save_image_shortcut.activated.connect(self.save_diagram_to_file)
+        else:
+            self._save_project_shortcut = QShortcut(QKeySequence.StandardKey.Save, main_window)
+            self._save_project_shortcut.activated.connect(self.navigation_bar_controller._on_save_project_ui_triggered)
+            self._save_image_shortcut = QShortcut(QKeySequence("Ctrl+Shift+S"), main_window)
+            self._save_image_shortcut.activated.connect(self.save_diagram_to_file)
+
+        # 方向键、F2、Delete：安装到 QApplication 以在事件到达列表等控件前拦截
+        app = QApplication.instance()
+        if app:
+            app.installEventFilter(self)
+        else:
+            main_window.installEventFilter(self)
+
         # 连接 MainController 自身的信号到主窗口的状态栏
         # self.status_message.connect(self.main_window.show_status_message)
 
-        # 初始更新所有视图
+        # 初始更新所有视图（自动调整画布在窗口显示后通过 QTimer 模拟点击触发）
         self.update_all_views()
         self.status_message.emit("应用程序已启动。")
         # 设置一些属性
@@ -122,6 +156,8 @@ class MainController(QObject):
         # self.main_window.vertex_list_widget_instance.delete_vertex_requested.connect(self.delete_selected_vertex)
         # self.main_window.vertex_list_widget_instance.search_vertex_requested.connect(self.search_vertex_by_keyword)
         self.canvas_controller.canvas_widget.canvas_panned.connect(self._update_canvas_range_on_navigation_bar)
+        self.canvas_controller.canvas_widget.canvas_panned.connect(self._on_canvas_zoomed_or_panned)
+        self.canvas_controller.canvas_widget.canvas_zoomed.connect(self._on_canvas_zoomed_or_panned)
 
         # --- LineListWidget 信号连接 ---
         # 用户的列表项点击事件 (现在只在 mousePressEvent 中发出)
@@ -131,6 +167,36 @@ class MainController(QObject):
         # 双击列表项事件
         self.main_window.line_list_widget_instance.line_double_clicked.connect(self._handle_list_line_double_clicked)
 
+        # 画布右键菜单触发的操作（与菜单/工具栏等效）
+        self.main_window.canvas_widget_instance.context_auto_scale_requested.connect(
+            self.main_window.navigation_bar_widget_instance.toggle_auto_scale_requested.emit
+        )
+        self.main_window.canvas_widget_instance.context_toggle_grid_requested.connect(
+            self.canvas_controller.toggle_grid_visibility
+        )
+        self.main_window.canvas_widget_instance.context_add_vertex_requested.connect(self.start_add_vertex_process)
+        self.main_window.canvas_widget_instance.context_add_text_requested.connect(
+            self.other_texts_controller._on_request_add_new_text
+        )
+        self.main_window.navigation_bar_widget_instance.toggle_always_auto_scale.connect(self._on_always_auto_scale_toggled)
+
+    def _on_always_auto_scale_toggled(self, checked: bool):
+        """当“始终自动调整画布”复选框切换时更新标志；勾选时触发一次重绘。"""
+        self.always_auto_scale = bool(checked)
+        self.status_message.emit(self.tr("始终自动调整画布") + ": " + (self.tr("开") if checked else self.tr("关")))
+        if checked:
+            self.update_all_views(canvas_options={'auto_scale': True})
+
+    def _on_canvas_zoomed_or_panned(self, *args):
+        """滚轮缩放或拖动画布时自动取消勾选“始终自动调整画布”。"""
+        if not self.always_auto_scale:
+            return
+        self.always_auto_scale = False
+        cb = self.main_window.navigation_bar_widget_instance.always_auto_scale_checkbox
+        if cb:
+            cb.blockSignals(True)
+            cb.setChecked(False)
+            cb.blockSignals(False)
 
     # --- MainController 内部槽函数和公共方法 ---
     def set_diagram_model(self, loaded_diagram: FeynmanDiagram):
@@ -173,7 +239,9 @@ class MainController(QObject):
         # 确保传入的字典不为 None，如果为 None 则使用空字典
         if picture_model:
             self.picture_model()
-        canvas_opts = canvas_options if canvas_options is not None else {}
+        canvas_opts = dict(canvas_options) if canvas_options is not None else {}
+        if self.always_auto_scale:
+            canvas_opts['auto_scale'] = True
         vertex_opts = vertex_options if vertex_options is not None else {}
         line_opts = line_options if line_options is not None else {}
         other_texts_options = other_texts_options if other_texts_options is not None else {}
@@ -187,27 +255,41 @@ class MainController(QObject):
         # 更新其他可能需要刷新的 UI 元素，例如属性面板等
         self.status_message.emit("视图已更新。")
 
+    def update_canvas_only(self, canvas_options: Optional[Dict[str, Any]] = None):
+        """
+        仅更新画布视图（不刷新列表/文本面板）。
+        用于拖动、平移、缩放等高频交互，避免 update_all_views 的额外 UI 开销；
+        同时跳过导航栏范围更新，以减小重渲染开销。
+        """
+        canvas_opts = dict(canvas_options) if canvas_options else {}
+        canvas_opts.setdefault('skip_navigation_bar', True)
+        self.canvas_controller.update_canvas(**canvas_opts)
+
 
     def _handle_list_blank_clicked(self):
         """
         处理列表空白处被点击的信号，统一调用 select_item(None) 来清除所有选中。
         """
-        print("列表空白处被点击，清除所有选中。")
+        cout("列表空白处被点击，清除所有选中。")
         self.select_item(None) # 统一调用 select_item 方法，传入 None 表示取消所有选中
 
 
-    def select_item(self, item: [Vertex, Line, None]):
+    def select_item(self, item: [Vertex, Line, None], item_id: Optional[str] = None):
         """
         统一管理应用程序中的选中状态。
         由各个子控制器（如 VertexController, CanvasController）直接调用。
         :param item: 要选中的 Vertex 或 Line 对象，或 None 表示清除选中。
+        :param item_id: 可选的选中项 ID，用于 label 高亮（如 vlabel:vertex_1、llabel:line_1）。
         """
-        print(f"\nMainController.select_item: 接收到项: {item}, 类型: {type(item)}") # 调试打印
+        cout(f"\nMainController.select_item: 接收到项: {item}, 类型: {type(item)}, item_id: {item_id}")
 
         try:
+            # 0. 更新 _current_selected_item_id（用于 label 高亮）
+            self._current_selected_item_id = item_id if item_id else None
+
             # 1. 首先清除之前选中项的 is_selected 状态
             if self._current_selected_item is not None:
-                print(f"MainController: 清除旧选中项 {self._current_selected_item.id}.is_selected = False")
+                cout(f"MainController: 清除旧选中项 {self._current_selected_item.id}.is_selected = False")
                 self._current_selected_item.is_selected = False
 
             # 2. 更新 MainController 内部的当前选中项引用
@@ -215,7 +297,7 @@ class MainController(QObject):
 
             # 3. 如果有新选中项，设置其 is_selected 状态为 True
             if self._current_selected_item is not None:
-                print(f"MainController: 设置新选中项 {self._current_selected_item.id}.is_selected = True")
+                cout(f"MainController: 设置新选中项 {self._current_selected_item.id}.is_selected = True")
                 self._current_selected_item.is_selected = True
 
                 item_type_str = ''
@@ -226,10 +308,10 @@ class MainController(QObject):
 
                 # self.status_message.emit(f"选中: {self._current_selected_item.id} ({item_type_str})")
                 # print(f"选中: {self._current_selected_item.id} ({item_type_str})")
-                print(f"Current selected item (model ID): {self._current_selected_item.id}, is_selected: {self._current_selected_item.is_selected}")
+                cout(f"Current selected item (model ID): {self._current_selected_item.id}, is_selected: {self._current_selected_item.is_selected}")
 
             else:
-                print("MainController: 取消选中所有项。")
+                cout("MainController: 取消选中所有项。")
                 self.status_message.emit("当前没有选中任何项。")
 
             # 4. 无论选中状态如何，统一通知所有相关视图控制器更新它们的UI显示
@@ -244,7 +326,7 @@ class MainController(QObject):
             return self._current_selected_item
 
         except Exception as e:
-            print(f"MainController: 选择项时发生错误: {e}")
+            cout(f"MainController: 选择项时发生错误: {e}")
             # 错误时尝试清除选中状态
             if self._current_selected_item is not None:
                 self._current_selected_item.is_selected = False
@@ -267,11 +349,11 @@ class MainController(QObject):
         """打印所有选中项。"""
         for v in self.diagram_model.vertices:
             if v.is_selected:
-                print(f"顶点: {v.id} is selected.")
+                cout(f"顶点: {v.id} is selected.")
 
         for l in self.diagram_model.lines:
             if l.is_selected:
-                print(f"线条: {l.id} is selected.")
+                cout(f"线条: {l.id} is selected.")
 
     def clear_selection(self):
         """清空当前选中状态。"""
@@ -280,6 +362,108 @@ class MainController(QObject):
     def get_selected_item(self) -> [Vertex, Line, None]:
         """获取当前选中项。"""
         return self._current_selected_item
+
+    def _is_text_edit_widget(self, obj) -> bool:
+        """判断当前焦点是否在需保留按键的控件内（编辑框、列表等），若是则不应拦截 Delete/Backspace/方向键。"""
+        w = obj
+        while w is not None:
+            if isinstance(w, (QLineEdit, QSpinBox, QDoubleSpinBox, QTextEdit, QPlainTextEdit, QComboBox, QListWidget)):
+                return True
+            try:
+                w = w.parent()
+            except Exception:
+                break
+        return False
+
+    def eventFilter(self, obj, event):
+        """拦截方向键、F2、Delete/Backspace。列表用 Page Up/Down 切换选中项。"""
+        if event.type() != QEvent.Type.KeyPress:
+            return False
+        key = event.key()
+        focus = QApplication.focusWidget()
+        in_edit = focus is not None and self._is_text_edit_widget(focus)
+        # 当选中 label 或 TextElement 时，方向键用于移动，即使焦点在列表上也需拦截
+        item = self.get_selected_item()
+        sel_id = getattr(self, '_current_selected_item_id', None)
+        moveable_by_arrow = isinstance(item, TextElement) or (
+            sel_id and (str(sel_id).startswith("vlabel:") or str(sel_id).startswith("llabel:"))
+        )
+        # 焦点在编辑控件内：Delete/F2 不拦截；方向键仅在无可移动项时不拦截
+        if in_edit:
+            if key in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+                return False
+            if key == Qt.Key.Key_F2:
+                return False
+            if key in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Up, Qt.Key.Key_Down) and not moveable_by_arrow:
+                return False
+
+        if key in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            self.delete_selected_object()
+            return True
+        if key == Qt.Key.Key_F2:
+            self.edit_item_properties(self.get_selected_item())
+            return True
+        if key in (Qt.Key.Key_Left, Qt.Key.Key_Right, Qt.Key.Key_Up, Qt.Key.Key_Down):
+            self._handle_arrow_key(event)
+            return True
+        return False
+
+    def _handle_arrow_key(self, event):
+        """
+        方向键精细控制：选中顶点时移动顶点；未选中或选中线条/文本时平移画布。
+        移动顶点时：格点模式步长 1/2/1，非格点 0.1/0.01/0.25；平移画布始终用 0.1/0.01/0.25。
+        """
+        item = self.get_selected_item()
+        mods = event.modifiers()
+        # 仅移动顶点时，格点模式用格点步长；平移画布始终用原步长
+        if isinstance(item, Vertex) and self.canvas_controller.only_allow_grid_points:
+            if mods & Qt.KeyboardModifier.ShiftModifier:
+                step = CANVAS_CONTROLLER_DEFAULTS.get("ARROW_STEP_GRID_LARGE", 2)
+            else:
+                step = CANVAS_CONTROLLER_DEFAULTS.get("ARROW_STEP_GRID", 1)
+        else:
+            if mods & Qt.KeyboardModifier.ControlModifier:
+                step = CANVAS_CONTROLLER_DEFAULTS.get("ARROW_STEP_FINE", 0.01)
+            elif mods & Qt.KeyboardModifier.ShiftModifier:
+                step = CANVAS_CONTROLLER_DEFAULTS.get("ARROW_STEP_LARGE", 0.25)
+            else:
+                step = CANVAS_CONTROLLER_DEFAULTS.get("ARROW_STEP", 0.1)
+        key = event.key()
+        dx = {-1: -step, 1: step}.get((key == Qt.Key.Key_Right) - (key == Qt.Key.Key_Left), 0)
+        dy = {-1: -step, 1: step}.get((key == Qt.Key.Key_Up) - (key == Qt.Key.Key_Down), 0)
+        if dx == 0 and dy == 0:
+            return
+
+        # 选中顶点/线条 label 时，用方向键移动 label_offset（优先于顶点移动）
+        sel_id = getattr(self, '_current_selected_item_id', None)
+        if sel_id and (sel_id.startswith("vlabel:") or sel_id.startswith("llabel:")):
+            if self.canvas_controller.apply_label_offset_move(sel_id, dx, dy):
+                self.update_all_views(canvas_options={
+                    'target_xlim': self.main_window.canvas_widget_instance.get_axes().get_xlim(),
+                    'target_ylim': self.main_window.canvas_widget_instance.get_axes().get_ylim(),
+                })
+                return
+        if isinstance(item, Vertex):
+            self.canvas_controller.apply_vertex_move(item, item.x + dx, item.y + dy)
+            self.vertex_controller.update_vertex_list()
+            opts = self.canvas_controller.get_canvas_options_for_object_at_position(item)
+            self.update_all_views(canvas_options=opts)
+            return
+        if isinstance(item, TextElement):
+            # 其余文本：用方向键移动位置
+            item.x += dx
+            item.y += dy
+            self.other_texts_controller.update_text_list()
+            opts = self.canvas_controller.get_canvas_options_for_object_at_position(item)
+            self.update_all_views(canvas_options=opts)
+            return
+        # 无选中或选中线条：平移画布
+        ax = self.main_window.canvas_widget_instance.get_axes()
+        xlim, ylim = ax.get_xlim(), ax.get_ylim()
+        self.update_all_views(canvas_options={
+            "target_xlim": (xlim[0] + dx, xlim[1] + dx),
+            "target_ylim": (ylim[0] + dy, ylim[1] + dy),
+        })
 
         
     def _handle_object_moved_on_canvas(self, item_id: str, new_pos: QPointF):
@@ -320,7 +504,7 @@ class MainController(QObject):
                     if abs(vertex.x - x) < 1e-6 and abs(vertex.y - y) < 1e-6:
                         # 发现重复点，弹提示并返回
                         self.status_message.emit(f"已存在坐标为({x:.2f}, {y:.2f})的顶点，不能重复添加。")
-                        QMessageBox.warning(self.main_window, "添加顶点错误",
+                        MsgBox.warning(self.main_window, "添加顶点错误",
                                             f"已存在坐标为({x:.2f}, {y:.2f})的顶点，不能重复添加。")
                         return
                 
@@ -337,7 +521,7 @@ class MainController(QObject):
                     self.picture_model()
                 except ValueError as e:
                     self.status_message.emit(f"添加顶点失败: {e}")
-                    QMessageBox.warning(self.main_window, "添加顶点错误", f"添加顶点失败: {e}")
+                    MsgBox.warning(self.main_window, "添加顶点错误", f"添加顶点失败: {e}")
             else:
                 self.status_message.emit("顶点添加已取消。")
         else:
@@ -389,155 +573,96 @@ class MainController(QObject):
                         self.picture_model()
                     except ValueError as e:
                         self.status_message.emit(f"添加线条失败: {e}")
-                        QMessageBox.warning(self.main_window, "添加线条错误", f"添加线条失败: {e}")
-                        print(f"添加线条失败: {e}")  # 调试打印
+                        MsgBox.warning(self.main_window, "添加线条错误", f"添加线条失败: {e}")
+                        cout(f"添加线条失败: {e}")
                     except Exception as e:
                         self.status_message.emit(f"添加线条时发生未知错误: {e}")
-                        QMessageBox.critical(self.main_window, "添加线条错误", f"添加线条时发生未知错误: {e}")
+                        MsgBox.critical(self.main_window, "添加线条错误", f"添加线条时发生未知错误: {e}")
                 else:
                     # 当 get_line_data() 返回 None 时，表示用户输入无效
-                    print("线条添加已取消。")
+                    cout("线条添加已取消。")
             else:
                 # 当用户点击取消按钮时
-                print("线条添加已取消。")
+                cout("线条添加已取消。")
                 
             self.canvas_controller.reset_line_creation_state()
 
 
+    def _get_pre_selected_or_from_ui(self, param_item, expected_type):
+        """从参数或当前选中项获取预选对象。"""
+        if param_item is not None and isinstance(param_item, expected_type):
+            return param_item
+        item = self.get_selected_item()
+        return item if isinstance(item, expected_type) else None
+
     def delete_selected_vertex(self, vertex_to_delete: Optional[Vertex] = None):
-            """
-            弹出对话框让用户选择或确认要删除的顶点，并执行删除操作。
-            如果传入了 vertex_to_delete 参数，则直接预选并锁定该顶点。
-            如果未传入，则尝试使用当前 UI 选中的顶点（如果存在），否则让用户选择。
-
-            Args:
-                vertex_to_delete (Optional[Vertex]): 可选参数，指定要删除的顶点实例。
-                                                    如果提供，对话框将预选并锁定此顶点。
-                                                    默认为 None。
-            """
-            # 1. 检查图中是否有顶点可供删除。如果没有，直接提示并返回。
-            print(f"vertex_to_delete: {vertex_to_delete}") # 调试打印
-            if not self.diagram_model.vertices:
-                QMessageBox.information(self.main_window, self.tr("没有顶点"), self.tr("图中目前没有可供删除的顶点。"))
-                self.status_message.emit("删除顶点失败：图中没有顶点。")
-                return
-
-            # 确定最终要传递给对话框的预选顶点
-            final_pre_selected_vertex = vertex_to_delete
-            if final_pre_selected_vertex is None:
-                # 如果没有通过参数指定顶点，则尝试从 UI 获取当前选中的顶点
-                # 假设 self.get_currently_selected_vertex() 返回一个 Vertex 实例或 None
-                if hasattr(self, 'get_currently_selected_vertex') and callable(self.get_currently_selected_vertex):
-                    final_pre_selected_vertex = self.get_currently_selected_vertex()
-                elif hasattr(self, 'selected_vertex') and isinstance(self.selected_vertex, Vertex):
-                    final_pre_selected_vertex = self.selected_vertex
-                # 你需要根据你的实现调整这里获取选中顶点的方式，确保它返回一个 Vertex 对象或 None。
-
-            # 2. 实例化删除顶点对话框，并传入当前图模型和最终确定的预选顶点
-            dialog = DeleteVertexDialog(self.diagram_model, vertex_to_delete=final_pre_selected_vertex, parent=self.main_window)
-
-            # 3. 显示对话框并等待用户交互
-            if dialog.exec() == QDialog.Accepted:
-                # 4. 如果用户点击了“确定”，获取用户选择的顶点ID
-                selected_vertex_id = dialog.get_selected_vertex_id()
-                print(f"Selected vertex ID: {selected_vertex_id}") # 调试打印
-                
-                if selected_vertex_id:
-                    # 5. 再次获取选中顶点的对象，用于在消息中显示其标签
-                    selected_vertex_obj = self.diagram_model.get_vertex_by_id(selected_vertex_id)
-                    vertex_label = selected_vertex_obj.label if selected_vertex_obj else selected_vertex_id
-
-                    # 6. 调用模型层的方法删除顶点
-                    try:
-                        if self.diagram_model.delete_vertex(selected_vertex_id):
-                            # QMessageBox.information(self.main_window, "删除成功", 
-                            #                         f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 及其关联线条已成功删除。")
-                            self.status_message.emit(f"已删除顶点: {vertex_label} (ID: {selected_vertex_id})。")
-                            self.picture_model()
-                            self.update_all_views(canvas_options={'auto_scale': True}) # 删除后刷新视图
-                            self.clear_selection() # 删除后清除当前选择（如果删除的是选中项）
-                        else:
-                            QMessageBox.warning(self.main_window, "删除失败", 
-                                                f"无法删除顶点 '{vertex_label}' (ID: {selected_vertex_id})。")
-                            self.status_message.emit(f"顶点 '{vertex_label}' (ID: {selected_vertex_id}) 删除失败。")
-                    except Exception as e:
-                        self.status_message.emit(f"删除顶点时发生未知错误: {e}")
-                        QMessageBox.critical(self.main_window, "删除顶点错误", f"删除顶点时发生未知错误: {e}")
-                else:
-                    QMessageBox.warning(self.main_window, self.tr("删除失败"), self.tr("未选择任何顶点。"))
-                    self.status_message.emit("删除顶点操作：未选择顶点。")
+        """弹出对话框让用户选择或确认要删除的顶点，并执行删除操作。"""
+        if not self.diagram_model.vertices:
+            MsgBox.information(self.main_window, self.tr("没有顶点"), self.tr("图中目前没有可供删除的顶点。"))
+            self.status_message.emit("删除顶点失败：图中没有顶点。")
+            return
+        pre_selected = self._get_pre_selected_or_from_ui(vertex_to_delete, Vertex)
+        dialog = DeleteVertexDialog(self.diagram_model, vertex_to_delete=pre_selected, parent=self.main_window)
+        if dialog.exec() == QDialog.Accepted:
+            selected_id = dialog.get_selected_vertex_id()
+            if selected_id:
+                obj = self.diagram_model.get_vertex_by_id(selected_id)
+                label = obj.label if obj else selected_id
+                try:
+                    if self.diagram_model.delete_vertex(selected_id):
+                        self.status_message.emit(f"已删除顶点: {label} (ID: {selected_id})。")
+                        self.picture_model()
+                        self.update_all_views(canvas_options={'auto_scale': True})
+                        self.clear_selection()
+                    else:
+                        MsgBox.warning(self.main_window, "删除失败", f"无法删除顶点 '{label}' (ID: {selected_id})。")
+                        self.status_message.emit(f"顶点 '{label}' 删除失败。")
+                except Exception as e:
+                    self.status_message.emit(f"删除顶点时发生未知错误: {e}")
+                    MsgBox.critical(self.main_window, "删除顶点错误", str(e))
             else:
-                # 7. 如果用户点击了“取消”
-                self.status_message.emit("顶点删除操作已取消。")
+                MsgBox.warning(self.main_window, self.tr("删除失败"), self.tr("未选择任何顶点。"))
+        else:
+            self.status_message.emit("顶点删除操作已取消。")
 
-
-    # --- 新增的 delete_selected_line 方法 ---
     def delete_selected_line(self, line_to_delete: Optional[Line] = None):
-        """
-        弹出对话框让用户选择或确认要删除的线条，并执行删除操作。
-        如果传入了 line_to_delete 参数，则直接预选并锁定该线条。
-        如果未传入，则尝试使用当前 UI 选中的线条（如果存在），否则让用户选择。
-
-        Args:
-            line_to_delete (Optional[Line]): 可选参数，指定要删除的线条实例。
-                                              如果提供，对话框将预选并锁定此线条。
-                                              默认为 None。
-        """
-        # 1. 检查图中是否有线条可供删除。如果没有，直接提示并返回。
+        """弹出对话框让用户选择或确认要删除的线条，并执行删除操作。"""
         if not self.diagram_model.lines:
-            QMessageBox.information(self.main_window, self.tr("没有线条"), self.tr("图中目前没有可供删除的线条。"))
+            MsgBox.information(self.main_window, self.tr("没有线条"), self.tr("图中目前没有可供删除的线条。"))
             self.status_message.emit("删除线条失败：图中没有线条。")
             return
-
-        # 确定最终要传递给对话框的预选线条
-        final_pre_selected_line = line_to_delete
-        if final_pre_selected_line is None:
-            # 如果没有通过参数指定线条，则尝试从 UI 获取当前选中的线条
-            # 假设 self.get_currently_selected_line() 返回一个 Line 实例或 None
-            if hasattr(self, 'get_currently_selected_line') and callable(self.get_currently_selected_line):
-                final_pre_selected_line = self.get_currently_selected_line()
-            elif hasattr(self, 'selected_line') and isinstance(self.selected_line, Line):
-                final_pre_selected_line = self.selected_line
-            # 你需要根据你的具体 UI 实现来调整这里获取选中线条的方式。
-
-        # 2. 实例化删除线条对话框，并传入当前图模型和最终确定的预选线条
-        dialog = DeleteLineDialog(self.diagram_model, line_to_delete=final_pre_selected_line, parent=self.main_window)
-
-        # 3. 显示对话框并等待用户交互
+        pre_selected = self._get_pre_selected_or_from_ui(line_to_delete, Line)
+        dialog = DeleteLineDialog(self.diagram_model, line_to_delete=pre_selected, parent=self.main_window)
         if dialog.exec() == QDialog.Accepted:
-            # 4. 如果用户点击了“确定”，获取用户选择的线条对象
             selected_line = dialog.get_selected_line()
-            
             if selected_line:
-                # 5. 调用模型层的方法删除线条
                 try:
                     if self.diagram_model.delete_line(selected_line.id):
-                        QMessageBox.information(self.main_window, "删除成功", f"线条 '{selected_line.id}' 已成功删除。")
                         self.status_message.emit(f"线条 '{selected_line.id}' 已删除。")
-                        self.update_all_views() # 删除后更新所有视图
-                        self.clear_selection() # 删除后清除选中状态，防止选中已删除的对象
+                        self.update_all_views()
+                        self.clear_selection()
                     else:
-                        # 理论上，如果 get_selected_line 返回了对象，delete_line 应该成功
-                        # 但为了健壮性，这里保留一个失败提示
-                        QMessageBox.warning(self.main_window, "删除失败", f"无法删除线条 '{selected_line.id}'。")
-                        self.status_message.emit(f"线条 '{selected_line.id}' 删除失败。")
+                        MsgBox.warning(self.main_window, "删除失败", f"无法删除线条 '{selected_line.id}'。")
                 except Exception as e:
-                    # 捕获模型层可能抛出的其他异常
                     self.status_message.emit(f"删除线条时发生未知错误: {e}")
-                    QMessageBox.critical(self.main_window, "删除线条错误", f"删除线条时发生未知错误: {e}")
+                    MsgBox.critical(self.main_window, "删除线条错误", str(e))
             else:
-                # 用户点击了“确定”，但下拉框中可能没有可选择的线条（虽然我们前面已经检查过）
-                # 或者 get_selected_line 返回了 None
-                QMessageBox.warning(self.main_window, self.tr("删除失败"), self.tr("未选择任何线条。"))
-                self.status_message.emit("删除线条操作：未选择线条。")
+                MsgBox.warning(self.main_window, self.tr("删除失败"), self.tr("未选择任何线条。"))
         else:
-            # 6. 如果用户点击了“取消”
             self.status_message.emit("删除线条操作已取消。")
 
 
     def delete_selected_object(self):
-        """从导航栏通用删除按钮触发，删除当前选中的对象（顶点或线条）。"""
-        pass
+        """删除当前选中的对象（顶点、线条或其余文本），弹出确认框。"""
+        item = self.get_selected_item()
+        if isinstance(item, Vertex):
+            self.delete_selected_vertex(item)
+        elif isinstance(item, Line):
+            self.delete_selected_line(item)
+        elif isinstance(item, TextElement):
+            self.other_texts_controller._on_request_delete_text(item)
+        else:
+            self.status_message.emit("请先选中要删除的顶点、线条或文本。")
 
     # --- 文件操作 ---
     def save_diagram_to_file(self):
@@ -554,7 +679,7 @@ class MainController(QObject):
             return
         # return
         try:
-            print(f"文件路径: {file_path}")
+            cout(f"文件路径: {file_path}")
             # 根据选择的过滤器确定扩展名
             extension_mapping = {
                 "PDF Files (*.pdf)": ".pdf",
@@ -586,14 +711,19 @@ class MainController(QObject):
                 raise ValueError("画布后端未初始化，无法保存图像。")
             # return
             # Matplotlib 的 savefig 方法会根据文件扩展名自动处理图像格式
+            # 使用后端设置中的 savefig.dpi，若未设置则默认 300
+            import matplotlib.pyplot as plt
+            save_dpi = plt.rcParams.get('savefig.dpi', 300)
+            if isinstance(save_dpi, str) and save_dpi.lower() == 'figure':
+                save_dpi = plt.rcParams.get('figure.dpi', 100)
             backend.savefig(file_path,
-                             bbox_inches='tight', dpi=300
+                             bbox_inches='tight', pad_inches=0.02, dpi=save_dpi
                              )
-            print(f"图像已成功保存到: {file_path}")
+            cout(f"图像已成功保存到: {file_path}")
             # self.status_message.emit(f"图像已成功保存到: {file_path}")
 
         except Exception as e:
-            QMessageBox.critical(
+            MsgBox.critical(
                 self.main_window,
                 "保存失败",
                 f"保存图像时发生错误：\n{str(e)}\n\n请检查文件路径和权限。"
@@ -604,7 +734,7 @@ class MainController(QObject):
         """
         清空图表，使用 PySide6 自带的 QMessageBox 进行二次确认。
         """
-        reply = QMessageBox.question(
+        reply = MsgBox.question(
             self.main_window, # 父窗口
             "再次确认清空图表",       # 弹窗标题
             "再次确认：您确定要清空当前图表吗？", # 弹窗消息
@@ -620,12 +750,12 @@ class MainController(QObject):
                 self.status_message.emit("图表已清空。")
             except Exception as e:
                 self.status_message.emit(f"清空图表失败: {e}")
-                QMessageBox.critical(self.main_window, "清空图表错误", f"清空图表失败: {e}")
+                MsgBox.critical(self.main_window, "清空图表错误", f"清空图表失败: {e}")
         else:
             self.status_message.emit("清空图表操作已取消。")
 
     def save_diagram_from_toolbox(self):
-        # QMessageBox.information(self.main_window, self.tr("提示"), self.tr("save_diagram_from_toolbox"))
+        # MsgBox.information(self.main_window, self.tr("提示"), self.tr("save_diagram_from_toolbox"))
         # exit()
         self.save_diagram_to_file()
 
@@ -636,15 +766,19 @@ class MainController(QObject):
     # 你可能还需要实现其他更复杂的交互，如多选，复制粘贴等。
 
 
-    def edit_item_properties(self, item: Union[Vertex, Line]):
-        """编辑顶点或线条的属性。"""
+    def edit_item_properties(self, item: Union[Vertex, Line, TextElement, None]):
+        """编辑顶点、线条或其余文本的属性。"""
+        if item is None:
+            return
         if isinstance(item, Vertex):
             self.vertex_controller._on_edit_vertex_requested_from_list(item)
         elif isinstance(item, Line):
-            self.line_controller._on_request_edit_line(item)    
+            self.line_controller._on_request_edit_line(item)
+        elif isinstance(item, TextElement):
+            self.other_texts_controller._on_request_edit_text(item)    
     
     def picture_model(self):
-        print("Model pictured.")
+        cout("Model pictured.")
         self.toolbox_controller._save_current_diagram_state()
         self.toolbox_controller._update_undo_redo_button_states()
 

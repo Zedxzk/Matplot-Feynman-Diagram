@@ -200,14 +200,17 @@ def _line_to_dict(line: Line) -> Dict[str, Any]:
         data['amplitude'] = line.amplitude
         data['wavelength'] = line.wavelength
         data['initial_phase'] = line.initial_phase
-        data['final_phase'] = line.final_phase
     
-    # 处理 GluonLine 特有的属性
+    # 处理 GluonLine 特有的属性（绕向用 clockwise，不再用相位）
     if isinstance(line, GluonLine):
-        data['amplitude'] = line.amplitude # 注意 GluonLine 也有 amplitude
-        data['wavelength'] = line.wavelength # 注意 GluonLine 也有 wavelength
+        data['amplitude'] = line.amplitude
+        data['wavelength'] = line.wavelength
         data['n_cycles'] = line.n_cycles
-        data['bezier_offset'] = line.bezier_offset # GluonLine 自身的 bezier_offset
+        data['bezier_offset'] = line.bezier_offset
+        data['clockwise'] = getattr(line, 'clockwise', False)
+        data['squash_ratio'] = getattr(line, 'squash_ratio', 1.0)
+        data['start_straight_ratio'] = getattr(line, 'start_straight_ratio', 0.0)
+        data['end_straight_ratio'] = getattr(line, 'end_straight_ratio', 0.0)
     
     # 处理 WPlusLine, WMinusLine, ZBosonLine, HiggsLine 特有的属性 (如果它们有)
     # 假设这些类有 zigzag_amplitude 和 zigzag_frequency
@@ -215,7 +218,8 @@ def _line_to_dict(line: Line) -> Dict[str, Any]:
         data['zigzag_amplitude'] = line.zigzag_amplitude
         data['zigzag_frequency'] = line.zigzag_frequency
         data['initial_phase'] = line.initial_phase
-        data['final_phase'] = line.final_phase
+        data['final_phase'] = getattr(line, 'final_phase', 0)
+        data['wz_use_wavy'] = getattr(line, 'wz_use_wavy', True)
 
     return data
 
@@ -300,13 +304,18 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
         init_kwargs['amplitude'] = data_copy.pop('amplitude', 0.1)
         init_kwargs['wavelength'] = data_copy.pop('wavelength', 0.5)
         init_kwargs['initial_phase'] = data_copy.pop('initial_phase', 0)
-        init_kwargs['final_phase'] = data_copy.pop('final_phase', 0)
 
-    # 处理 GluonLine 特有的属性
+    # 处理 GluonLine 特有属性（仅绕向 clockwise，清除相位历史字段避免进入对象）
     if issubclass(line_class, GluonLine):
-        init_kwargs['amplitude'] = data_copy.pop('amplitude', 0.1) # GluonLine 也有 amplitude
-        init_kwargs['wavelength'] = data_copy.pop('wavelength', 0.2) # GluonLine 也有 wavelength
+        init_kwargs['amplitude'] = data_copy.pop('amplitude', 0.1)
+        init_kwargs['wavelength'] = data_copy.pop('wavelength', 0.2)
         init_kwargs['n_cycles'] = data_copy.pop('n_cycles', 16)
+        cw = data_copy.pop('clockwise', None)
+        legacy_phase = data_copy.pop('initial_phase', None)  # 历史遗留，不再写入对象
+        init_kwargs['clockwise'] = cw if cw is not None else (legacy_phase == 180)
+        init_kwargs['squash_ratio'] = data_copy.pop('squash_ratio', 1.0)
+        init_kwargs['start_straight_ratio'] = data_copy.pop('start_straight_ratio', 0.0)
+        init_kwargs['end_straight_ratio'] = data_copy.pop('end_straight_ratio', 0.0)
 
     # 处理 WPlusLine, WMinusLine, ZBosonLine, HiggsLine 特有的属性
     if issubclass(line_class, (WPlusLine, WMinusLine, ZBosonLine)):
@@ -314,6 +323,7 @@ def _line_from_dict(data: Dict[str, Any], vertices_map: Dict[str, Vertex]) -> Li
         init_kwargs['zigzag_frequency'] = data_copy.pop('zigzag_frequency', 2.0)
         init_kwargs['initial_phase'] = data_copy.pop('initial_phase', 0)
         init_kwargs['final_phase'] = data_copy.pop('final_phase', 0)
+        init_kwargs['wz_use_wavy'] = data_copy.pop('wz_use_wavy', True)
     # 对于 HiggsLine，如果它没有特殊的构造函数参数，则不需要额外处理
 
     # 将所有剩余的键值对（如果存在）合并到 init_kwargs，这包括原始 kwargs 中未被明确 pop 的部分

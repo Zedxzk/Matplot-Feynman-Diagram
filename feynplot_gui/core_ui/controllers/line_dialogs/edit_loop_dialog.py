@@ -1,7 +1,7 @@
 # feynplot_gui/controllers/line_dialogs/edit_loop.py
 
 from PySide6.QtWidgets import (
-    QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QComboBox, QDoubleSpinBox, QSpinBox, QColorDialog, QGroupBox,
     QScrollArea, QWidget, QFormLayout
 )
@@ -17,6 +17,7 @@ from feynplot.core.line import (
 )
 from feynplot.core.diagram import FeynmanDiagram
 from feynplot.core.vertex import Vertex
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 import numpy as np
 
 
@@ -282,7 +283,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
     """
     # 确保 loop 参数是一个 Line 实例且具有 loop 属性为 True
     if not isinstance(loop, Line) or not getattr(loop, 'loop', False):
-        QMessageBox.critical(parent_widget, self.tr("错误"), self.tr("提供的对象不是一个有效的环形线条，无法编辑。"))
+        MsgBox.critical(parent_widget, "错误", "提供的对象不是一个有效的环形线条，无法编辑。")
         return False
 
     class _InternalEditLoopDialog(QDialog, LoopEditBase):
@@ -365,7 +366,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
             else:  # 如果编辑的环形线条类型不在列表中
                 self.particle_type_combo.addItem("未知类型", None)
                 self.particle_type_combo.setCurrentIndex(self.particle_type_combo.count() - 1)
-                QMessageBox.warning(self, "警告", f"当前环形线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
+                MsgBox.warning(self, "警告", f"当前环形线条类型 '{current_particle_type_class.__name__}' 不在可选择列表中。")
 
             self.main_form_layout.addRow("环形线条粒子类型:", self.particle_type_combo)
 
@@ -570,14 +571,14 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
                     
                     # 关键：更新对话框内部的 loop 引用，以便 loop_updated 信号传递的是正确的对象
                     self.loop = new_loop_instance
-                    QMessageBox.information(self, "操作成功", f"环形线条 {new_loop_id} 类型已更换并更新。")
+                    MsgBox.information(self, "操作成功", f"环形线条 {new_loop_id} 类型已更换并更新。")
 
                 except ValueError as e:
-                    QMessageBox.critical(self, "操作失败", str(e))
+                    MsgBox.critical(self, "操作失败", str(e))
                     super().reject()
                     return
                 except Exception as e:
-                    QMessageBox.critical(self, "错误", f"更新环形线条时发生未知错误: {e}")
+                    MsgBox.critical(self, "错误", f"更新环形线条时发生未知错误: {e}")
                     super().reject()
                     return
             # --- 环形线条类型未变化时的处理逻辑 (编辑现有环形线条) ---
@@ -604,7 +605,7 @@ def open_edit_loop_dialog(loop: Line, diagram_model: FeynmanDiagram, parent_widg
                     current_editor = self.specific_editors[selected_particle_class]
                     current_editor.apply_properties(self.loop)
 
-                QMessageBox.information(self, "操作成功", f"环形线条 {self.loop.id} 属性已更新。")
+                MsgBox.information(self, "操作成功", f"环形线条 {self.loop.id} 属性已更新。")
 
             super().accept()  # 接受对话框
 

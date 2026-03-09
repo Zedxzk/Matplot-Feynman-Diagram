@@ -1,10 +1,11 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit,
-    QMessageBox, QDialogButtonBox, QScrollArea, QWidget, QSpinBox, QColorDialog,
-    QComboBox, QDoubleSpinBox, QCheckBox # ADDED QCheckBox
+    QScrollArea, QWidget, QSpinBox, QColorDialog,
+    QComboBox, QDoubleSpinBox, QCheckBox
 )
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtCore import Signal, Qt
+from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style, apply_content_layout
 
 import numpy as np
 
@@ -22,6 +23,7 @@ class EditAllVerticesDialog(QDialog):
         self.setGeometry(100, 100, 500, 600)
 
         self.all_vertices = all_vertices
+        apply_dialog_style(self)
 
         # REMOVED: The state-tracking booleans are no longer needed.
         # The checkboxes and other widgets will hold the state directly.
@@ -32,6 +34,7 @@ class EditAllVerticesDialog(QDialog):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
+        apply_content_layout(main_layout)
 
         tip_label = QLabel(self.tr("提示：勾选要修改的属性，然后设置新值。未勾选的属性将保持不变。"))
         tip_font = QFont()
@@ -167,10 +170,15 @@ class EditAllVerticesDialog(QDialog):
         self._create_spinbox_property("标签大小 (Label Size):", "label_size_spinbox", 5, 72, 12)
         self._create_color_property("标签颜色 (Label Color):", "label_color_preview_button", "_select_label_color", "current_label_color")
 
-        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        self.button_box.accepted.connect(self._on_accepted)
-        self.button_box.rejected.connect(self.reject)
-        main_layout.addWidget(self.button_box)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        ok_button = QPushButton(self.tr("确定"))
+        ok_button.clicked.connect(self._on_accepted)
+        cancel_button = QPushButton(self.tr("取消"))
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+        main_layout.addLayout(button_layout)
 
     # HELPER to reduce code duplication for spinbox properties
     def _create_spinbox_property(self, label, widget_name, min_val, max_val, default_val, is_percent=False):
@@ -263,7 +271,7 @@ class EditAllVerticesDialog(QDialog):
         ])
         
         if not any_setting_applied:
-            QMessageBox.information(self, self.tr("提示"), self.tr("没有需要修改的属性。"))
+            MsgBox.information(self, self.tr("提示"), self.tr("没有需要修改的属性。"))
             self.reject() # Use reject() to indicate no changes were made
             return
 
@@ -324,7 +332,7 @@ class EditAllVerticesDialog(QDialog):
                     vertex.hidden_label = False
             # do not modify vertex.highlighted_vertex here; it's transient
 
-        QMessageBox.information(self, "成功", f"属性已成功应用于 {len(self.all_vertices)} 个顶点。")
+        MsgBox.information(self, "成功", f"属性已成功应用于 {len(self.all_vertices)} 个顶点。")
         self.settings_applied.emit()
         self.accept()
 

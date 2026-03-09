@@ -531,7 +531,7 @@ class BottomQuarkLine(FermionLine):
 # -------------------------
 
 class PhotonLine(BosonLine):
-    def __init__(self, v_start, v_end, amplitude=0.1, wavelength=0.5, initial_phase=0, final_phase=0, 
+    def __init__(self, v_start, v_end, amplitude=0.1, wavelength=0.5, initial_phase=0, 
                  style: LineStyle = LineStyle.PHOTON, # <--- 修正点：默认值在这里
                  **kwargs):
         label = kwargs.pop('label', r'$\gamma$')
@@ -541,20 +541,34 @@ class PhotonLine(BosonLine):
         self.amplitude = amplitude
         self.wavelength = wavelength
         self.initial_phase = initial_phase
-        self.final_phase = final_phase
 
 class GluonLine(BosonLine):
-    def __init__(self, v_start, v_end, amplitude=0.15, wavelength=0.2, n_cycles=16, bezier_offset=0.3, 
-                 style: LineStyle = LineStyle.GLUON, # <--- 修正点：默认值在这里
-                 **kwargs):
+    def __init__(
+        self,
+        v_start,
+        v_end,
+        amplitude=0.15,
+        wavelength=0.2,
+        n_cycles=16,
+        bezier_offset=0.3,
+        clockwise: bool = False,
+        squash_ratio: float = 1.0,
+        start_straight_ratio: float = 0.0,
+        end_straight_ratio: float = 0.0,
+        style: LineStyle = LineStyle.GLUON,
+        **kwargs
+    ):
         label = kwargs.pop('label', r'$g$')
-        # 从 kwargs 中取出 style，如果不存在则使用默认值
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
         self.amplitude = amplitude
         self.wavelength = wavelength
         self.n_cycles = n_cycles
         self.bezier_offset = bezier_offset
+        self.clockwise = clockwise
+        self.squash_ratio = squash_ratio
+        self.start_straight_ratio = start_straight_ratio
+        self.end_straight_ratio = end_straight_ratio
 
     def get_plot_path(self):
         # Assuming feynplot.core.gluon_methods exists and is available
@@ -566,15 +580,16 @@ class GluonLine(BosonLine):
 class WPlusLine(BosonLine):
     def __init__(self, v_start, v_end, 
                  zigzag_amplitude=0.2, zigzag_frequency=2.0, 
-                 initial_phase=0, final_phase=0, # 添加初末相位参数
+                 initial_phase=0, final_phase=0, wz_use_wavy=True,
                  style: LineStyle = LineStyle.WZ,
                  **kwargs):
         label = kwargs.pop('label', r'$W^{+}$')
         
         self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', zigzag_amplitude)
         self.zigzag_frequency = kwargs.pop('zigzag_frequency', zigzag_frequency)
-        self.initial_phase = initial_phase
-        self.final_phase = final_phase
+        self.initial_phase = kwargs.pop('initial_phase', initial_phase)
+        self.final_phase = kwargs.pop('final_phase', final_phase)
+        self.wz_use_wavy = kwargs.pop('wz_use_wavy', wz_use_wavy)
         
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
@@ -582,15 +597,16 @@ class WPlusLine(BosonLine):
 class WMinusLine(BosonLine):
     def __init__(self, v_start, v_end, 
                  zigzag_amplitude=0.2, zigzag_frequency=2.0, 
-                 initial_phase=0, final_phase=0, # 添加初末相位参数
+                 initial_phase=0, final_phase=0, wz_use_wavy=True,
                  style: LineStyle = LineStyle.WZ,
                  **kwargs):
         label = kwargs.pop('label', r'$W^{-}$')
         
         self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', zigzag_amplitude)
         self.zigzag_frequency = kwargs.pop('zigzag_frequency', zigzag_frequency)
-        self.initial_phase = initial_phase
-        self.final_phase = final_phase
+        self.initial_phase = kwargs.pop('initial_phase', initial_phase)
+        self.final_phase = kwargs.pop('final_phase', final_phase)
+        self.wz_use_wavy = kwargs.pop('wz_use_wavy', wz_use_wavy)
         
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)
@@ -598,15 +614,16 @@ class WMinusLine(BosonLine):
 class ZBosonLine(BosonLine):
     def __init__(self, v_start, v_end, 
                  zigzag_amplitude=0.2, zigzag_frequency=2.0, 
-                 initial_phase=0, final_phase=0, # 添加初末相位参数
+                 initial_phase=0, final_phase=0, wz_use_wavy=True,
                  style: LineStyle = LineStyle.WZ,
                  **kwargs):
         label = kwargs.pop('label', r'$Z^{0}$')
         
         self.zigzag_amplitude = kwargs.pop('zigzag_amplitude', zigzag_amplitude)
         self.zigzag_frequency = kwargs.pop('zigzag_frequency', zigzag_frequency)
-        self.initial_phase = initial_phase
-        self.final_phase = final_phase
+        self.initial_phase = kwargs.pop('initial_phase', initial_phase)
+        self.final_phase = kwargs.pop('final_phase', final_phase)
+        self.wz_use_wavy = kwargs.pop('wz_use_wavy', wz_use_wavy)
         
         style_to_pass = kwargs.pop('style', style)
         super().__init__(v_start=v_start, v_end=v_end, label=label, style=style_to_pass, **kwargs)

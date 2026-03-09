@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt # 导入 Qt
 from feynplot.core.line import PhotonLine
 from feynplot_gui.core_ui.controllers.line_dialogs.line_edit_base import LineEditBase
+from feynplot_gui.debug_utils import cout
 
 class PhotonLineEditor(LineEditBase):
     # 将 parent_layout 类型提示更改为 QFormLayout，与 edit_line.py 传递的类型一致
@@ -93,7 +94,7 @@ class PhotonLineEditor(LineEditBase):
             line.initial_phase = int(self.photon_initial_phase_group.checkedId())
             line.final_phase = int(self.photon_final_phase_group.checkedId())
         else:
-            print(f"警告：尝试将 PhotonLine 属性应用于非 PhotonLine 对象: {type(line)}")
+            cout(f"警告：尝试将 PhotonLine 属性应用于非 PhotonLine 对象: {type(line)}")
 
 
     def get_specific_kwargs(self) -> dict:

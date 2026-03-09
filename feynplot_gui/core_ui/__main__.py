@@ -3,7 +3,8 @@
 import sys
 import traceback
 import time # 导入 time 模块
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication
+from .msg_box_utils import MsgBox
 from PySide6.QtCore import Qt, QTranslator, QLocale, QLibraryInfo
 
 from core_ui.widgets.main_window import MainWindow
@@ -14,18 +15,11 @@ pause_time = 0
 def show_error_dialog(title, message, parent=None):
     """
     显示错误对话框的统一函数。所有对话框文本都将通过 QApplication.translate() 进行标记。
+    使用 MsgBox 确保错误信息可选中复制。
     """
-    msg_box = QMessageBox(parent)
-    msg_box.setIcon(QMessageBox.Icon.Critical)
-    # 使用 QApplication.translate 来标记字符串，确保它们能被 lupdate 提取
-    msg_box.setText(QApplication.translate("ErrorDialog", title))
-    msg_box.setInformativeText(QApplication.translate("ErrorDialog", message))
-    msg_box.setWindowTitle(QApplication.translate("ErrorDialog", "Error"))
-    msg_box.setStandardButtons(QMessageBox.Ok)
-    
-    msg_box.setMaximumHeight(800) # 限制最大高度，防止内容过多时对话框过高
-    
-    msg_box.exec()
+    tr_title = QApplication.translate("ErrorDialog", title)
+    tr_message = QApplication.translate("ErrorDialog", message)
+    MsgBox.critical(parent, QApplication.translate("ErrorDialog", "Error"), f"{tr_title}\n\n{tr_message}")
 
 
 def main():

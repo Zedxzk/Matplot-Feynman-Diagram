@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from typing import Optional, List, Any, Tuple 
+from typing import Optional, List, Any, Tuple, Dict 
 from feynplot.drawing.fontSettings import *
 # from feynplot.shared.common_functions import str2latex
 # from feynplot.core.line_support import update_line_plot_points
@@ -48,6 +48,9 @@ class FeynmanDiagramCanvas:
         self._drawn_texts: List[Text] = []  # 用于存储绘制的文本对象
         self._drawn_lines: List[Line2D] = []  # 用于存储绘制的线对象
         self._drawn_vertices: List[PathCollection] = []  # 用于存储绘制的顶点对象
+        self._extra_text_artists: Dict[str, Text] = {}  # text.id -> Text artist，用于命中检测时取真实边界
+        self._vertex_label_artists: Dict[str, Text] = {}  # vertex.id -> label Text artist，用于 label 拖动命中
+        self._line_label_artists: Dict[str, Text] = {}   # line.id -> label Text artist，用于 label 拖动命中
         self._current_target_xlim = None  # 用于存储当前目标 x 轴限制
         self._current_target_ylim = None  # 用于存储当前目标 y 轴限制
         self._transparent_background = None  # 是否使用透明背景
@@ -141,10 +144,13 @@ class FeynmanDiagramCanvas:
         # 第 2 步：正式绘制所有对象，并根据视图限制决定标签的可见性
         # -------------------
         
+        # 顶点/线条 label 的 artist 表，用于命中检测与拖动（每轮渲染前清空）
+        self._vertex_label_artists.clear()
+        self._line_label_artists.clear()
         # 绘制线，不进行可见性检查，因为线可能部分可见
         for line in lines:
             # print(f"\n********************DEBUG :渲染线条: {line}*********************************")
-            drawn_line, drawn_text = self._draw_line(line, use_relative_unit=use_relative_unit)
+            drawn_line, drawn_text = self._draw_line(line, use_relative_unit=use_relative_unit, **kwargs)
             # 这里你需要根据 draw_line 的返回类型进行处理，如果你修改了它
             # 你的 _draw_line 函数现在返回 (drawn_line, drawn_text)，所以我们直接使用
             if drawn_line:
@@ -157,12 +163,12 @@ class FeynmanDiagramCanvas:
                 if not (current_xlim[0] <= center_x <= current_xlim[1] and current_ylim[0] <= center_y <= current_ylim[1]):
                     drawn_text.set_visible(False) # 如果不在范围内，隐藏标签
                 self._drawn_texts.append(drawn_text)
-
+                self._line_label_artists[line.id] = drawn_text
 
         # 绘制顶点
         for vertex in vertices:
             # print(f"\n********************DEBUG :渲染顶点: {vertex}*********************************")
-            drawn_vertex, drawn_text = self._draw_vertex(vertex,  use_relative_unit=use_relative_unit)
+            drawn_vertex, drawn_text = self._draw_vertex(vertex, use_relative_unit=use_relative_unit, **kwargs)
             if drawn_vertex:
                 self._drawn_vertices.append(drawn_vertex)
             if drawn_text:
@@ -173,11 +179,15 @@ class FeynmanDiagramCanvas:
                 if not (current_xlim[0] <= center_x <= current_xlim[1] and current_ylim[0] <= center_y <= current_ylim[1]):
                     drawn_text.set_visible(False) # 如果不在范围内，隐藏标签
                 self._drawn_texts.append(drawn_text)
-                
-        # 如果有额外的文本，也进行绘制
+                self._vertex_label_artists[vertex.id] = drawn_text
+
+        # 如果有额外的文本，也进行绘制，并保存 artist 以便命中检测使用真实边界
+        self._extra_text_artists.clear()
         if texts:
             for text in texts:
-                self._draw_text(text,  use_relative_unit=use_relative_unit, **kwargs)
+                drawn_text = self._draw_text(text, use_relative_unit=use_relative_unit, **kwargs)
+                if drawn_text is not None and getattr(text, 'id', None):
+                    self._extra_text_artists[text.id] = drawn_text
 
         # 保持网格等其他设置
         if self.grid_on:
@@ -237,6 +247,51 @@ class FeynmanDiagramCanvas:
         drawn_text = draw_text_element(self.ax, text, use_relative_unit=use_relative_unit, alpha=alpha, **kwargs)
         return drawn_text
 
+    def get_extra_text_bboxes(self) -> Dict[str, Tuple[float, float, float, float]]:
+        """
+        返回当前绘制的「其余文本」在数据坐标系下的边界框，用于命中检测与真实显示范围一致。
+        返回 dict: text_id -> (x0, y0, x1, y1)，需在 canvas 已绘制后调用。
+        """
+        result: Dict[str, Tuple[float, float, float, float]] = {}
+        if not self._extra_text_artists:
+            return result
+        try:
+            renderer = self.fig.canvas.get_renderer()
+        except Exception:
+            return result
+        for text_id, artist in self._extra_text_artists.items():
+            try:
+                if not artist.get_visible():
+                    continue
+                bbox_display = artist.get_window_extent(renderer)
+                bbox_data = bbox_display.transformed(self.ax.transData.inverted())
+                result[text_id] = (bbox_data.x0, bbox_data.y0, bbox_data.x1, bbox_data.y1)
+            except Exception:
+                continue
+        return result
+
+    def get_label_bboxes(self) -> Dict[str, Tuple[float, float, float, float]]:
+        """
+        返回顶点标签、线条标签在数据坐标系下的边界框，用于命中检测与拖动。
+        返回 dict: key 为 "vlabel:<vertex_id>" 或 "llabel:<line_id>"，value 为 (x0, y0, x1, y1)。
+        """
+        result: Dict[str, Tuple[float, float, float, float]] = {}
+        try:
+            renderer = self.fig.canvas.get_renderer()
+        except Exception:
+            return result
+        for prefix, mapping in [("vlabel:", self._vertex_label_artists), ("llabel:", self._line_label_artists)]:
+            for elem_id, artist in mapping.items():
+                try:
+                    if not artist.get_visible():
+                        continue
+                    bbox_display = artist.get_window_extent(renderer)
+                    bbox_data = bbox_display.transformed(self.ax.transData.inverted())
+                    result[prefix + elem_id] = (bbox_data.x0, bbox_data.y0, bbox_data.x1, bbox_data.y1)
+                except Exception:
+                    continue
+        return result
+
     # 在你的 FeynmanDiagramCanvas 类中添加这个上下文管理器
     @contextmanager
     def _temporary_hide_artists(self, ax: plt.Axes):
@@ -284,126 +339,61 @@ class FeynmanDiagramCanvas:
 
     def _calculate_content_bounds(self, vertices, lines, texts, use_relative_unit : bool = True):
         """
-        预绘制部分对象并估算其他对象，以计算它们的总边界框。
+        纯数据计算边界，不进行预绘制，避免 get_window_extent 返回无效 bbox。
+        收集顶点、顶点标签、线条端点、线条标签（近似中点）、自环路径点、其余文本的位置。
         """
-        # 临时清除，但保留当前视图设置
-        current_xlim = self.ax.get_xlim()
-        current_ylim = self.ax.get_ylim()
-        self.ax.clear()
-        
-        temp_drawn_objects = {}
-        all_bboxes = []
-        renderer = self.fig.canvas.get_renderer()
-
-        # 1. 绘制线条和文本（不实际显示），并将它们的边界框加入列表
+        xs, ys = [], []
+        for v in vertices:
+            xs.append(v.x)
+            ys.append(v.y)
+            lo = getattr(v, 'label_offset', np.array([0.0, 0.0]))
+            xs.append(v.x + float(lo[0]))
+            ys.append(v.y + float(lo[1]))
         for line in lines:
-            # print(f"DEBUG: 绘制线条: {line}")
-            drawn_line, drawn_text = self._draw_line(line, use_relative_unit=use_relative_unit, pre_render=True)
-            if drawn_line:
-                if 'line' not in temp_drawn_objects:
-                    temp_drawn_objects['line'] = []
-                temp_drawn_objects['line'].append(drawn_line)
-
-            if drawn_text:
-                if 'text' not in temp_drawn_objects:
-                    temp_drawn_objects['text'] = []
-                temp_drawn_objects['text'].append(drawn_text)
-
-        # 绘制额外文本
-        if texts:
-            for text in texts:
-                # print(f"DEBUG: 绘制额外文本: {text}")
-                kwargs = text.to_matplotlib_kwargs()
-                # 将 transform 参数从 transAxes 改为 transData
-                drawn_text = self._draw_text(text,  use_relative_unit=use_relative_unit, alpha=0, **kwargs)
-                # print(f"绘制额外文本: {drawn_text}")
-                if 'text' not in temp_drawn_objects:
-                    temp_drawn_objects['text'] = []
-                temp_drawn_objects['text'].append(drawn_text)
-
-        # 刷新画布以确保临时对象已渲染
-        self.fig.canvas.draw()
-
-        # 从绘制的对象中获取边界框
-        for key, value in temp_drawn_objects.items():
-            for obj in value:
-                if obj and hasattr(obj, 'get_window_extent'):
+            if line.v_start and line.v_end:
+                if getattr(line, 'loop', False):
+                    # 自环：使用椭圆路径点纳入边界，否则仅顶点会漏掉环体
                     try:
-                        bbox = obj.get_window_extent(renderer=renderer)
-                        if not any(np.isnan([bbox.x0, bbox.x1, bbox.y0, bbox.y1])) and \
-                            not any(np.isinf([bbox.x0, bbox.x1, bbox.y0, bbox.y1])):
-                            all_bboxes.append(bbox)
-                        else:
-                            # pass
-                            print(f"bbox {bbox} is invalid, skipping.")
-                    except Exception as e:
-                        print(f"警告：无法获取对象 {obj} 的边界框。错误: {e}")
-                        # pass
-                    # print(f"{key} 对象的边界框: {bbox.transformed(self.ax.transData.inverted())}")
+                        from feynplot.core.circle import oval_circle
+                        start_point = (line.v_start.x, line.v_start.y)
+                        path = oval_circle(
+                            start_point,
+                            getattr(line, 'angular_direction', 90.0),
+                            getattr(line, 'a', 1.0),
+                            getattr(line, 'b', 1.0),
+                            points=64
+                        )
+                        xs.extend(path[:, 0].tolist())
+                        ys.extend(path[:, 1].tolist())
+                        # 胶子/光子等自环可能有螺旋外扩，加入振幅
+                        amp = getattr(line, 'amplitude', 0) or getattr(line, 'R', 0)
+                        if amp > 0:
+                            xs.extend([line.v_start.x - amp, line.v_start.x + amp])
+                            ys.extend([line.v_start.y - amp, line.v_start.y + amp])
+                    except Exception:
+                        xs.extend([line.v_start.x, line.v_end.x])
+                        ys.extend([line.v_start.y, line.v_end.y])
                 else:
-                    print(f"警告：对象 {obj} 没有有效的边界框方法，跳过。")
-        # 2. 【核心修改】估算顶点的边界框，不再进行绘制
-        for vertex in vertices:
-            # 3. 估算半径
-            # 假设 vertex.size 是以数据单位表示的，如果不是，可能需要调整
-            radius = vertex.size * 0.002 
-            
-            # 4. 创建以 (vertex.x, vertex.y) 为中心的方形边界框（数据坐标）
-            vx, vy = vertex.x, vertex.y
-            data_bbox = Bbox.from_extents(vx - radius, vy - radius, vx + radius, vy + radius)
-            
-            # 5. 将数据坐标的bbox转换为像素坐标的bbox，以便与其他bbox合并
-            pixel_bbox = data_bbox.transformed(self.ax.transData)
-            all_bboxes.append(pixel_bbox)
-
-        if not all_bboxes:
-            # 如果没有有效的边界框，返回一个默认的视图
-            print("警告：没有有效的绘图对象边界，使用默认视图。")
-            self.ax.set_xlim(current_xlim)
-            self.ax.set_ylim(current_ylim)
-            # 清理临时绘制的对象
-            for obj in temp_drawn_objects:
-                if obj:
-                    obj.remove()
+                    xs.extend([line.v_start.x, line.v_end.x])
+                    ys.extend([line.v_start.y, line.v_end.y])
+                mid_x = (line.v_start.x + line.v_end.x) / 2
+                mid_y = (line.v_start.y + line.v_end.y) / 2
+                off = getattr(line, 'label_offset', np.array([0.0, 0.0]))
+                xs.append(mid_x + float(off[0]))
+                ys.append(mid_y + float(off[1]))
+        if texts:
+            for t in texts:
+                xs.append(t.x)
+                ys.append(t.y)
+        if not xs or not ys:
             return (-5, 5), (-5, 5)
-        
-        for bbox in all_bboxes:
-            transformed_bbox = bbox.transformed(self.ax.transData.inverted())
-            # print(f"Transformed bbox: {transformed_bbox}")
-
-
-        # 合并所有边界框（现在包括了线条、文本和估算的顶点）
-        merged_bbox = Bbox.union(all_bboxes)
-
-        # 将合并后的像素边界框转换回数据坐标系
-        merged_bbox_data = merged_bbox.transformed(self.ax.transData.inverted())
-        
-        # 增加边界以提供一些空白
-        width = merged_bbox_data.x1 - merged_bbox_data.x0
-        height = merged_bbox_data.y1 - merged_bbox_data.y0
-        
-        # 防止宽度或高度为0时，padding也为0的情况
-        if width == 0: width = 1
-        if height == 0: height = 1
-            
-        x_padding = width * 0.04 
-        y_padding = height * 0.04
-
-        new_xlim = (merged_bbox_data.x0 - x_padding, merged_bbox_data.x1 + x_padding)
-        new_ylim = (merged_bbox_data.y0 - y_padding, merged_bbox_data.y1 + y_padding)
-        
-        # 清理临时绘制的对象
-        for key, temp_drawn_objects in temp_drawn_objects.items():
-            # print(f"清理临时绘制的对象: {key}, 对象数量: {len(temp_drawn_objects)}")
-            if isinstance(temp_drawn_objects, list):
-                for obj in temp_drawn_objects:
-                    if obj:
-                        obj.remove()
-        # for obj in temp_drawn_objects:
-        #     if obj:
-        #         obj.remove()
-                
-        return new_xlim, new_ylim
+        x_min, x_max = min(xs), max(xs)
+        y_min, y_max = min(ys), max(ys)
+        width = max(x_max - x_min, 1)
+        height = max(y_max - y_min, 1)
+        pad_x = width * 0.10
+        pad_y = height * 0.10
+        return (x_min - pad_x, x_max + pad_x), (y_min - pad_y, y_max + pad_y)
     
     def _plot_chessboard_background(self, 
                                     size: float = 1.0, 

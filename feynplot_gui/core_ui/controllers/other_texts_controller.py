@@ -1,6 +1,7 @@
 # feynplot_gui\core_ui\controllers\other_texts_controller.py
 
 from PySide6.QtWidgets import QMessageBox, QInputDialog, QWidget
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from PySide6.QtCore import Qt, QObject, Signal
 from PySide6.QtGui import QColor
 from feynplot_gui.debug.debug_output import other_texts_print 
@@ -165,10 +166,10 @@ class OtherTextsController(QObject):
         other_texts_print(f"收到删除文本请求，ID：{text_element.id}")
         self.main_controller.status_message.emit(f"收到删除文本请求：{text_element.id} (自行处理)")
         
-        reply = QMessageBox.question(self.main_controller.main_window, '确认删除文本', 
-                                     f"确定要删除文本 '{text_element.text}' (ID: {text_element.id}) 吗？",
-                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        reply = MsgBox.question(self.main_controller.main_window, '确认删除文本', 
+                               f"确定要删除文本 '{text_element.text}' (ID: {text_element.id}) 吗？",
+                               QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if reply == QMessageBox.StandardButton.Yes:
             self.main_controller.diagram_model.remove_text(text_element.id) # 从图模型中删除文本
 
             if self.main_controller.get_selected_item() is text_element: # 如果删除的是当前选中项，则清除全局选中

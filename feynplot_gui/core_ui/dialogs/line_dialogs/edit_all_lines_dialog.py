@@ -5,9 +5,10 @@ from typing import Dict, Any, Optional
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
     QFormLayout, QLineEdit, QComboBox, QDoubleSpinBox,
-    QSpinBox, QLabel, QMessageBox, QCheckBox, QColorDialog,
+    QSpinBox, QLabel, QCheckBox, QColorDialog,
     QWidget, QFrame, QApplication, QGridLayout
 )
+from feynplot_gui.core_ui.msg_box_utils import MsgBox
 from PySide6.QtGui import QDoubleValidator, QIntValidator, QColor
 from PySide6.QtCore import Qt, Signal
 # from feynplot.core.line import Line # 假设从您的库中导入
@@ -82,10 +83,11 @@ class EditAllLinesDialog(QDialog):
     def __init__(self, parent=None, lines: list[Line] = None):
         super().__init__(parent)
         self.setWindowTitle(self.tr("编辑所有线段属性"))
-        # *** 更改：为双列布局增加宽度 ***
-        self.setMinimumWidth(600) 
+        self.setMinimumWidth(600)
 
         self.lines = lines if lines is not None else []
+        from feynplot_gui.core_ui.dialogs.dialog_style import apply_dialog_style
+        apply_dialog_style(self)
         self._editable_properties = self._get_editable_common_properties()
         self._input_widgets = {} # 存储对输入控件的引用
 
@@ -150,7 +152,9 @@ class EditAllLinesDialog(QDialog):
 
     def _init_ui(self):
         """初始化对话框的用户界面（使用双列 QGridLayout）。"""
+        from feynplot_gui.core_ui.dialogs.dialog_style import apply_content_layout
         main_layout = QVBoxLayout(self)
+        apply_content_layout(main_layout)
 
         # 用于“未更改”的占位符文本
         unchanged_placeholder = "--- (保持不变) ---"
@@ -383,18 +387,14 @@ class EditAllLinesDialog(QDialog):
             
             main_layout.addWidget(arrow_group_widget)
             
-        # --- 添加按钮 ---
         button_layout = QHBoxLayout()
-        button_layout.addStretch() # 居中
+        button_layout.addStretch(1)
         self.apply_button = QPushButton(self.tr("应用"))
         self.apply_button.clicked.connect(self._apply_changes)
         button_layout.addWidget(self.apply_button)
-
         self.cancel_button = QPushButton(self.tr("取消"))
         self.cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_button)
-        button_layout.addStretch() # 居中
-
         main_layout.addLayout(button_layout)
 
         # --- 最终初始化 ---
@@ -408,7 +408,7 @@ class EditAllLinesDialog(QDialog):
     def _apply_changes(self):
         """将对话框中的更改应用到所有选定的线段。"""
         if not self.lines:
-            QMessageBox.information(self, self.tr("未选择线段"), self.tr("没有线段可供应用更改。"))
+            MsgBox.information(self, self.tr("未选择线段"), self.tr("没有线段可供应用更改。"))
             return
 
         changes = {}
@@ -486,7 +486,7 @@ class EditAllLinesDialog(QDialog):
                 lines_with_arrows = [line for line in self.lines if hasattr(line, 'arrow') and getattr(line, 'arrow', False)]
                 
                 if not lines_with_arrows:
-                    QMessageBox.information(self, self.tr("提示"), self.tr("未找到带箭头的线段。箭头设置不会生效。"))
+                    MsgBox.information(self, self.tr("提示"), self.tr("未找到带箭头的线段。箭头设置不会生效。"))
                 else:
                     cout(f"向 {len(lines_with_arrows)} 条带箭头的线段应用: {arrow_changes}")
                     for line in lines_with_arrows:
@@ -500,15 +500,15 @@ class EditAllLinesDialog(QDialog):
             
             cout(f"调试：已将更改应用到 {len(self.lines)} 条线段。")
 
-            QMessageBox.information(self, "成功", f"属性已成功应用于 {len(self.lines)} 条线段。")
+            MsgBox.information(self, "成功", f"属性已成功应用于 {len(self.lines)} 条线段。")
             self.properties_updated.emit()
             self.accept()
             
         except ValueError as ve:
-            QMessageBox.critical(self, "输入错误", f"无效输入：{ve}\n请检查您的值。")
+            MsgBox.critical(self, "输入错误", f"无效输入：{ve}\n请检查您的值。")
             cout(f"错误：输入错误：{ve}")
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"应用更改失败：{e}")
+            MsgBox.critical(self, "错误", f"应用更改失败：{e}")
             cout(f"错误：应用更改失败：{e}")
 
     def _on_arrow_style_changed(self, index: int):

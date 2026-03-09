@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, Signal, Qt
-from PySide6.QtWidgets import QListWidgetItem, QMessageBox, QDialog
+from PySide6.QtWidgets import QListWidgetItem, QDialog
 
 # 导入核心模型类
 from feynplot.core.vertex import Vertex, VertexType
@@ -15,6 +15,7 @@ from feynplot_gui.core_ui.widgets.vertex_list_widget import VertexListWidget
 # 导入你的功能函数
 from .vertex_dialogs.edit_vertex import open_edit_vertex_dialog
 from feynplot.io.diagram_io import diagram_to_json_string, diagram_from_json_string
+from feynplot_gui.debug_utils import cout
 
 class VertexController(QObject):
     # 移除: vertex_selection_changed 信号，因为我们将直接调用 main_controller.select_item
@@ -118,7 +119,7 @@ class VertexController(QObject):
         当用户在顶点列表中双击一个顶点时触发。
         发出信号请求 MainController 打开属性编辑器。
         """
-        print(f"VertexController: 收到列表双击顶点 {vertex.id}。发出 request_edit_vertex 信号。")
+        cout(f"VertexController: 收到列表双击顶点 {vertex.id}。发出 request_edit_vertex 信号。")
         # 对于编辑这种复杂操作，仍然通过信号转发，因为 MainController 可能有额外的逻辑或专门的对话框控制器。
         self._on_edit_vertex_requested_from_list(vertex)
         self.request_edit_vertex.emit(vertex)
@@ -130,7 +131,7 @@ class VertexController(QObject):
         处理来自 VertexListWidget 右键菜单的“编辑顶点”请求。
         发出信号请求 MainController 处理编辑操作。
         """
-        print(f"VertexController: 收到列表右键编辑顶点请求: {vertex.id}。发出 request_edit_vertex 信号。")
+        cout(f"VertexController: 收到列表右键编辑顶点请求: {vertex.id}。发出 request_edit_vertex 信号。")
         self.request_edit_vertex.emit(vertex)
         self._on_edit_vertex_requested(vertex=vertex)
 
@@ -143,7 +144,7 @@ class VertexController(QObject):
             vertex (Vertex): 从列表中右键点击并选择删除的顶点实例。
         """
         # Print status message to indicate the request has been received (optional, for debugging)
-        print(f"VertexController: 收到列表右键删除顶点请求: {vertex.id}。转发给 MainController。")
+        cout(f"VertexController: 收到列表右键删除顶点请求: {vertex.id}。转发给 MainController。")
         self.main_controller.status_message.emit(f"列表接收到删除顶点请求: {vertex.id} (转发中...)")
 
         # Call MainController's delete_selected_vertex method, passing the specified vertex
@@ -155,7 +156,7 @@ class VertexController(QObject):
         处理来自 VertexListWidget 右键菜单的“关键字检索”请求。
         发出信号请求 MainController 处理检索操作。
         """
-        print(f"VertexController: 收到列表右键检索顶点请求: {vertex.id}。发出 request_search_vertex 信号。")
+        cout(f"VertexController: 收到列表右键检索顶点请求: {vertex.id}。发出 request_search_vertex 信号。")
         self.request_search_vertex.emit(vertex)
 
 
